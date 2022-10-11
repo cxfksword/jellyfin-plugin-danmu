@@ -9,6 +9,14 @@
         "imageUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/raw/main/doc/logo.png",
         "versions": [
             {
+                "version": "0.2.0.0",
+                "changelog": "NA\n",
+                "targetAbi": "10.8.0.0",
+                "sourceUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/v0.2.0/danmu_0.2.0.0.zip",
+                "checksum": "31f87c313b5ea1cd974766666db26fdc",
+                "timestamp": "2022-10-11T08:19:43Z"
+            },
+            {
                 "version": "0.1.9.0",
                 "changelog": "NA\n",
                 "targetAbi": "10.8.0.0",
