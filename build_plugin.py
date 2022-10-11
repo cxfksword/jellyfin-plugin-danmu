@@ -17,7 +17,7 @@ if prerelease:
     jellyfin_repo_file = "./manifest-unstable.json"
     version_list = version.split('.')
     if len(version_list) == 3:
-        version_list.append('1')
+        version_list.append('0')
     else:
         version_list[3] = str(int(version_list[3]) + 1)
     version = '.'.join(version_list)

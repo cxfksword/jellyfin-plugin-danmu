@@ -2,7 +2,7 @@ name: "🚀 Publish Plugin"
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["*"]
 
 jobs:
   build:
