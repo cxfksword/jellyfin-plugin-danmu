@@ -1,12 +1,21 @@
 [
-  {
-    "guid": "5B39DA44-5314-4940-8E26-54C821C17F86",
-    "name": "Danmu",
-    "description": "jellyfin的b站弹幕自动下载插件，会匹配b站番剧/电影视频，自动下载对应弹幕，并定时更新。\n",
-    "overview": "jellyfin弹幕下载插件",
-    "owner": "cxfksword",
-    "category": "Metadata",
-    "imageUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/raw/main/doc/logo.png",
-    "versions": []
-  }
+    {
+        "guid": "5b39da44-5314-4940-8e26-54c821c17f86",
+        "name": "Danmu",
+        "description": "jellyfin\u7684b\u7ad9\u5f39\u5e55\u81ea\u52a8\u4e0b\u8f7d\u63d2\u4ef6\uff0c\u4f1a\u5339\u914db\u7ad9\u756a\u5267/\u7535\u5f71\u89c6\u9891\uff0c\u81ea\u52a8\u4e0b\u8f7d\u5bf9\u5e94\u5f39\u5e55\uff0c\u5e76\u5b9a\u65f6\u66f4\u65b0\u3002\n",
+        "overview": "jellyfin\u5f39\u5e55\u4e0b\u8f7d\u63d2\u4ef6",
+        "owner": "cxfksword",
+        "category": "Metadata",
+        "imageUrl": "https://github.com/cxfksword/jellyfin-plugin-0.1.5.0/raw/main/doc/logo.png",
+        "versions": [
+            {
+                "version": "0.1.5.0",
+                "changelog": "NA\n",
+                "targetAbi": "10.8.0.0",
+                "sourceUrl": "https://github.com/cxfksword/jellyfin-plugin-0.1.5.0/releases/download/danmu/danmu_0.1.5.0.zip",
+                "checksum": "4c2ad7a688a766e7b4a75509ef1f635c",
+                "timestamp": "2022-10-11T07:20:11Z"
+            }
+        ]
+    }
 ]
