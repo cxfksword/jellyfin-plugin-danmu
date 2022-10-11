@@ -49,4 +49,11 @@ os.system('jprm repo add --url=%s %s %s' % (jellyfin_repo_url, jellyfin_repo_fil
 
 os.system('sed -i "s/\/danmu\//\/%s\//" %s' % (git_version, jellyfin_repo_file))
 
+
+# 国内加速
+jellyfin_repo_file_cn = jellyfin_repo_file.replace(".json", "_cn.json")
+os.system('cp -f %s %s' % (jellyfin_repo_file, jellyfin_repo_file_cn))
+os.system('sed "s/github.com/ghproxy.com\/https:\/\/github.com/g" "%s"' % (jellyfin_repo_file_cn))
+
+
 print(version)

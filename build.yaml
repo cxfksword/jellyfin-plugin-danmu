@@ -1,6 +1,6 @@
 name: "Danmu"
 guid: "5B39DA44-5314-4940-8E26-54C821C17F86"
-imageUrl: https://raw.githubusercontent.com/cxfksword/jellyfin-plugin-danmu/main/doc/logo.png
+imageUrl: https://github.com/cxfksword/jellyfin-plugin-danmu/raw/main/doc/logo.png
 version: "1.0.0.0"
 targetAbi: "10.8.0.0"
 framework: "net6.0"
