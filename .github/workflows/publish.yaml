@@ -40,8 +40,16 @@ jobs:
           tag: ${{ github.ref }}
           file_glob: true
       - name: Update manifest
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: svenstaro/upload-release-action@v2
         with:
-          branch: ${{ env.branch }}
-          commit_message: Update repo manifest
-          file_pattern: "*.json"
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./*.json
+          tag: "manifest"
+          overwrite: true
+          file_glob: true
+      # - name: Update manifest
+      #   uses: stefanzweifel/git-auto-commit-action@v4
+      #   with:
+      #     branch: ${{ env.branch }}
+      #     commit_message: Update repo manifest
+      #     file_pattern: "*.json"

@@ -28,7 +28,7 @@ if prerelease:
     jellyfin_repo_file = "./manifest-unstable.json"
 else:
     jellyfin_repo_file = "./manifest.json"
-jellyfin_repo_file_cn = jellyfin_repo_file.replace(".json", "_cn.json")
+# jellyfin_repo_file_cn = jellyfin_repo_file.replace(".json", "_cn.json")
 
 jellyfin_repo_url = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download"
 
@@ -40,9 +40,9 @@ os.system('jprm repo add --url=%s %s %s' % (jellyfin_repo_url, jellyfin_repo_fil
 os.system('sed -i "s/\/danmu\//\/%s\//" %s' % (git_version, jellyfin_repo_file))
 
 # 国内加速
-os.system('cp -f %s %s' % (jellyfin_repo_file, jellyfin_repo_file_cn))
+# os.system('cp -f %s %s' % (jellyfin_repo_file, jellyfin_repo_file_cn))
 
-os.system('sed -i "s/github.com/raw.iqiq.io/" %s' % (jellyfin_repo_file_cn))
+# os.system('sed -i "s/github.com/ghproxy.com\/https:\/\/github.com/" %s' % (jellyfin_repo_file_cn))
 
 
 print(version)
