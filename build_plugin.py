@@ -15,6 +15,7 @@ os.mkdir(artifact_dir)
 
 
 git_version = version
+# .NET dll need major.minor[.build[.revision]] version format
 if version.startswith('v'):
     version = version.lstrip("v")
 version_list = version.split('.')

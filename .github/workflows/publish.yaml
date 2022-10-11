@@ -4,15 +4,14 @@ on:
   push:
     tags: ["*"]
 
+env:
+  dotnet-version: 6.0.x
+  python-version: 3.8
+  project: Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
+  branch: main
+
 jobs:
   build:
-    strategy:
-      matrix:
-        dotnet-version: 6.0.x
-        python-version: 3.8
-        project: Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
-        branch: main
-
     runs-on: ubuntu-latest
     name: Build & Release
 
@@ -21,13 +20,13 @@ jobs:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: ${{ matrix.dotnet-version }}
+          dotnet-version: ${{ env.dotnet-version }}
       - name: Restore nuget packages
-        run: dotnet restore ${{ matrix.project }}
+        run: dotnet restore ${{ env.project }}
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.python-version }}
       - name: Install JPRM
         run: python -m pip install jprm
       - name: Run JPRM
@@ -42,6 +41,6 @@ jobs:
       - name: Update manifest
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          branch: ${{ matrix.branch }}
+          branch: ${{ env.branch }}
           commit_message: Update repo manifest
           file_pattern: manifest.json
