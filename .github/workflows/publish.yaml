@@ -16,7 +16,7 @@ jobs:
         with:
           dotnet-version: 6.0.x
       - name: Restore nuget packages
-        run: dotnet restore Shokofin/Shokofin.csproj
+        run: dotnet restore Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
       - name: Setup python
         uses: actions/setup-python@v2
         with:
