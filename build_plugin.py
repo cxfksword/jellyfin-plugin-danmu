@@ -13,14 +13,17 @@ prerelease = bool(opts.prerelease)
 artifact_dir = os.path.join(os.getcwd(), 'artifacts')
 os.mkdir(artifact_dir)
 
+
+if version.startswith('v'):
+    version = version.lstrip("v")
+version_list = version.split('.')
+if len(version_list) == 3:
+    version_list.append('0')
+version = '.'.join(version_list)
+
+
 if prerelease:
     jellyfin_repo_file = "./manifest-unstable.json"
-    version_list = version.split('.')
-    if len(version_list) == 3:
-        version_list.append('0')
-    else:
-        version_list[3] = str(int(version_list[3]) + 1)
-    version = '.'.join(version_list)
 else:
     jellyfin_repo_file = "./manifest.json"
 

@@ -35,6 +35,6 @@ jobs:
       - name: Update manifest
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          branch: master
+          branch: main
           commit_message: Update repo manifest
           file_pattern: manifest.json
