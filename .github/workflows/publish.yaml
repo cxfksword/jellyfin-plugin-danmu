@@ -1,18 +1,131 @@
-name: '🚀 Publish Plugin'
+name: "🚀 Publish Plugin"
 
 on:
-  release:
-    types:
-      - released
-  workflow_dispatch:
+  push:
+    tags: ["v*"]
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/publish.yaml@master
-    with:
-      version: ${{ github.event.release.tag_name }}
-      is-unstable: ${{ github.event.release.prerelease }}
-    secrets:
-      deploy-host: ${{ secrets.DEPLOY_HOST }}
-      deploy-user: ${{ secrets.DEPLOY_USER }}
-      deploy-key: ${{ secrets.DEPLOY_KEY }}
+  build:
+    strategy:
+      inputs:
+        version:
+          required: true
+          type: string
+        is-unstable:
+          required: false
+          default: false
+          type: boolean
+        dotnet-version:
+          required: false
+          default: "6.0.x"
+          description: "The .NET version to setup for the build"
+          type: string
+        dotnet-target:
+          required: false
+          default: "net6.0"
+          description: "The .NET target to set for JPRM"
+          type: string
+      secrets:
+        deploy-host:
+          required: true
+        deploy-user:
+          required: true
+        deploy-key:
+          required: true
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # tag=v3.1.0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@45c9f236cf9a0c09d11298348f6ed06bd81914c0 # tag=v3.0.1
+        with:
+          dotnet-version: "${{ inputs.dotnet-version }}"
+
+      - name: Build Jellyfin Plugin
+        uses: oddstr13/jellyfin-plugin-repository-manager@a7795e010e63a6dcbbd5e6d8274f801d021f1045 # tag=v0.5.0
+        id: jprm
+        with:
+          dotnet-target: "${{ inputs.dotnet-target }}"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # tag=v3.1.0
+        with:
+          name: build-artifact
+          retention-days: 30
+          if-no-files-found: error
+          path: ${{ steps.jprm.outputs.artifact }}
+
+  upload:
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@fb598a63ae348fa914e94cd0ff38f362e927b741 # tag=v3.0.0
+        with:
+          name: build-artifact
+
+      - name: Prepare GH Release Assets
+        run: |-
+          for file in ./*; do
+            md5sum ${file#./} >> ${file%.*}.md5
+            sha256sum ${file#./} >> ${file%.*}.sha256
+          done
+          ls -l
+
+      - name: Upload GH Release Assets
+        uses: shogo82148/actions-upload-release-asset@8dbaa4469aa7256e70624d72f2567fac8f5341b3 # tag=v1.6.2
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./*
+
+      - name: Ensure Destination Path Exists
+        uses: appleboy/ssh-action@f9010ff7f1bbd7db1a0b4bab661437550cea20c0 # tag=v0.1.5
+        if: ${{ contains(github.repository, 'jellyfin/') }}
+        with:
+          host: ${{ secrets.deploy-host }}
+          username: ${{ secrets.deploy-user }}
+          key: ${{ secrets.deploy-key }}
+          script_stop: true
+          script: |-
+            mkdir -p "/srv/repository/incoming/plugin/${{ github.repository }}/${{ inputs.version }}" || exit 1
+
+      - name: Upload Jellyfin Plugin Repository Assets
+        uses: burnett01/rsync-deployments@0dc935cdecc5f5e571865e60d2a6cdc673704823 # tag=5.2
+        if: ${{ contains(github.repository, 'jellyfin/') }}
+        with:
+          switches: -vrptz
+          path: ./*.zip
+          remote_path: /srv/repository/incoming/plugin/${{ github.repository }}/${{ inputs.version }}
+          remote_host: ${{ secrets.deploy-host }}
+          remote_user: ${{ secrets.deploy-user }}
+          remote_key: ${{ secrets.deploy-key }}
+
+  publish:
+    needs:
+      - upload
+    runs-on: ubuntu-latest
+    if: ${{ contains(github.repository, 'jellyfin/') }}
+    env:
+      JELLYFIN_REPO: "/srv/repository/mirror/releases/plugin/manifest-stable.json"
+      JELLYFIN_REPO_URL: "https://repo.jellyfin.org/releases/plugin/"
+    steps:
+      - name: Update Plugin Manifest
+        uses: appleboy/ssh-action@f9010ff7f1bbd7db1a0b4bab661437550cea20c0 # tag=v0.1.5
+        with:
+          host: ${{ secrets.deploy-host }}
+          username: ${{ secrets.deploy-user }}
+          key: ${{ secrets.deploy-key }}
+          script_stop: true
+          envs: JELLYFIN_REPO,JELLYFIN_REPO_URL
+          script: |-
+            lockfile="/run/lock/jprm.lock"
+            pushd "/srv/repository/incoming/plugin/${{ github.repository }}/${{ inputs.version }}" || exit 1
+            (
+                flock -x 300
+                jprm --verbosity=debug repo add --url="${JELLYFIN_REPO_URL}" "${JELLYFIN_REPO}" ./*.zip || exit 1
+            ) 300>${lockfile}
+            popd || exit 1
+            rm -r "/srv/repository/incoming/plugin/${{ github.repository }}/${{ inputs.version }}" || exit 1

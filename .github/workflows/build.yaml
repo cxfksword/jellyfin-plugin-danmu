@@ -1,18 +1,38 @@
-name: '🏗️ Build Plugin'
+name: "🏗️ Build Plugin"
 
 on:
   push:
     branches:
-      - master
-    paths-ignore:
-      - '**/*.md'
+      - "**"
   pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - '**/*.md'
-  workflow_dispatch:
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/build.yaml@master
+  build:
+    strategy:
+      inputs:
+        dotnet-version:
+          required: false
+          default: "6.0.x"
+          description: "The .NET version to setup for the build"
+          type: string
+        dotnet-target:
+          required: false
+          default: "net6.0"
+          description: "The .NET target to set for JPRM"
+          type: string
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@93ea575cb5d8a053eaa0ac8fa3b40d7e05a33cc8 # tag=v3.1.0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@45c9f236cf9a0c09d11298348f6ed06bd81914c0 # tag=v3.0.1
+        with:
+          dotnet-version: "${{ inputs.dotnet-version }}"
+
+      - name: Build Jellyfin Plugin
+        uses: oddstr13/jellyfin-plugin-repository-manager@a7795e010e63a6dcbbd5e6d8274f801d021f1045 # tag=v0.5.0
+        id: jprm
+        with:
+          dotnet-target: "${{ inputs.dotnet-target }}"
