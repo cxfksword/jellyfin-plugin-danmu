@@ -7,6 +7,7 @@ on:
 env:
   dotnet-version: 6.0.x
   python-version: 3.8
+  branch: main
   artifact: danmu
 
 jobs:
@@ -40,5 +41,6 @@ jobs:
       - name: Update manifest
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
+          branch: ${{ env.branch }}
           commit_message: Update repo manifest
-          file_pattern: "*.json"
+          file_pattern: "manifest.json manifest_cn.json"
