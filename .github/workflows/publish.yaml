@@ -7,6 +7,7 @@ on:
 env:
   dotnet-version: 6.0.x
   python-version: 3.8
+  project: Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
   branch: main
   artifact: danmu
 
@@ -22,7 +23,7 @@ jobs:
         with:
           dotnet-version: ${{ env.dotnet-version }}
       - name: Restore nuget packages
-        run: dotnet restore
+        run: dotnet restore ${{ env.project }}
       - name: Setup python
         uses: actions/setup-python@v2
         with:
@@ -43,4 +44,4 @@ jobs:
         with:
           branch: ${{ env.branch }}
           commit_message: Update repo manifest
-          file_pattern: manifest_cn.json
+          file_pattern: "*.json"
