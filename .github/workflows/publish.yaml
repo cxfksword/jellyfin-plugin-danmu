@@ -43,4 +43,4 @@ jobs:
         with:
           branch: ${{ env.branch }}
           commit_message: Update repo manifest
-          file_pattern: *.json
+          file_pattern: manifest_cn.json
