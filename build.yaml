@@ -1,16 +1,13 @@
----
-name: "Template"
+name: "Danmu"
 guid: "5B39DA44-5314-4940-8E26-54C821C17F86"
-version: "1.0.0.0"
+imageUrl: https://github.com/cxfksword/jellyfin-plugin-danmu/raw/main/doc/logo.png
 targetAbi: "10.8.0.0"
-framework: "net6.0"
-overview: "Short description about your plugin"
+owner: "cxfksword"
+overview: "jellyfin弹幕下载插件"
 description: >
-  This is a longer description that can span more than one
-  line and include details about your plugin.
-category: "General"
-owner: "jellyfin"
+  jellyfin的b站弹幕自动下载插件，会匹配b站番剧/电影视频，自动下载对应弹幕，并定时更新。
+category: "Metadata"
 artifacts:
-  - "Jellyfin.Plugin.Danmu.dll"
+  - "Danmu.dll"
 changelog: >
-  changelog
+  NA
