@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+import os.path
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--version', required=True)
@@ -26,10 +27,19 @@ version = '.'.join(version_list)
 
 if prerelease:
     jellyfin_repo_file = "./manifest-unstable.json"
+    jellyfin_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/manifest/download/manifest-unstable.json"
 else:
     jellyfin_repo_file = "./manifest.json"
-# jellyfin_repo_file_cn = jellyfin_repo_file.replace(".json", "_cn.json")
+    jellyfin_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/manifest/download/manifest.json"
 
+# download old manifest
+jellyfin_manifest_template = "./doc/manifest-template.json"
+os.system('wget -q "%s"' % (jellyfin_manifest))
+if not os.path.isfile(jellyfin_manifest):
+    os.system('cp -f %s %s' % (jellyfin_manifest_template, jellyfin_manifest))
+
+
+# build and generate new manifest
 jellyfin_repo_url = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download"
 
 zipfile = os.popen('jprm --verbosity=debug plugin build "." --output="%s" --version="%s" --dotnet-framework="net6.0"' %
@@ -38,11 +48,5 @@ zipfile = os.popen('jprm --verbosity=debug plugin build "." --output="%s" --vers
 os.system('jprm repo add --url=%s %s %s' % (jellyfin_repo_url, jellyfin_repo_file, zipfile))
 
 os.system('sed -i "s/\/danmu\//\/%s\//" %s' % (git_version, jellyfin_repo_file))
-
-# 国内加速
-# os.system('cp -f %s %s' % (jellyfin_repo_file, jellyfin_repo_file_cn))
-
-# os.system('sed -i "s/github.com/ghproxy.com\/https:\/\/github.com/" %s' % (jellyfin_repo_file_cn))
-
 
 print(version)
