@@ -7,7 +7,6 @@ on:
 env:
   dotnet-version: 6.0.x
   python-version: 3.8
-  project: Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
   branch: main
   artifact: danmu
 
@@ -19,11 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup dotnet
-        uses: actions/setup-dotnet@v1
+        uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ env.dotnet-version }}
       - name: Restore nuget packages
-        run: dotnet restore ${{ env.project }}
+        run: dotnet restore
       - name: Setup python
         uses: actions/setup-python@v2
         with:
