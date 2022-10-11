@@ -10,9 +10,9 @@ jellyfin的b站弹幕自动下载插件，会匹配b站番剧/电影视频，自
 
 添加插件存储库：
 
-国内加速：https://raw.iqiq.io/cxfksword/jellyfin-plugin-danmu/main/manifest.json
+国内加速：https://ghproxy.com/https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest_cn.json
 
-国外访问：https://github.com/cxfksword/jellyfin-plugin-danmu/raw/main/manifest.json
+国外访问：https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest.json
 
 ## 如何使用
 
