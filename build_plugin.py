@@ -27,16 +27,16 @@ version = '.'.join(version_list)
 
 if prerelease:
     jellyfin_repo_file = "./manifest-unstable.json"
-    jellyfin_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/manifest/download/manifest-unstable.json"
+    jellyfin_old_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/manifest/download/manifest-unstable.json"
 else:
     jellyfin_repo_file = "./manifest.json"
-    jellyfin_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/manifest/download/manifest.json"
+    jellyfin_old_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/manifest/download/manifest.json"
 
 # download old manifest
 jellyfin_manifest_template = "./doc/manifest-template.json"
-os.system('wget -q "%s"' % (jellyfin_manifest))
-if not os.path.isfile(jellyfin_manifest):
-    os.system('cp -f %s %s' % (jellyfin_manifest_template, jellyfin_manifest))
+os.system('wget -q "%s"' % (jellyfin_old_manifest))
+if not os.path.isfile(jellyfin_repo_file):
+    os.system('cp -f %s %s' % (jellyfin_manifest_template, jellyfin_repo_file))
 
 
 # build and generate new manifest
