@@ -9,10 +9,18 @@
         "imageUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/raw/main/doc/logo.png",
         "versions": [
             {
+                "version": "0.1.8.0",
+                "changelog": "NA\n",
+                "targetAbi": "10.8.0.0",
+                "sourceUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download0.1.8.0/danmu_0.1.8.0.zip",
+                "checksum": "f16ea28bb0c147a2e93a992f8b6a2b6a",
+                "timestamp": "2022-10-11T08:09:00Z"
+            },
+            {
                 "version": "0.1.7.0",
                 "changelog": "NA\n",
                 "targetAbi": "10.8.0.0",
-                "sourceUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/v0.1.7/danmu/danmu_0.1.7.0.zip",
+                "sourceUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/v0.1.70.1.8.0/danmu_0.1.7.0.zip",
                 "checksum": "2e7d26cada6a9629e7b3b22950474e3d",
                 "timestamp": "2022-10-11T07:49:28Z"
             },
@@ -20,7 +28,7 @@
                 "version": "0.1.5.0",
                 "changelog": "NA\n",
                 "targetAbi": "10.8.0.0",
-                "sourceUrl": "https://github.com/cxfksword/jellyfin-plugin-0.1.5.0/releases/download/danmu/danmu_0.1.5.0.zip",
+                "sourceUrl": "https://github.com/cxfksword/jellyfin-plugin-0.1.5.0/releases/download0.1.8.0/danmu_0.1.5.0.zip",
                 "checksum": "4c2ad7a688a766e7b4a75509ef1f635c",
                 "timestamp": "2022-10-11T07:20:11Z"
             }
