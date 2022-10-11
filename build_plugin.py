@@ -39,9 +39,10 @@ os.system('jprm repo add --url=%s %s %s' % (jellyfin_repo_url, jellyfin_repo_fil
 
 os.system('sed -i "s/\/danmu\//\/%s\//" %s' % (git_version, jellyfin_repo_file))
 
+# 国内加速
 os.system('cp -f %s %s' % (jellyfin_repo_file, jellyfin_repo_file_cn))
 
-os.system('sed "s/github.com/raw.iqiq.io/" %s' % (jellyfin_repo_file_cn))
+os.system('sed -i "s/github.com/raw.iqiq.io/" %s' % (jellyfin_repo_file_cn))
 
 
 print(version)

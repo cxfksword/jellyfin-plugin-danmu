@@ -23,7 +23,7 @@ jobs:
         with:
           dotnet-version: ${{ env.dotnet-version }}
       - name: Restore nuget packages
-        run: dotnet restore ${{ env.project }}
+        run: dotnet restore ${{ env.project }} # 需要指定项目，要不然会同时build多个项目导致出错
       - name: Setup python
         uses: actions/setup-python@v2
         with:
