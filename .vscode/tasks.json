@@ -1,0 +1,55 @@
+{
+  // Paths and plugin name are configured in settings.json
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // A chain task - build the plugin, then copy it to your
+      // jellyfin server's plugin directory
+      "label": "build-and-copy",
+      "dependsOrder": "sequence",
+      "dependsOn": ["build", "make-plugin-dir", "copy-dll"]
+    },
+    {
+      // Build the plugin
+      "label": "build",
+      "command": "dotnet",
+      "type": "shell",
+      "args": [
+        "publish",
+        "${workspaceFolder}/${config:pluginName}.sln",
+        "/property:GenerateFullPaths=true",
+        "/consoleloggerparameters:NoSummary"
+      ],
+      "group": "build",
+      "presentation": {
+        "reveal": "silent"
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+        // Ensure the plugin directory exists before trying to use it
+        "label": "make-plugin-dir",
+        "type": "shell",
+        "command": "mkdir",
+        "args": [
+           "-Force",
+           "-Path",
+           "${config:jellyfinDataDir}/plugins/${config:pluginName}/"
+        ]
+    },
+    {
+        // Copy the plugin dll to the jellyfin plugin install path
+        // This command copies every .dll from the build directory to the plugin dir
+        // Usually, you probablly only need ${config:pluginName}.dll
+        // But some plugins may bundle extra requirements
+        "label": "copy-dll",
+        "type": "shell",
+        "command": "cp",
+        "args": [
+           "./${config:pluginName}/bin/Debug/net6.0/publish/*",
+           "${config:jellyfinDataDir}/plugins/${config:pluginName}/"
+        ]
+
+    },
+  ]
+}

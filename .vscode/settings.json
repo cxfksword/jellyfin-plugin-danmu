@@ -1,0 +1,15 @@
+{
+    // jellyfinDir : The directory of the cloned jellyfin server project
+    // This needs to be built once before it can be used
+    "jellyfinDir"     : "${workspaceFolder}/../jellyfin/Jellyfin.Server",
+    // jellyfinWebDir : The directory of the cloned jellyfin-web project
+    // This needs to be built once before it can be used
+    "jellyfinWebDir"  : "${workspaceFolder}/../jellyfin-web",
+    // jellyfinDataDir : the root data directory for a running jellyfin instance
+    // This is where jellyfin stores its configs, plugins, metadata etc
+    // This is platform specific by default, but on Windows defaults to
+    // ${env:LOCALAPPDATA}/jellyfin
+    "jellyfinDataDir" : "${env:LOCALAPPDATA}/jellyfin",
+    // The name of the plugin
+    "pluginName" : "Jellyfin.Plugin.Danmuku",
+}
