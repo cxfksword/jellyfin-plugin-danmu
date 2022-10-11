@@ -6,13 +6,21 @@
         "overview": "jellyfin\u5f39\u5e55\u4e0b\u8f7d\u63d2\u4ef6",
         "owner": "cxfksword",
         "category": "Metadata",
-        "imageUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/raw/main/doc/logo.png",
+        "imageUrl": "https://raw.iqiq.io/cxfksword/jellyfin-plugin-danmu/raw/main/doc/logo.png",
         "versions": [
+            {
+                "version": "0.3.8.0",
+                "changelog": "NA\n",
+                "targetAbi": "10.8.0.0",
+                "sourceUrl": "https://raw.iqiq.io/cxfksword/jellyfin-plugin-danmu/releases/download/v0.3.8/danmu_0.3.8.0.zip",
+                "checksum": "094778e1bd0fcb0be7e8879e0248e905",
+                "timestamp": "2022-10-11T09:39:16Z"
+            },
             {
                 "version": "0.3.7.0",
                 "changelog": "NA\n",
                 "targetAbi": "10.8.0.0",
-                "sourceUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/v0.3.7/danmu_0.3.7.0.zip",
+                "sourceUrl": "https://raw.iqiq.io/cxfksword/jellyfin-plugin-danmu/releases/download/v0.3.7/danmu_0.3.7.0.zip",
                 "checksum": "a20cae62be38959b73f789c163d29d60",
                 "timestamp": "2022-10-11T09:34:09Z"
             },
@@ -20,7 +28,7 @@
                 "version": "0.3.0.0",
                 "changelog": "NA\n",
                 "targetAbi": "10.8.0.0",
-                "sourceUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/v0.3.0/danmu_0.3.0.0.zip",
+                "sourceUrl": "https://raw.iqiq.io/cxfksword/jellyfin-plugin-danmu/releases/download/v0.3.0/danmu_0.3.0.0.zip",
                 "checksum": "97004fa644735773735c7503bfafeb85",
                 "timestamp": "2022-10-11T08:58:05Z"
             }
