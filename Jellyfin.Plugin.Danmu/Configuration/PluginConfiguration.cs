@@ -28,30 +28,43 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public PluginConfiguration()
     {
-        // set default options here
-        Options = SomeOptions.AnotherOption;
-        TrueFalseSetting = true;
-        AnInteger = 2;
-        AString = "string";
+        ToAss = false;
+        AssFont = string.Empty;
+        AssFontSize = string.Empty;
+        AssLineCount = string.Empty;
+        AssSpeed = string.Empty;
+        AssTextOpacity = string.Empty;
+
     }
 
     /// <summary>
-    /// Gets or sets a value indicating whether some true or false setting is enabled..
+    /// 是否同时生成ASS格式弹幕.
     /// </summary>
-    public bool TrueFalseSetting { get; set; }
+    public bool ToAss { get; set; }
 
     /// <summary>
-    /// Gets or sets an integer setting.
+    /// 字体.
     /// </summary>
-    public int AnInteger { get; set; }
+    public string AssFont { get; set; }
 
     /// <summary>
-    /// Gets or sets a string setting.
+    /// 字体大小.
     /// </summary>
-    public string AString { get; set; }
+    public string AssFontSize { get; set; }
 
     /// <summary>
-    /// Gets or sets an enum option.
+    /// 限制行数.
     /// </summary>
-    public SomeOptions Options { get; set; }
+    public string AssLineCount { get; set; }
+
+    /// <summary>
+    /// 移动速度.
+    /// </summary>
+    public string AssSpeed { get; set; }
+
+    /// <summary>
+    /// 透明度.
+    /// </summary>
+    public string AssTextOpacity { get; set; }
+
 }

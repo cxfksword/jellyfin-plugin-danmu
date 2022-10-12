@@ -123,10 +123,11 @@ namespace Jellyfin.Plugin.Danmu.Api
                 throw new Exception($"Request fail. cid={cid}");
             }
 
-            // 数据太小可能是已经被b站下架
+            // 数据太小可能是已经被b站下架，返回了出错信息
             var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
-            if (bytes == null || bytes.Length < 1000)
+            if (bytes == null || bytes.Length < 2000)
             {
+                this._logger.LogWarning("弹幕获取失败，可能视频已下架或弹幕太少. url: {0}", url);
                 throw new Exception($"Request fail. cid={cid}");
             }
 

@@ -30,5 +30,16 @@ namespace Jellyfin.Plugin.Danmu.Core
 
             return 0;
         }
+
+        public static float ToFloat(this string s)
+        {
+            float val;
+            if (float.TryParse(s, out val))
+            {
+                return val;
+            }
+
+            return 0.0f;
+        }
     }
 }

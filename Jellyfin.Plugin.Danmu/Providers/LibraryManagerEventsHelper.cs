@@ -1,10 +1,14 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Danmaku2Ass;
 using Jellyfin.Plugin.Danmu.Api;
 using Jellyfin.Plugin.Danmu.Api.Entity;
 using Jellyfin.Plugin.Danmu.Core;
@@ -323,16 +327,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         var bvid = providerVal;
 
                         // 下载弹幕xml文件
-                        try
-                        {
-                            var bytes = await _api.GetDanmaContentAsync(bvid, CancellationToken.None).ConfigureAwait(false);
-                            var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
-                            await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Exception handled download danmu file");
-                        }
+                        await this.DownloadDanmu(item, bvid).ConfigureAwait(false);
                     }
                     else
                     {
@@ -340,21 +335,12 @@ public class LibraryManagerEventsHelper : IDisposable
 
                         if (epId <= 0)
                         {
-                            DeleteOldDanmu(item);
+                            this.DeleteOldDanmu(item);
                             continue;
                         }
 
                         // 下载弹幕xml文件
-                        try
-                        {
-                            var bytes = await _api.GetDanmaContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
-                            var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
-                            await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Exception handled download danmu file");
-                        }
+                        await this.DownloadDanmu(item, epId).ConfigureAwait(false);
                     }
 
                     // 延迟200毫秒，避免请求太频繁
@@ -627,16 +613,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
 
                     // 下载弹幕xml文件
-                    try
-                    {
-                        var bytes = await _api.GetDanmaContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
-                        var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
-                        await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Exception handled download danmu file");
-                    }
+                    await this.DownloadDanmu(item, epId).ConfigureAwait(false);
 
                     // 延迟200毫秒，避免请求太频繁
                     Thread.Sleep(200);
@@ -657,21 +634,12 @@ public class LibraryManagerEventsHelper : IDisposable
                     // 新影片，判断是否设置epId，没的话，尝试搜索填充
                     if (epId <= 0)
                     {
-                        DeleteOldDanmu(item);
+                        this.DeleteOldDanmu(item);
                         continue;
                     }
 
                     // 下载弹幕xml文件
-                    try
-                    {
-                        var bytes = await _api.GetDanmaContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
-                        var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
-                        await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Exception handled download danmu file");
-                    }
+                    await this.DownloadDanmu(item, epId).ConfigureAwait(false);
 
                     // 延迟200毫秒，避免请求太频繁
                     Thread.Sleep(200);
@@ -704,7 +672,7 @@ public class LibraryManagerEventsHelper : IDisposable
             if (eventType == EventType.Update || eventType == EventType.Add || eventType == EventType.Refresh)
             {
                 var episodes = season.GetEpisodes(null, new DtoOptions(false));
-                var video = await _api.GetVideoByBvidAsync(bvid, CancellationToken.None).ConfigureAwait(false);
+                var video = await this._api.GetVideoByBvidAsync(bvid, CancellationToken.None).ConfigureAwait(false);
                 if (video == null)
                 {
                     _logger.LogInformation("获取不到b站视频信息：bvid={0}", bvid);
@@ -713,21 +681,14 @@ public class LibraryManagerEventsHelper : IDisposable
 
                 foreach (var (episode, idx) in episodes.WithIndex())
                 {
-                    if (video.Pages.Length == episodes.Count)
+                    // 分片的集数不规范，采用大于jellyfin集数方式判断.
+                    if (video.Pages.Length >= episodes.Count)
                     {
                         var cid = video.Pages[idx].Cid;
+                        _logger.LogInformation("视频分片成功匹配. {0} -> index: {1}", episode.Name, idx);
 
                         // 下载弹幕xml文件
-                        try
-                        {
-                            var bytes = await _api.GetDanmaContentByCidAsync(cid, CancellationToken.None).ConfigureAwait(false);
-                            var danmuPath = Path.Combine(episode.ContainingFolderPath, episode.FileNameWithoutExtension + ".xml");
-                            await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Exception handled download danmu file");
-                        }
+                        await this.DownloadDanmuByCid(episode, cid).ConfigureAwait(false);
 
                         // 延迟200毫秒，避免请求太频繁
                         Thread.Sleep(200);
@@ -801,6 +762,94 @@ public class LibraryManagerEventsHelper : IDisposable
             await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
         }
         _logger.LogInformation("更新b站epid到元数据完成。item数：{0}", queue.Count);
+    }
+
+    private async Task DownloadDanmu(BaseItem item, long epId)
+    {
+        // 下载弹幕xml文件
+        try
+        {
+            var bytes = await this._api.GetDanmaContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
+            await this.DownloadDanmuInternal(item, bytes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception handled download danmu file");
+        }
+    }
+
+    private async Task DownloadDanmu(BaseItem item, string bvid)
+    {
+        // 下载弹幕xml文件
+        try
+        {
+            var bytes = await this._api.GetDanmaContentAsync(bvid, CancellationToken.None).ConfigureAwait(false);
+            await this.DownloadDanmuInternal(item, bytes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception handled download danmu file");
+        }
+    }
+
+    private async Task DownloadDanmuByCid(BaseItem item, long cid)
+    {
+        // 下载弹幕xml文件
+        try
+        {
+            var bytes = await this._api.GetDanmaContentByCidAsync(cid, CancellationToken.None).ConfigureAwait(false);
+            await this.DownloadDanmuInternal(item, bytes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception handled download danmu file");
+        }
+    }
+
+    private async Task DownloadDanmuInternal(BaseItem item, byte[] bytes)
+    {
+        // 下载弹幕xml文件
+        try
+        {
+            var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
+            await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
+
+            var config = Plugin.Instance.Configuration;
+            if (config.ToAss && bytes.Length > 0)
+            {
+                var assConfig = new Danmaku2Ass.Config();
+                assConfig.Title = item.Name;
+                if (!string.IsNullOrEmpty(config.AssFont.Trim()))
+                {
+                    assConfig.FontName = config.AssFont;
+                }
+                if (!string.IsNullOrEmpty(config.AssFontSize.Trim()))
+                {
+                    assConfig.BaseFontSize = config.AssFontSize.Trim().ToInt();
+                }
+                if (!string.IsNullOrEmpty(config.AssTextOpacity.Trim()))
+                {
+                    assConfig.TextOpacity = config.AssTextOpacity.Trim().ToFloat();
+                }
+                if (!string.IsNullOrEmpty(config.AssLineCount.Trim()))
+                {
+                    assConfig.LineCount = config.AssLineCount.Trim().ToInt();
+                }
+                if (!string.IsNullOrEmpty(config.AssSpeed.Trim()))
+                {
+                    assConfig.TuneDuration = config.AssSpeed.Trim().ToInt() - 8;
+                }
+
+                var assPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".danmu.ass");
+                Bilibili.GetInstance().Create(Encoding.UTF8.GetString(bytes), assConfig, assPath);
+            }
+
+            this._logger.LogInformation("弹幕下载成功：name={0}", item.Name);
+        }
+        catch (Exception ex)
+        {
+            this._logger.LogError(ex, "Exception handled download danmu file");
+        }
     }
 
 
