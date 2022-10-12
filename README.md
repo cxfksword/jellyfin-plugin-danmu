@@ -61,3 +61,12 @@ $ dotnet publish -c Release Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
 2. Create a folder, like `Danmu` and copy  `bin/Release/Jellyfin.Plugin.Danmu.dll` into it
 
 3. Move folder `Danmu` to jellyfin `data/plugin` folder
+
+## Thanks
+
+[downkyi](https://github.com/leiurayer/downkyi)
+
+
+## License
+
+Apache License Version 2.0

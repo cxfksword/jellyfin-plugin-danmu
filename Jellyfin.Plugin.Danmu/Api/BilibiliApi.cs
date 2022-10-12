@@ -34,6 +34,8 @@ namespace Jellyfin.Plugin.Danmu.Api
         private HttpClient httpClient;
         private CookieContainer _cookieContainer;
         private readonly IMemoryCache _memoryCache;
+        private static readonly object _lock = new object();
+        private DateTime lastRequestTime = DateTime.Now.AddDays(-1);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BilibiliApi"/> class.
@@ -150,6 +152,7 @@ namespace Jellyfin.Plugin.Danmu.Api
                 return searchResult;
             }
 
+            // this.LimitRequestFrequently();
             await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
             keyword = HttpUtility.UrlEncode(keyword);
@@ -273,6 +276,24 @@ namespace Jellyfin.Plugin.Danmu.Api
 
             var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
+        }
+
+        protected void LimitRequestFrequently()
+        {
+            var startTime = DateTime.Now;
+            lock (_lock)
+            {
+                var ts = DateTime.Now - lastRequestTime;
+                var diff = (int)(200 - ts.TotalMilliseconds);
+                if (diff > 0)
+                {
+                    Thread.Sleep(diff);
+                }
+                lastRequestTime = DateTime.Now;
+            }
+            var endTime = DateTime.Now;
+            var tt = (endTime - startTime).TotalMilliseconds;
+            Console.WriteLine(tt);
         }
 
         public void Dispose()
