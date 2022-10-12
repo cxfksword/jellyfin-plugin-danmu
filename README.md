@@ -1,6 +1,12 @@
 # jellyfin-plugin-danmu
 
-jellyfin的b站弹幕自动下载插件，会匹配b站番剧/电影视频，自动下载对应弹幕，并定时更新。
+jellyfin的b站弹幕自动下载插件，会匹配b站番剧和电影视频，自动下载对应弹幕，并定时更新。
+
+支持功能：
+
+* 自动下载xml格式弹幕
+* 生成ass格式弹幕
+* 定时更新
 
 ![preview](doc/logo.png)
 
@@ -16,17 +22,22 @@ jellyfin的b站弹幕自动下载插件，会匹配b站番剧/电影视频，自
 
 ## 如何使用
 
-* 新加入的影片会自动获取弹幕（只匹配番剧和电影视频），旧影片可以通过计划任务`扫描媒体库匹配弹幕`手动执行获取
+* 新加入的影片会自动获取弹幕（只匹配番剧和电影视频），旧影片可以通过计划任务**扫描媒体库匹配弹幕**手动执行获取
 * 可以在元数据中手动指定匹配的视频ID，如播放链接`https://www.bilibili.com/bangumi/play/ep682965`，对应的视频ID就是`682965`
 * 对于电视剧和动画，可以在元数据中指定季ID，如播放链接`https://www.bilibili.com/bangumi/play/ss1564`，对应的季ID就是`1564`，只要集数和b站的集数的一致，每季视频的弹幕会自动获取
 
-## How to test
+## 如何播放
 
-1. Build the plugin
+xml格式：
 
-2. Create a folder, like `Danmu` and copy  `bin/Release/Jellyfin.Plugin.Danmu.dll` into it
+* [弹弹play](https://www.dandanplay.com/)
 
-3. Move folder `Danmu` to jellyfin `data/plugin` folder
+ass格式：
+
+* Windows：PotPlayer
+* Mac：IINA
+
+
 
 
 ## How to build
@@ -41,3 +52,12 @@ jellyfin的b站弹幕自动下载插件，会匹配b站番剧/电影视频，自
 $ dotnet restore 
 $ dotnet publish -c Release Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
 ```
+
+
+## How to test
+
+1. Build the plugin
+
+2. Create a folder, like `Danmu` and copy  `bin/Release/Jellyfin.Plugin.Danmu.dll` into it
+
+3. Move folder `Danmu` to jellyfin `data/plugin` folder
