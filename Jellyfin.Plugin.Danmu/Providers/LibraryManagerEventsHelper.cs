@@ -279,7 +279,8 @@ public class LibraryManagerEventsHelper : IDisposable
                         if (epId <= 0)
                         {
                             // 搜索查找匹配的视频
-                            var seasonId = await GetMatchSeasonId(item, item.Name).ConfigureAwait(false);
+                            var searchName = this.GetSearchMovieName(item.Name);
+                            var seasonId = await GetMatchSeasonId(item, searchName).ConfigureAwait(false);
                             var season = await _api.GetSeasonAsync(seasonId, CancellationToken.None).ConfigureAwait(false);
                             if (season == null)
                             {
@@ -643,6 +644,19 @@ public class LibraryManagerEventsHelper : IDisposable
                         return;
                     }
 
+                    var indexNumber = episode.IndexNumber ?? 0;
+                    if (indexNumber <= 0)
+                    {
+                        _logger.LogInformation("匹配失败，缺少集号. [{0}]{1}}", season.Name, episode.Name);
+                        continue;
+                    }
+
+                    if (indexNumber > seasonData.Episodes.Length)
+                    {
+                        _logger.LogInformation("匹配失败，集号过大. [{0}]{1}} indexNumber: {2}", season.Name, episode.Name, indexNumber);
+                        continue;
+                    }
+
                     if (seasonData.Episodes.Length == episodes.Count)
                     {
                         epId = seasonData.Episodes[idx].Id;
@@ -826,6 +840,11 @@ public class LibraryManagerEventsHelper : IDisposable
         }
     }
 
+    private string GetSearchMovieName(string movieName)
+    {
+        // 去掉可能存在的季名称
+        return Regex.Replace(movieName, @"\s*第.季", "");
+    }
 
     private string GetSearchSeasonName(string seriesName, int seasonIndexNumber)
     {

@@ -29,7 +29,7 @@ jellyfin的b站弹幕自动下载插件，会匹配b站番剧和电影视频，�
 
 * 新加入的影片会自动获取弹幕（只匹配番剧和电影视频），旧影片可以通过计划任务**扫描媒体库匹配弹幕**手动执行获取
 * 可以在元数据中手动指定匹配的视频ID，如播放链接`https://www.bilibili.com/bangumi/play/ep682965`，对应的视频ID就是`682965`
-* 对于电视剧和动画，可以在元数据中指定季ID，如播放链接`https://www.bilibili.com/bangumi/play/ss1564`，对应的季ID就是`1564`，只要集数和b站的集数的一致，每季视频的弹幕会自动获取
+* 对于电视剧和动画，可以在元数据中指定季ID，如播放链接`https://www.bilibili.com/bangumi/play/ss1564`，对应的季ID就是`1564`，只要集数和b站的集数的一致，并正确填写了集号，每季视频的弹幕会自动获取
 * 同时生成ass弹幕，需要在插件配置中打开，默认是关闭的
   
 > 电影或季元数据也支持手动指定BV号，来匹配UP主上传的视频弹幕。多P视频和剧集是按顺序一一对应匹配的，所以保证jellyfin中剧集有正确的集号很重要
@@ -45,7 +45,7 @@ jellyfin的b站弹幕自动下载插件，会匹配b站番剧和电影视频，�
 xml格式：
 
 * [弹弹play](https://www.dandanplay.com/) (Windows/Mac/Android)
-* [fileball](https://fileball.app/) (iOS/iPadOS/AppleTV)
+* [Fileball](https://fileball.app/) (iOS/iPadOS/AppleTV)
 
 ass格式：
 
