@@ -10,6 +10,8 @@ opts = parser.parse_args()
 
 version = opts.version
 prerelease = bool(opts.prerelease)
+tag = os.popen('git describe --abbrev=0').read().strip()
+changelog = os.popen("git tag -l --format='%(contents)' " + tag).read().strip()
 
 artifact_dir = os.path.join(os.getcwd(), 'artifacts')
 os.mkdir(artifact_dir)
@@ -27,16 +29,25 @@ version = '.'.join(version_list)
 
 if prerelease:
     jellyfin_repo_file = "./manifest-unstable.json"
-    jellyfin_old_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/manifest/download/manifest-unstable.json"
+    jellyfin_old_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest-unstable.json"
 else:
     jellyfin_repo_file = "./manifest.json"
-    jellyfin_old_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/manifest/download/manifest.json"
+    jellyfin_old_manifest = "https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest.json"
 
 # download old manifest
 jellyfin_manifest_template = "./doc/manifest-template.json"
-os.system('wget -q "%s"' % (jellyfin_old_manifest))
+os.system('wget -q -O "%s" "%s" ' % (jellyfin_repo_file, jellyfin_old_manifest))
 if not os.path.isfile(jellyfin_repo_file):
     os.system('cp -f %s %s' % (jellyfin_manifest_template, jellyfin_repo_file))
+
+
+# update change log
+build_yaml_file = "./build.yaml"
+with open(build_yaml_file, 'r') as file:
+    data = file.read()
+    data = data.replace("NA", changelog)
+with open(build_yaml_file, 'w') as file:
+    file.write(data)
 
 
 # build and generate new manifest
