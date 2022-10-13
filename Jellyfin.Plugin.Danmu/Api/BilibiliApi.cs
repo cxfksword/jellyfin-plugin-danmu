@@ -58,7 +58,7 @@ namespace Jellyfin.Plugin.Danmu.Api
         /// <param name="bvid">The Bilibili bvid.</param>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/>.</param>
         /// <returns>Task{TraktResponseDataContract}.</returns>
-        public async Task<byte[]> GetDanmaContentAsync(string bvid, CancellationToken cancellationToken)
+        public async Task<byte[]> GetDanmuContentAsync(string bvid, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(bvid))
             {
@@ -77,7 +77,7 @@ namespace Jellyfin.Plugin.Danmu.Api
                 var part = result.Data.FirstOrDefault();
                 if (part != null)
                 {
-                    return await GetDanmaContentByCidAsync(part.Cid, cancellationToken).ConfigureAwait(false);
+                    return await GetDanmuContentByCidAsync(part.Cid, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -90,7 +90,7 @@ namespace Jellyfin.Plugin.Danmu.Api
         /// <param name="bvid">The Bilibili bvid.</param>
         /// <param name="cancellationToken">The <see cref="CancellationToken"/>.</param>
         /// <returns>Task{TraktResponseDataContract}.</returns>
-        public async Task<byte[]> GetDanmaContentAsync(long epId, CancellationToken cancellationToken)
+        public async Task<byte[]> GetDanmuContentAsync(long epId, CancellationToken cancellationToken)
         {
             if (epId <= 0)
             {
@@ -104,14 +104,14 @@ namespace Jellyfin.Plugin.Danmu.Api
                 var episode = season.Episodes.First(x => x.Id == epId);
                 if (episode != null)
                 {
-                    return await GetDanmaContentByCidAsync(episode.CId, cancellationToken).ConfigureAwait(false);
+                    return await GetDanmuContentByCidAsync(episode.CId, cancellationToken).ConfigureAwait(false);
                 }
             }
 
             throw new Exception($"Request fail. epId={epId}");
         }
 
-        public async Task<byte[]> GetDanmaContentByCidAsync(long cid, CancellationToken cancellationToken)
+        public async Task<byte[]> GetDanmuContentByCidAsync(long cid, CancellationToken cancellationToken)
         {
             if (cid <= 0)
             {

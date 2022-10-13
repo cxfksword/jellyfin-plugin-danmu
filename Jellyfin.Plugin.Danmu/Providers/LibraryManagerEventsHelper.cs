@@ -269,7 +269,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         var bvid = providerVal;
 
                         // 下载弹幕xml文件
-                        var bytes = await _api.GetDanmaContentAsync(bvid, CancellationToken.None).ConfigureAwait(false);
+                        var bytes = await _api.GetDanmuContentAsync(bvid, CancellationToken.None).ConfigureAwait(false);
                         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
                         await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
                     }
@@ -304,7 +304,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         }
 
                         // 下载弹幕xml文件
-                        var bytes = await _api.GetDanmaContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
+                        var bytes = await _api.GetDanmuContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
                         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
                         await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
                     }
@@ -757,7 +757,7 @@ public class LibraryManagerEventsHelper : IDisposable
         // 下载弹幕xml文件
         try
         {
-            var bytes = await this._api.GetDanmaContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
+            var bytes = await this._api.GetDanmuContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
             await this.DownloadDanmuInternal(item, bytes);
         }
         catch (Exception ex)
@@ -771,7 +771,7 @@ public class LibraryManagerEventsHelper : IDisposable
         // 下载弹幕xml文件
         try
         {
-            var bytes = await this._api.GetDanmaContentAsync(bvid, CancellationToken.None).ConfigureAwait(false);
+            var bytes = await this._api.GetDanmuContentAsync(bvid, CancellationToken.None).ConfigureAwait(false);
             await this.DownloadDanmuInternal(item, bytes);
         }
         catch (Exception ex)
@@ -785,7 +785,7 @@ public class LibraryManagerEventsHelper : IDisposable
         // 下载弹幕xml文件
         try
         {
-            var bytes = await this._api.GetDanmaContentByCidAsync(cid, CancellationToken.None).ConfigureAwait(false);
+            var bytes = await this._api.GetDanmuContentByCidAsync(cid, CancellationToken.None).ConfigureAwait(false);
             await this.DownloadDanmuInternal(item, bytes);
         }
         catch (Exception ex)
