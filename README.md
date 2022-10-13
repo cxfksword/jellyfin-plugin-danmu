@@ -1,5 +1,9 @@
 # jellyfin-plugin-danmu
 
+[![Danmu](https://img.shields.io/github/v/release/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
+[![Danmu](https://img.shields.io/badge/jellyfin-10.8.x-lightgrey)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
+[![Danmu](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
+
 jellyfin的b站弹幕自动下载插件，会匹配b站番剧和电影视频，自动下载对应弹幕，并定时更新。
 
 支持功能：
@@ -38,12 +42,14 @@ jellyfin的b站弹幕自动下载插件，会匹配b站番剧和电影视频，�
 
 xml格式：
 
-* [弹弹play](https://www.dandanplay.com/)
+* [弹弹play](https://www.dandanplay.com/) (Windows/Mac/Android)
+* [fileball](https://fileball.app/) (iOS/iPadOS/AppleTV)
 
 ass格式：
 
-* Windows：PotPlayer
-* Mac：IINA
+* PotPlayer (Windows)
+* IINA (Mac)
+* Infuse (Mac/iOS/iPadOS/AppleTV)
 
 
 
