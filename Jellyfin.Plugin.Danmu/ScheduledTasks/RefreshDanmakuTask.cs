@@ -9,11 +9,14 @@ using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.Danmu.Api;
 using Jellyfin.Plugin.Danmu.Core;
+using Jellyfin.Plugin.Danmu.Model;
 using Jellyfin.Plugin.Danmu.Providers;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Model.Entities;
+using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.Tasks;
+using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Danmu.ScheduledTasks
@@ -23,11 +26,12 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
         private readonly ILibraryManager _libraryManager;
         private readonly BilibiliApi _api;
         private readonly ILogger _logger;
+        private readonly LibraryManagerEventsHelper _libraryManagerEventsHelper;
 
 
         public string Key => $"{Plugin.Instance.Name}RefreshDanmu";
 
-        public string Name => "刷新弹幕文件";
+        public string Name => "更新弹幕文件";
 
         public string Description => $"根据视频b站元数据下载最新的弹幕文件。";
 
@@ -39,11 +43,12 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
         /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
         /// <param name="api">Instance of the <see cref="BilibiliApi"/> interface.</param>
         /// <param name="libraryManager">Instance of the <see cref="ILibraryManager"/> interface.</param>
-        public RefreshDanmuTask(ILoggerFactory loggerFactory, BilibiliApi api, ILibraryManager libraryManager)
+        public RefreshDanmuTask(ILoggerFactory loggerFactory, BilibiliApi api, ILibraryManager libraryManager, LibraryManagerEventsHelper libraryManagerEventsHelper)
         {
             _logger = loggerFactory.CreateLogger<RefreshDanmuTask>();
             _libraryManager = libraryManager;
             _api = api;
+            _libraryManagerEventsHelper = libraryManagerEventsHelper;
         }
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
@@ -64,12 +69,12 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
             var items = _libraryManager.GetItemList(new InternalItemsQuery
             {
-                MediaTypes = new[] { MediaType.Video },
+                // MediaTypes = new[] { MediaType.Video },
                 HasAnyProviderId = new Dictionary<string, string> { { Plugin.ProviderId, string.Empty } },
-                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Episode }
+                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Season }
             }).ToList();
 
-            _logger.LogInformation("Update danmu for {0} videos.", items.Count);
+            _logger.LogInformation("Refresh danmu for {0} videos.", items.Count);
 
             var successCount = 0;
             var failCount = 0;
@@ -80,44 +85,31 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
                 try
                 {
-                    // TODO: 不支持bv刷新处理
+                    // 没epid的不处理
                     var providerVal = item.GetProviderId(Plugin.ProviderId) ?? string.Empty;
-                    // 视频也支持指定的BV号
-                    if (providerVal.StartsWith("BV", StringComparison.CurrentCulture))
+                    if (string.IsNullOrEmpty(providerVal))
                     {
-                        var bvid = providerVal;
-
-                        // 下载弹幕xml文件
-                        var bytes = await _api.GetDanmaContentAsync(bvid, CancellationToken.None).ConfigureAwait(false);
-                        var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
-                        await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
-                        successCount++;
+                        continue;
                     }
-                    else
+
+
+                    // 推送下载最新的xml (season刷新会同时刷新episode，所以不需要再推送episode)
+                    switch (item)
                     {
-                        var epId = providerVal.ToLong();
-                        if (epId <= 0)
-                        {
-                            _logger.LogWarning("Update danmu for video {0}: epId is empty", item.Name);
-                            failCount++;
-                            continue;
-                        }
-
-                        // 下载弹幕xml文件
-                        var bytes = await _api.GetDanmaContentAsync(epId, cancellationToken).ConfigureAwait(false);
-                        var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
-                        await File.WriteAllBytesAsync(danmuPath, bytes, cancellationToken).ConfigureAwait(false);
-                        successCount++;
+                        case Movie:
+                            await _libraryManagerEventsHelper.ProcessQueuedMovieEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Update } }, EventType.Update).ConfigureAwait(false);
+                            break;
+                        case Season:
+                            await _libraryManagerEventsHelper.ProcessQueuedSeasonEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Update } }, EventType.Update).ConfigureAwait(false);
+                            break;
                     }
+                    successCount++;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Update danmu for video {0}: {1}", item.Name, ex.Message);
+                    _logger.LogError(ex, "Refresh danmu failed for video {0}: {1}", item.Name, ex.Message);
                     failCount++;
                 }
-
-                // 延迟200毫秒，避免请求太频繁
-                Thread.Sleep(200);
             }
 
             progress?.Report(100);

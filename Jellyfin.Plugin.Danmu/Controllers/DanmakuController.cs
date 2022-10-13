@@ -45,14 +45,43 @@ namespace Jellyfin.Plugin.Danmu.Controllers
             _libraryManagerEventsHelper = libraryManagerEventsHelper;
         }
 
+        /// <summary>
+        /// 获取弹幕文件内容.
+        /// </summary>
+        /// <returns>xml弹幕文件内容</returns>
+        [Route("{id}")]
+        [HttpGet]
+        public async Task<DanmuFileInfo> Get(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                return new DanmuFileInfo();
+            }
+
+            var currentItem = _libraryManager.GetItemById(id);
+            if (currentItem == null)
+            {
+                return new DanmuFileInfo();
+            }
+
+            var danmuPath = Path.Combine(currentItem.ContainingFolderPath, currentItem.FileNameWithoutExtension + ".xml");
+            var fileMeta = _fileSystem.GetFileInfo(danmuPath);
+            if (!fileMeta.Exists)
+            {
+                return new DanmuFileInfo();
+            }
+
+            var domain = Request.Scheme + System.Uri.SchemeDelimiter + Request.Host;
+            return new DanmuFileInfo() { Url = string.Format("{0}{1}{2}", domain, "/plugin/danmu/raw/", id) };
+        }
 
         /// <summary>
         /// 获取弹幕文件内容.
         /// </summary>
         /// <returns>xml弹幕文件内容</returns>
-        [Route("file/{id}")]
+        [Route("raw/{id}")]
         [HttpGet]
-        public async Task<ActionResult> Get(string id)
+        public async Task<ActionResult> GetFile(string id)
         {
             if (string.IsNullOrEmpty(id))
             {

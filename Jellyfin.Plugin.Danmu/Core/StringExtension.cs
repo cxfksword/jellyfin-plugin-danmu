@@ -4,6 +4,7 @@ using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using StringMetric;
 
 namespace Jellyfin.Plugin.Danmu.Core
 {
@@ -40,6 +41,13 @@ namespace Jellyfin.Plugin.Danmu.Core
             }
 
             return 0.0f;
+        }
+
+        public static double Distance(this string s1, string s2)
+        {
+            var jw = new JaroWinkler();
+
+            return jw.Similarity(s1, s2);
         }
     }
 }

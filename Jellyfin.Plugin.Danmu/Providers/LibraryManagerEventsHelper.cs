@@ -279,11 +279,11 @@ public class LibraryManagerEventsHelper : IDisposable
                         if (epId <= 0)
                         {
                             // 搜索查找匹配的视频
-                            var seasonId = await GetMatchSeasonId(item.Name).ConfigureAwait(false);
+                            var seasonId = await GetMatchSeasonId(item, item.Name).ConfigureAwait(false);
                             var season = await _api.GetSeasonAsync(seasonId, CancellationToken.None).ConfigureAwait(false);
                             if (season == null)
                             {
-                                _logger.LogInformation("b站没有找到相关视频信息：name={0}", item.Name);
+                                _logger.LogInformation("b站没有找到对应视频信息：name={0}", item.Name);
                                 continue;
                             }
 
@@ -454,27 +454,23 @@ public class LibraryManagerEventsHelper : IDisposable
                         if (seasonId <= 0)
                         {
                             var searchName = GetSearchSeasonName(series.Name, season.IndexNumber ?? 0);
-                            seasonId = await GetMatchSeasonId(searchName).ConfigureAwait(false);
-
-                            if (seasonId > 0)
+                            seasonId = await GetMatchSeasonId(season, searchName).ConfigureAwait(false);
+                            if (seasonId <= 0)
                             {
-                                // 更新seasonId元数据
-                                season.SetProviderId(Plugin.ProviderId, $"{seasonId}");
-
-                                //await _libraryManager.UpdateItemAsync(season, season.GetParent(), ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
-                                queueUpdateMeta.Add(season);
+                                _logger.LogInformation("b站没有找到对应视频信息：name={0}", searchName);
+                                continue;
                             }
+
+                            // 更新seasonId元数据
+                            season.SetProviderId(Plugin.ProviderId, $"{seasonId}");
+
+                            //await _libraryManager.UpdateItemAsync(season, season.GetParent(), ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
+                            queueUpdateMeta.Add(season);
                         }
 
                         if (seasonId > 0)
                         {
-                            // 查找填充episode的bvid元数据
-                            var episodes = season.GetEpisodes(null, new DtoOptions(false));
-                            foreach (var episode in episodes)
-                            {
-                                // 推送刷新episode数据
-                                QueueItem(episode, eventType);
-                            }
+                            await ProcessSeasonEpisodes(season, eventType).ConfigureAwait(false);
                         }
                     }
                 }
@@ -497,38 +493,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         var seasonId = providerVal.ToLong();
                         if (seasonId > 0)
                         {
-                            var queueUpdateMeta = new List<BaseItem>();
-                            var episodes = season.GetEpisodes(null, new DtoOptions(false));
-                            foreach (var (episode, idx) in episodes.WithIndex())
-                            {
-                                var episodeProviderVal = episode.GetProviderId(Plugin.ProviderId) ?? string.Empty;
-                                var epId = episodeProviderVal.ToLong();
-                                if (epId > 0)
-                                {
-                                    QueueItem(episode, eventType);
-                                }
-                                else
-                                {
-                                    // seasonId存在，但episode没有epid时，重新匹配获取（注意：不用推送方式是因为推送方式的getParent()获取有问题）
-                                    var seasonData = await _api.GetSeasonAsync(seasonId, CancellationToken.None).ConfigureAwait(false);
-                                    if (seasonData == null)
-                                    {
-                                        continue;
-                                    }
-
-                                    if (seasonData.Episodes.Length == episodes.Count)
-                                    {
-                                        epId = seasonData.Episodes[idx].Id;
-                                        _logger.LogInformation("成功匹配. {0} -> episode id: {1}", episode.Name, epId);
-
-                                        // 更新epid元数据
-                                        episode.SetProviderId(Plugin.ProviderId, $"{epId}");
-                                        queueUpdateMeta.Add(episode);
-                                    }
-                                }
-                            }
-
-                            await ProcessQueuedUpdateMeta(queueUpdateMeta).ConfigureAwait(false);
+                            await ProcessSeasonEpisodes(season, eventType).ConfigureAwait(false);
                         }
                     }
                 }
@@ -563,66 +528,6 @@ public class LibraryManagerEventsHelper : IDisposable
 
         try
         {
-            if (eventType == EventType.Add || eventType == EventType.Refresh)
-            {
-                var queueUpdateMeta = new List<BaseItem>();
-                foreach (var (item, idx) in episodes.WithIndex())
-                {
-                    var providerVal = item.GetProviderId(Plugin.ProviderId) ?? string.Empty;
-                    var epId = providerVal.ToLong();
-
-                    // 新影片，判断是否设置epId，没的话，尝试搜索填充
-                    if (epId <= 0)
-                    {
-                        var season = (Season)item.GetParent();
-                        var series = (Series)season.GetParent();
-                        var searchName = GetSearchSeasonName(series.Name, season.IndexNumber ?? 0);
-                        var seasonProviderVal = season.GetProviderId(Plugin.ProviderId) ?? string.Empty;
-                        var seasonId = seasonProviderVal.ToLong();
-                        if (seasonId <= 0)
-                        {
-                            seasonId = await GetMatchSeasonId(searchName).ConfigureAwait(false);
-                        }
-
-                        var episodesCount = season.GetEpisodes(null, new DtoOptions(false)).Count;
-                        var seasonData = await _api.GetSeasonAsync(seasonId, CancellationToken.None).ConfigureAwait(false);
-                        if (seasonData == null)
-                        {
-                            _logger.LogInformation("b站没有找到相关视频信息：name={0}", searchName);
-                            continue;
-                        }
-
-                        if (seasonData.Episodes.Length == episodesCount)
-                        {
-                            epId = seasonData.Episodes[idx].Id;
-                            _logger.LogInformation("成功匹配. {0} -> episode id: {1}", item.Name, epId);
-
-                            // 更新epid元数据
-                            item.SetProviderId(Plugin.ProviderId, $"{epId}");
-                            queueUpdateMeta.Add(item);
-                        }
-                        else
-                        {
-                            _logger.LogInformation("刷新弹幕失败, 和b站集数不一致。video: {0} 弹幕数：{1} 集数：{2}", item.Name, seasonData.Episodes.Length, episodesCount);
-                        }
-                    }
-
-                    if (epId <= 0)
-                    {
-                        continue;
-                    }
-
-                    // 下载弹幕xml文件
-                    await this.DownloadDanmu(item, epId).ConfigureAwait(false);
-
-                    // 延迟200毫秒，避免请求太频繁
-                    Thread.Sleep(200);
-                }
-
-                await ProcessQueuedUpdateMeta(queueUpdateMeta).ConfigureAwait(false);
-            }
-
-
             // 判断epid，有的话刷新弹幕文件
             if (eventType == EventType.Update)
             {
@@ -706,6 +611,58 @@ public class LibraryManagerEventsHelper : IDisposable
         }
     }
 
+    // 每季剧集处理
+    private async Task ProcessSeasonEpisodes(Season season, EventType eventType)
+    {
+        try
+        {
+            var providerVal = season.GetProviderId(Plugin.ProviderId) ?? string.Empty;
+            var seasonId = providerVal.ToLong();
+            if (seasonId <= 0)
+            {
+                return;
+            }
+
+
+            var queueUpdateMeta = new List<BaseItem>();
+            var episodes = season.GetEpisodes(null, new DtoOptions(false));
+            foreach (var (episode, idx) in episodes.WithIndex())
+            {
+                var episodeProviderVal = episode.GetProviderId(Plugin.ProviderId) ?? string.Empty;
+                var epId = episodeProviderVal.ToLong();
+                if (epId > 0)
+                {
+                    QueueItem(episode, EventType.Update);
+                }
+                else
+                {
+                    // seasonId存在，但episode没有epid时，重新匹配获取
+                    var seasonData = await _api.GetSeasonAsync(seasonId, CancellationToken.None).ConfigureAwait(false);
+                    if (seasonData == null)
+                    {
+                        return;
+                    }
+
+                    if (seasonData.Episodes.Length == episodes.Count)
+                    {
+                        epId = seasonData.Episodes[idx].Id;
+                        _logger.LogInformation("成功匹配. [{0}]{1} -> episode id: {2}", season.Name, episode.Name, epId);
+
+                        // 推送更新epid元数据，（更新元数据后，会触发episode的Update事件从而下载xml)
+                        episode.SetProviderId(Plugin.ProviderId, $"{epId}");
+                        queueUpdateMeta.Add(episode);
+                    }
+                }
+            }
+
+            await ProcessQueuedUpdateMeta(queueUpdateMeta).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception handled ProcessSplitVideo");
+        }
+    }
+
     private void DeleteOldDanmu(BaseItem item)
     {
         // 存在旧弹幕xml文件
@@ -718,37 +675,49 @@ public class LibraryManagerEventsHelper : IDisposable
     }
 
     // 根据名称搜索对应的seasonId
-    private async Task<long> GetMatchSeasonId(string searchName)
+    private async Task<long> GetMatchSeasonId(BaseItem item, string searchName)
     {
         try
         {
             var searchResult = await _api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
-            if (searchResult.Result.Length > 0)
+            if (searchResult != null && searchResult.Result.Length > 0)
             {
-                foreach (var media in searchResult.Result)
+                foreach (var result in searchResult.Result)
                 {
-                    if ((media.ResultType == "media_ft" || media.ResultType == "media_bangumi") && media.Data.Length > 0)
+                    if ((result.ResultType == "media_ft" || result.ResultType == "media_bangumi") && result.Data.Length > 0)
                     {
-                        // 取第一个电影当搜索结果
-                        var seasonId = media.Data[0].SeasonId;
-                        var title = media.Data[0].Title;
-
-                        // 检测标题是否相似（越小越相似）
-                        var score = Fastenshtein.Levenshtein.Distance(searchName, title);
-                        if (score > 3)
+                        foreach (var media in result.Data)
                         {
-                            _logger.LogInformation("标题差异太大，忽略处理: {0} {1}, score:　{2}", searchName, title, score);
-                            continue;
-                        }
+                            var seasonId = media.SeasonId;
+                            var title = media.Title;
+                            var pubYear = Jellyfin.Plugin.Danmu.Core.Utils.UnixTimeStampToDateTime(media.PublishTime).Year;
 
-                        return seasonId;
+                            // 检测标题是否相似（越大越相似）
+                            var score = searchName.Distance(title);
+                            if (score < 0.7)
+                            {
+                                _logger.LogInformation("[{0}] 标题差异太大，忽略处理. 搜索词：{1}, score:　{2}", title, searchName, score);
+                                continue;
+                            }
+
+                            // 检测年份是否一致
+                            var itemPubYear = item.ProductionYear ?? 0;
+                            if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
+                            {
+                                _logger.LogInformation("[{0}] 发行年份不一致，忽略处理. b站：{1} jellyfin: {2}", title, pubYear, itemPubYear);
+                                continue;
+                            }
+
+                            _logger.LogInformation("匹配成功. [{0}] seasonId: {1}", title, seasonId);
+                            return seasonId;
+                        }
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception handled GetMatchSeasonId");
+            _logger.LogError(ex, "Exception handled GetMatchSeasonId. {0}", searchName);
         }
 
         return 0;
@@ -757,6 +726,11 @@ public class LibraryManagerEventsHelper : IDisposable
     // 调用UpdateToRepositoryAsync后，但未完成时，会导致GetEpisodes返回缺少正在处理的集数，所以采用统一最后处理
     private async Task ProcessQueuedUpdateMeta(List<BaseItem> queue)
     {
+        if (queue.Count <= 0)
+        {
+            return;
+        }
+
         foreach (var item in queue)
         {
             await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);

@@ -63,11 +63,12 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
             var items = _libraryManager.GetItemList(new InternalItemsQuery
             {
-                MediaTypes = new[] { MediaType.Video },
-                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Episode }
+                // MediaTypes = new[] { MediaType.Video },
+                ExcludeProviderIds = new Dictionary<string, string> { { Plugin.ProviderId, string.Empty } },
+                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Season }
             }).ToList();
 
-            _logger.LogInformation("Update danmu for {0} videos.", items.Count);
+            _logger.LogInformation("Scan danmu for {0} videos.", items.Count);
 
 
             foreach (var (item, idx) in items.WithIndex())
@@ -75,29 +76,40 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
                 cancellationToken.ThrowIfCancellationRequested();
                 progress?.Report((double)idx / items.Count * 100);
 
-                var providerVal = item.GetProviderId(Plugin.ProviderId) ?? string.Empty;
-                if (!string.IsNullOrEmpty(providerVal))
+                try
                 {
-                    continue;
+                    // 有epid的忽略处理（不需要再匹配）
+                    var providerVal = item.GetProviderId(Plugin.ProviderId) ?? string.Empty;
+                    if (!string.IsNullOrEmpty(providerVal))
+                    {
+                        continue;
+                    }
+
+                    // 推送刷新(season刷新会同时刷新episode，所以不需要再推送episode)
+                    switch (item)
+                    {
+                        case Movie:
+                            await _libraryManagerEventsHelper.ProcessQueuedMovieEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
+                            break;
+                        case Season:
+                            await _libraryManagerEventsHelper.ProcessQueuedSeasonEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
+                            break;
+                            // case Series:
+                            //     await _libraryManagerEventsHelper.ProcessQueuedShowEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
+                            //     break;
+
+                            // case Episode:
+                            //     await _libraryManagerEventsHelper.ProcessQueuedEpisodeEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
+                            //     break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Scan danmu failed for video {0}: {1}", item.Name, ex.Message);
                 }
 
-
-                // 推送刷新
-                switch (item)
-                {
-                    case Movie:
-                        await _libraryManagerEventsHelper.ProcessQueuedMovieEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
-                        break;
-                    case Episode:
-                        await _libraryManagerEventsHelper.ProcessQueuedEpisodeEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
-                        break;
-                    case Series:
-                        await _libraryManagerEventsHelper.ProcessQueuedShowEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
-                        break;
-                    case Season:
-                        await _libraryManagerEventsHelper.ProcessQueuedSeasonEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
-                        break;
-                }
+                // 延迟200毫秒，避免搜索请求太频繁
+                Thread.Sleep(200);
             }
 
             progress?.Report(100);
