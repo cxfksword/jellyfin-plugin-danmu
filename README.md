@@ -30,16 +30,8 @@ jellyfin的b站弹幕自动下载插件，会匹配b站番剧和电影视频，�
 
 ## 支持的api接口
 
-`/plugin/danmu/{id}`:  获取影片或剧集的xml弹幕信息，不存在时，url为空
-
-返回结果：
-
-```
-{"url":"http://xxx"}
-```
-
-
-`/plugin/danmu/raw/{id}`:  获取影片或剧集的xml弹幕文件内容
+* `/plugin/danmu/{id}`:  获取影片或剧集的xml弹幕链接，不存在时，url为空
+* `/plugin/danmu/raw/{id}`:  获取影片或剧集的xml弹幕文件内容
 
 
 ## 如何播放
