@@ -33,6 +33,9 @@ zipfile=$(jprm --verbosity=debug plugin build "." --output="${ARTIFACT_DIR}" --v
     jprm --verbosity=debug repo add --url=${JELLYFIN_REPO_URL} "${JELLYFIN_MANIFEST}" "${zipfile}"
 }
 
+# fix menifest download url
+sed -i "s@/danmu@/$TAG@" "$JELLYFIN_MANIFEST"
+
 # 国内加速
 cp -f "$JELLYFIN_MANIFEST" "$JELLYFIN_MANIFEST_CN"
 sed -i "s@github.com@ghproxy.com/https://github.com@g" "$JELLYFIN_MANIFEST_CN"
