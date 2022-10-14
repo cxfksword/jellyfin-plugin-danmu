@@ -1,15 +1,15 @@
 #!/bin/bash
 
+# $1 from github action
 TAG=$1
 
 WORK_DIR=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
-ARTIFACT_DIR=${ARTIFACT_DIR:-"${WORK_DIR}/artifacts"}
+ARTIFACT_DIR="${WORK_DIR}/artifacts"
 mkdir -p "${ARTIFACT_DIR}"
 
 JELLYFIN_REPO_URL="https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download"
 JELLYFIN_MANIFEST="${WORK_DIR}/manifest.json"
 JELLYFIN_MANIFEST_OLD="https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest.json"
-JELLYFIN_MANIFEST_TEMPLATE="${WORK_DIR}/doc/manifest-template.json"
 BUILD_YAML_FILE="${WORK_DIR}/build.yaml"
 
 
@@ -19,11 +19,11 @@ VERSION="$VERSION.0"  # .NET dll need major.minor[.build[.revision]] version for
 # download old manifest
 wget -q -O "$JELLYFIN_MANIFEST" "$JELLYFIN_MANIFEST_OLD"
 if [ $? -ne 0 ]; then
-    cp -f "$JELLYFIN_MANIFEST_TEMPLATE" "$JELLYFIN_MANIFEST"
+    rm -rf $JELLYFIN_MANIFEST
+    jprm repo init $WORK_DIR
 fi
 
 # update change log from tag message
-
 CHANGELOG=$(git tag -l --format='%(contents)' ${TAG})
 sed -i "s#NA#$CHANGELOG#" $BUILD_YAML_FILE  # mac build need change to: -i '' 
 
