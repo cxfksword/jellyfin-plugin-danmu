@@ -25,7 +25,7 @@ fi
 # update change log from tag message
 
 CHANGELOG=$(git tag -l --format='%(contents)' ${TAG})
-sed -i '' "s#NA#$CHANGELOG#" $BUILD_YAML_FILE  # -i '' for fix mac execute error
+sed -i "s#NA#$CHANGELOG#" $BUILD_YAML_FILE  # mac build need change to: -i '' 
 
 # build and generate new manifest
 zipfile=$(jprm --verbosity=debug plugin build "." --output="${ARTIFACT_DIR}" --version="${VERSION}" --dotnet-framework="net6.0") && {
