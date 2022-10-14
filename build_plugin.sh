@@ -9,6 +9,7 @@ mkdir -p "${ARTIFACT_DIR}"
 
 JELLYFIN_REPO_URL="https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download"
 JELLYFIN_MANIFEST="${WORK_DIR}/manifest.json"
+JELLYFIN_MANIFEST_CN="${WORK_DIR}/manifest_cn.json"
 JELLYFIN_MANIFEST_OLD="https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest.json"
 BUILD_YAML_FILE="${WORK_DIR}/build.yaml"
 
@@ -25,11 +26,15 @@ fi
 
 # update change log from tag message
 CHANGELOG=$(git tag -l --format='%(contents)' ${TAG})
-sed -i "s#NA#$CHANGELOG#" $BUILD_YAML_FILE  # mac build need change to: -i '' 
+sed -i "s@NA@$CHANGELOG@" $BUILD_YAML_FILE  # mac build need change to: -i '' 
 
 # build and generate new manifest
 zipfile=$(jprm --verbosity=debug plugin build "." --output="${ARTIFACT_DIR}" --version="${VERSION}" --dotnet-framework="net6.0") && {
     jprm --verbosity=debug repo add --url=${JELLYFIN_REPO_URL} "${JELLYFIN_MANIFEST}" "${zipfile}"
 }
+
+# 国内加速
+cp -f "$JELLYFIN_MANIFEST" "$JELLYFIN_MANIFEST_CN"
+sed -i "s@github.com@ghproxy.com/https://github.com@g" "$JELLYFIN_MANIFEST_CN"
 
 exit $?
