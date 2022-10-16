@@ -641,6 +641,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     var seasonData = await _api.GetSeasonAsync(seasonId, CancellationToken.None).ConfigureAwait(false);
                     if (seasonData == null)
                     {
+                        _logger.LogInformation("获取不到b站视频信息：seasonId={0}", seasonId);
                         return;
                     }
 
@@ -665,6 +666,10 @@ public class LibraryManagerEventsHelper : IDisposable
                         // 推送更新epid元数据，（更新元数据后，会触发episode的Update事件从而下载xml)
                         episode.SetProviderId(Plugin.ProviderId, $"{epId}");
                         queueUpdateMeta.Add(episode);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("刷新弹幕失败, 和b站集数不一致。video: {0} 弹幕数：{1} 集数：{2}", season.Name, seasonData.Episodes.Length, episodes.Count);
                     }
                 }
             }
