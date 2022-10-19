@@ -24,10 +24,5 @@ public enum EventType
     /// <summary>
     /// The update event.
     /// </summary>
-    Update,
-
-    /// <summary>
-    /// The refresh event.
-    /// </summary>
-    Refresh
+    Update
 }

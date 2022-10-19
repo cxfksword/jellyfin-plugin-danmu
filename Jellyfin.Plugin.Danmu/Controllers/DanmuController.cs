@@ -126,7 +126,7 @@ namespace Jellyfin.Plugin.Danmu.Controllers
 
             if (item is Movie || item is Series || item is Season || item is Episode)
             {
-                _libraryManagerEventsHelper.QueueItem(item, Model.EventType.Refresh);
+                _libraryManagerEventsHelper.QueueItem(item, Model.EventType.Add);
             }
 
             return "ok";

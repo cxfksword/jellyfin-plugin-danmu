@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,7 @@ using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.IO;
+using MediaBrowser.Controller.Persistence;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Danmu.Providers;
@@ -30,6 +32,7 @@ public class LibraryManagerEventsHelper : IDisposable
 {
     private readonly List<LibraryEvent> _queuedEvents;
 
+    private readonly IProviderManager _providerManager;
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<LibraryManagerEventsHelper> _logger;
     private readonly BilibiliApi _api;
@@ -41,14 +44,16 @@ public class LibraryManagerEventsHelper : IDisposable
     /// Initializes a new instance of the <see cref="LibraryManagerEventsHelper"/> class.
     /// </summary>
     /// <param name="libraryManager">The <see cref="ILibraryManager"/>.</param>
+    /// <param name="providerManager">Instance of <see cref="IProviderManager"/> interface.</param>
     /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
     /// <param name="api">The <see cref="BilibiliApi"/>.</param>
     /// <param name="fileSystem">Instance of the <see cref="IFileSystem"/> interface.</param>
-    public LibraryManagerEventsHelper(ILibraryManager libraryManager, ILoggerFactory loggerFactory, BilibiliApi api, IFileSystem fileSystem)
+    public LibraryManagerEventsHelper(ILibraryManager libraryManager, IProviderManager providerManager, ILoggerFactory loggerFactory, BilibiliApi api, IFileSystem fileSystem)
     {
         _queuedEvents = new List<LibraryEvent>();
 
         _libraryManager = libraryManager;
+        _providerManager = providerManager;
         _logger = loggerFactory.CreateLogger<LibraryManagerEventsHelper>();
         _api = api;
         _fileSystem = fileSystem;
@@ -105,7 +110,7 @@ public class LibraryManagerEventsHelper : IDisposable
     /// </summary>
     private async Task OnQueueTimerCallbackInternal()
     {
-        _logger.LogInformation("Timer elapsed - processing queued items");
+        // _logger.LogInformation("Timer elapsed - processing queued items");
         List<LibraryEvent> queue;
 
         lock (_queuedEvents)
@@ -120,117 +125,75 @@ public class LibraryManagerEventsHelper : IDisposable
             _queuedEvents.Clear();
         }
 
-        var queuedMovieDeletes = new List<LibraryEvent>();
         var queuedMovieAdds = new List<LibraryEvent>();
         var queuedMovieUpdates = new List<LibraryEvent>();
-        var queuedMovieRefreshs = new List<LibraryEvent>();
-        var queuedEpisodeDeletes = new List<LibraryEvent>();
         var queuedEpisodeAdds = new List<LibraryEvent>();
-        var queuedEpisodeUpdates = new List<LibraryEvent>();
-        var queuedEpisodeRefreshs = new List<LibraryEvent>();
-        var queuedShowDeletes = new List<LibraryEvent>();
+        var queuedEpisodeUpdates = new List<LibraryEvent>(); ;
         var queuedShowAdds = new List<LibraryEvent>();
         var queuedShowUpdates = new List<LibraryEvent>();
-        var queuedShowRefreshs = new List<LibraryEvent>();
-        var queuedSeasonDeletes = new List<LibraryEvent>();
         var queuedSeasonAdds = new List<LibraryEvent>();
         var queuedSeasonUpdates = new List<LibraryEvent>();
-        var queuedSeasonRefreshs = new List<LibraryEvent>();
 
 
-        queuedMovieDeletes.Clear();
         queuedMovieAdds.Clear();
         queuedMovieUpdates.Clear();
-        queuedMovieRefreshs.Clear();
-        queuedEpisodeDeletes.Clear();
         queuedEpisodeAdds.Clear();
         queuedEpisodeUpdates.Clear();
-        queuedEpisodeRefreshs.Clear();
-        queuedShowDeletes.Clear();
         queuedShowAdds.Clear();
         queuedShowUpdates.Clear();
-        queuedShowRefreshs.Clear();
-        queuedSeasonDeletes.Clear();
         queuedSeasonAdds.Clear();
         queuedSeasonUpdates.Clear();
-        queuedSeasonRefreshs.Clear();
 
         foreach (var ev in queue)
         {
 
             switch (ev.Item)
             {
-                case Movie when ev.EventType is EventType.Remove:
-                    queuedMovieDeletes.Add(ev);
-                    break;
                 case Movie when ev.EventType is EventType.Add:
                     queuedMovieAdds.Add(ev);
                     break;
                 case Movie when ev.EventType is EventType.Update:
                     queuedMovieUpdates.Add(ev);
                     break;
-                case Movie when ev.EventType is EventType.Refresh:
-                    queuedMovieRefreshs.Add(ev);
-                    break;
-                case Episode when ev.EventType is EventType.Remove:
-                    queuedEpisodeDeletes.Add(ev);
-                    break;
-                case Episode when ev.EventType is EventType.Add:
-                    queuedEpisodeAdds.Add(ev);
-                    break;
-                case Episode when ev.EventType is EventType.Update:
-                    queuedEpisodeUpdates.Add(ev);
-                    break;
-                case Episode when ev.EventType is EventType.Refresh:
-                    queuedEpisodeRefreshs.Add(ev);
-                    break;
-                case Series when ev.EventType is EventType.Remove:
-                    queuedShowDeletes.Add(ev);
-                    break;
                 case Series when ev.EventType is EventType.Add:
+                    _logger.LogInformation("Series add: {0}", ev.Item.Name);
                     queuedShowAdds.Add(ev);
                     break;
                 case Series when ev.EventType is EventType.Update:
+                    _logger.LogInformation("Series update: {0}", ev.Item.Name);
                     queuedShowUpdates.Add(ev);
                     break;
-                case Series when ev.EventType is EventType.Refresh:
-                    queuedShowRefreshs.Add(ev);
-                    break;
-                case Season when ev.EventType is EventType.Remove:
-                    queuedSeasonDeletes.Add(ev);
-                    break;
                 case Season when ev.EventType is EventType.Add:
+                    _logger.LogInformation("Season add: {0}", ev.Item.Name);
                     queuedSeasonAdds.Add(ev);
                     break;
                 case Season when ev.EventType is EventType.Update:
+                    _logger.LogInformation("Season update: {0}", ev.Item.Name);
                     queuedSeasonUpdates.Add(ev);
                     break;
-                case Season when ev.EventType is EventType.Refresh:
-                    queuedSeasonRefreshs.Add(ev);
+                case Episode when ev.EventType is EventType.Add:
+                    _logger.LogInformation("Episode add: {0}", ev.Item.Name);
+                    queuedEpisodeAdds.Add(ev);
+                    break;
+                case Episode when ev.EventType is EventType.Update:
+                    _logger.LogInformation("Episode update: {0}", ev.Item.Name);
+                    queuedEpisodeUpdates.Add(ev);
                     break;
             }
 
         }
 
-        //await ProcessQueuedMovieEvents(queuedMovieDeletes, EventType.Remove).ConfigureAwait(false);
+        // 对于剧集，处理顺序也很重要（Add事件后，会刷新元数据，导致会同时推送Update事件）
         await ProcessQueuedMovieEvents(queuedMovieAdds, EventType.Add).ConfigureAwait(false);
         await ProcessQueuedMovieEvents(queuedMovieUpdates, EventType.Update).ConfigureAwait(false);
-        await ProcessQueuedMovieEvents(queuedMovieRefreshs, EventType.Refresh).ConfigureAwait(false);
 
-        //await ProcessQueuedEpisodeEvents(queuedEpisodeDeletes, EventType.Remove).ConfigureAwait(false);
-        await ProcessQueuedEpisodeEvents(queuedEpisodeAdds, EventType.Add).ConfigureAwait(false);
-        await ProcessQueuedEpisodeEvents(queuedEpisodeUpdates, EventType.Update).ConfigureAwait(false);
-        await ProcessQueuedEpisodeEvents(queuedEpisodeRefreshs, EventType.Refresh).ConfigureAwait(false);
-
-        //await ProcessQueuedShowEvents(queuedShowDeletes, EventType.Remove).ConfigureAwait(false);
         await ProcessQueuedShowEvents(queuedShowAdds, EventType.Add).ConfigureAwait(false);
-        await ProcessQueuedShowEvents(queuedShowUpdates, EventType.Update).ConfigureAwait(false);
-        await ProcessQueuedShowEvents(queuedShowRefreshs, EventType.Refresh).ConfigureAwait(false);
-
-        //await ProcessQueuedSeasonEvents(queuedSeasonDeletes, EventType.Remove).ConfigureAwait(false);
         await ProcessQueuedSeasonEvents(queuedSeasonAdds, EventType.Add).ConfigureAwait(false);
+        await ProcessQueuedEpisodeEvents(queuedEpisodeAdds, EventType.Add).ConfigureAwait(false);
+
+        await ProcessQueuedShowEvents(queuedShowUpdates, EventType.Update).ConfigureAwait(false);
         await ProcessQueuedSeasonEvents(queuedSeasonUpdates, EventType.Update).ConfigureAwait(false);
-        await ProcessQueuedSeasonEvents(queuedSeasonRefreshs, EventType.Refresh).ConfigureAwait(false);
+        await ProcessQueuedEpisodeEvents(queuedEpisodeUpdates, EventType.Update).ConfigureAwait(false);
     }
 
 
@@ -257,7 +220,7 @@ public class LibraryManagerEventsHelper : IDisposable
         {
             // 新增事件也会触发update，不需要处理Add
             // 更新，判断是否有bvid，有的话刷新弹幕文件
-            if (eventType == EventType.Add || eventType == EventType.Refresh)
+            if (eventType == EventType.Add)
             {
                 var queueUpdateMeta = new List<BaseItem>();
                 foreach (var item in movies)
@@ -336,7 +299,8 @@ public class LibraryManagerEventsHelper : IDisposable
 
                         if (epId <= 0)
                         {
-                            this.DeleteOldDanmu(item);
+                            // 用户删除了epid，存在旧弹幕的话，尝试删除
+                            // this.DeleteOldDanmu(item);
                             continue;
                         }
 
@@ -394,14 +358,14 @@ public class LibraryManagerEventsHelper : IDisposable
 
         try
         {
-            if (eventType == EventType.Add || eventType == EventType.Refresh || eventType == EventType.Update)
+            if (eventType == EventType.Update)
             {
                 foreach (var item in series)
                 {
                     var seasons = item.GetSeasons(null, new DtoOptions(false));
                     foreach (var season in seasons)
                     {
-                        // 推送刷新season数据
+                        // 发现season保存元数据，不会推送update事件，这里通过series的update事件推送刷新
                         QueueItem(season, eventType);
                     }
                 }
@@ -435,7 +399,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
         try
         {
-            if (eventType == EventType.Add || eventType == EventType.Refresh)
+            if (eventType == EventType.Add)
             {
                 var queueUpdateMeta = new List<BaseItem>();
                 foreach (var season in seasons)
@@ -464,18 +428,19 @@ public class LibraryManagerEventsHelper : IDisposable
 
                             // 更新seasonId元数据
                             season.SetProviderId(Plugin.ProviderId, $"{seasonId}");
-
-                            //await _libraryManager.UpdateItemAsync(season, season.GetParent(), ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
                             queueUpdateMeta.Add(season);
                         }
 
-                        if (seasonId > 0)
-                        {
-                            await ProcessSeasonEpisodes(season, eventType).ConfigureAwait(false);
-                        }
+
+                        //// Add事件后，会自动触发season的Update事件来处理，不需要主动处理
+                        // if (seasonId > 0)
+                        // {
+                        //     await ProcessSeasonEpisodes(season, eventType).ConfigureAwait(false);
+                        // }
                     }
                 }
 
+                // 保存元数据
                 await ProcessQueuedUpdateMeta(queueUpdateMeta).ConfigureAwait(false);
             }
 
@@ -491,6 +456,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     else
                     {
+                        // season存在epid，尝试搜索刷新episode的
                         var seasonId = providerVal.ToLong();
                         if (seasonId > 0)
                         {
@@ -540,7 +506,8 @@ public class LibraryManagerEventsHelper : IDisposable
                     // 新影片，判断是否设置epId，没的话，尝试搜索填充
                     if (epId <= 0)
                     {
-                        this.DeleteOldDanmu(item);
+                        // 用户删除了epid，存在旧弹幕的话，尝试删除
+                        // this.DeleteOldDanmu(item);
                         continue;
                     }
 
@@ -575,7 +542,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
             // season手动设置了bv号情况
             // 判断剧集数目是否一致，根据集号下载对应的弹幕
-            if (eventType == EventType.Update || eventType == EventType.Add || eventType == EventType.Refresh)
+            if (eventType == EventType.Update || eventType == EventType.Add)
             {
                 var episodes = season.GetEpisodes(null, new DtoOptions(false));
                 var video = await this._api.GetVideoByBvidAsync(bvid, CancellationToken.None).ConfigureAwait(false);
@@ -648,6 +615,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     var indexNumber = episode.IndexNumber ?? 0;
                     if (indexNumber <= 0)
                     {
+                        // TODO: 通过Anitomy检测名称中的集号
                         _logger.LogInformation("匹配失败，缺少集号. [{0}]{1}}", season.Name, episode.Name);
                         continue;
                     }
@@ -685,12 +653,12 @@ public class LibraryManagerEventsHelper : IDisposable
     private void DeleteOldDanmu(BaseItem item)
     {
         // 存在旧弹幕xml文件
-        //var oldDanmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
-        //var fileMeta = _fileSystem.GetFileInfo(oldDanmuPath);
-        //if (fileMeta.Exists)
-        //{
-        //    _fileSystem.DeleteFile(oldDanmuPath);
-        //}
+        var oldDanmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
+        var fileMeta = _fileSystem.GetFileInfo(oldDanmuPath);
+        if (fileMeta.Exists)
+        {
+            _fileSystem.DeleteFile(oldDanmuPath);
+        }
     }
 
     // 根据名称搜索对应的seasonId
@@ -727,7 +695,7 @@ public class LibraryManagerEventsHelper : IDisposable
                                 continue;
                             }
 
-                            _logger.LogInformation("匹配成功. [{0}] seasonId: {1}", title, seasonId);
+                            _logger.LogInformation("匹配成功. [{0}] seasonId: {1} score: {2}", title, seasonId, score);
                             return seasonId;
                         }
                     }
@@ -750,8 +718,17 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
-        foreach (var item in queue)
+        foreach (var queueItem in queue)
         {
+            // 获取最新的item数据
+            var item = _libraryManager.GetItemById(queueItem.Id);
+            // 合并新添加的provider id
+            foreach (var pair in queueItem.ProviderIds)
+            {
+                item.ProviderIds[pair.Key] = pair.Value;
+            }
+
+            // Console.WriteLine(JsonSerializer.Serialize(item));
             await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
         }
         _logger.LogInformation("更新b站epid到元数据完成。item数：{0}", queue.Count);
@@ -762,6 +739,13 @@ public class LibraryManagerEventsHelper : IDisposable
         // 下载弹幕xml文件
         try
         {
+            // 弹幕一分钟内更新过，忽略处理（有时Update事件会重复执行）
+            if (IsRepeatAction(item))
+            {
+                _logger.LogInformation("最近1分钟已更新过弹幕xml，忽略处理：{0}", item.Name);
+                return;
+            }
+
             var bytes = await this._api.GetDanmuContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
             await this.DownloadDanmuInternal(item, bytes);
         }
@@ -776,6 +760,13 @@ public class LibraryManagerEventsHelper : IDisposable
         // 下载弹幕xml文件
         try
         {
+            // 弹幕一分钟内更新过，忽略处理（有时Update事件会重复执行）
+            if (IsRepeatAction(item))
+            {
+                _logger.LogInformation("最近1分钟已更新过弹幕xml，忽略处理：{0}", item.Name);
+                return;
+            }
+
             var bytes = await this._api.GetDanmuContentAsync(bvid, CancellationToken.None).ConfigureAwait(false);
             await this.DownloadDanmuInternal(item, bytes);
         }
@@ -790,6 +781,13 @@ public class LibraryManagerEventsHelper : IDisposable
         // 下载弹幕xml文件
         try
         {
+            // 弹幕一分钟内更新过，忽略处理（有时Update事件会重复执行）
+            if (IsRepeatAction(item))
+            {
+                _logger.LogInformation("最近1分钟已更新过弹幕xml，忽略处理：{0}", item.Name);
+                return;
+            }
+
             var bytes = await this._api.GetDanmuContentByCidAsync(cid, CancellationToken.None).ConfigureAwait(false);
             await this.DownloadDanmuInternal(item, bytes);
         }
@@ -797,6 +795,19 @@ public class LibraryManagerEventsHelper : IDisposable
         {
             _logger.LogError(ex, "Exception handled download danmu file");
         }
+    }
+
+    private bool IsRepeatAction(BaseItem item)
+    {
+        var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
+        if (!File.Exists(danmuPath))
+        {
+            return false;
+        }
+
+        var lastWriteTime = File.GetLastWriteTime(danmuPath);
+        var diff = DateTime.Now - lastWriteTime;
+        return diff.TotalSeconds < 60;
     }
 
     private async Task DownloadDanmuInternal(BaseItem item, byte[] bytes)

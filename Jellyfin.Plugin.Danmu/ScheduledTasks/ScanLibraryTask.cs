@@ -85,21 +85,24 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
                         continue;
                     }
 
-                    // 推送刷新(season刷新会同时刷新episode，所以不需要再推送episode)
+                    // 推送刷新  (season刷新会同时刷新episode，所以不需要再推送episode，而且season是bv号的，只能通过season来刷新)
                     switch (item)
                     {
                         case Movie:
-                            await _libraryManagerEventsHelper.ProcessQueuedMovieEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
+                            await _libraryManagerEventsHelper.ProcessQueuedMovieEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Add } }, EventType.Add).ConfigureAwait(false);
                             break;
                         case Season:
-                            await _libraryManagerEventsHelper.ProcessQueuedSeasonEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
+                            // 搜索匹配season的元数据
+                            await _libraryManagerEventsHelper.ProcessQueuedSeasonEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Add } }, EventType.Add).ConfigureAwait(false);
+                            // 下载剧集弹幕
+                            await _libraryManagerEventsHelper.ProcessQueuedSeasonEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Update } }, EventType.Update).ConfigureAwait(false);
                             break;
                             // case Series:
-                            //     await _libraryManagerEventsHelper.ProcessQueuedShowEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
+                            //     await _libraryManagerEventsHelper.ProcessQueuedShowEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Add } }, EventType.Add).ConfigureAwait(false);
                             //     break;
 
                             // case Episode:
-                            //     await _libraryManagerEventsHelper.ProcessQueuedEpisodeEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Refresh } }, EventType.Refresh).ConfigureAwait(false);
+                            //     await _libraryManagerEventsHelper.ProcessQueuedEpisodeEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Add } }, EventType.Add).ConfigureAwait(false);
                             //     break;
                     }
                 }

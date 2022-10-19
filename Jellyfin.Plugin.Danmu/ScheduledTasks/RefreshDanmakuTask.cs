@@ -93,7 +93,7 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
                     }
 
 
-                    // 推送下载最新的xml (season刷新会同时刷新episode，所以不需要再推送episode)
+                    // 推送下载最新的xml (season刷新会同时刷新episode，所以不需要再推送episode，而且season是bv号的，只能通过season来刷新)
                     switch (item)
                     {
                         case Movie:

@@ -66,7 +66,7 @@ ass格式：
 
 ```sh
 $ dotnet restore 
-$ dotnet publish -c Release Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
+$ dotnet publish Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
 ```
 
 

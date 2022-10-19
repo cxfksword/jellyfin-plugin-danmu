@@ -52,7 +52,7 @@ namespace Jellyfin.Plugin.Danmu
         {
             _libraryManager.ItemAdded += LibraryManagerItemAdded;
             _libraryManager.ItemUpdated += LibraryManagerItemUpdated;
-            _libraryManager.ItemRemoved += LibraryManagerItemRemoved;
+            // _libraryManager.ItemRemoved += LibraryManagerItemRemoved;
 
             return Task.CompletedTask;
         }
@@ -138,7 +138,7 @@ namespace Jellyfin.Plugin.Danmu
             {
                 _libraryManager.ItemAdded -= LibraryManagerItemAdded;
                 _libraryManager.ItemUpdated -= LibraryManagerItemUpdated;
-                _libraryManager.ItemRemoved -= LibraryManagerItemRemoved;
+                // _libraryManager.ItemRemoved -= LibraryManagerItemRemoved;
                 _libraryManagerEventsHelper.Dispose();
             }
         }
