@@ -32,7 +32,6 @@ public class LibraryManagerEventsHelper : IDisposable
 {
     private readonly List<LibraryEvent> _queuedEvents;
 
-    private readonly IProviderManager _providerManager;
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<LibraryManagerEventsHelper> _logger;
     private readonly BilibiliApi _api;
@@ -44,16 +43,14 @@ public class LibraryManagerEventsHelper : IDisposable
     /// Initializes a new instance of the <see cref="LibraryManagerEventsHelper"/> class.
     /// </summary>
     /// <param name="libraryManager">The <see cref="ILibraryManager"/>.</param>
-    /// <param name="providerManager">Instance of <see cref="IProviderManager"/> interface.</param>
     /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
     /// <param name="api">The <see cref="BilibiliApi"/>.</param>
     /// <param name="fileSystem">Instance of the <see cref="IFileSystem"/> interface.</param>
-    public LibraryManagerEventsHelper(ILibraryManager libraryManager, IProviderManager providerManager, ILoggerFactory loggerFactory, BilibiliApi api, IFileSystem fileSystem)
+    public LibraryManagerEventsHelper(ILibraryManager libraryManager, ILoggerFactory loggerFactory, BilibiliApi api, IFileSystem fileSystem)
     {
         _queuedEvents = new List<LibraryEvent>();
 
         _libraryManager = libraryManager;
-        _providerManager = providerManager;
         _logger = loggerFactory.CreateLogger<LibraryManagerEventsHelper>();
         _api = api;
         _fileSystem = fileSystem;

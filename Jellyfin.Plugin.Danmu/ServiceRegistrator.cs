@@ -27,7 +27,7 @@ namespace Jellyfin.Plugin.Danmu
             });
             serviceCollection.AddSingleton<LibraryManagerEventsHelper>((ctx) =>
             {
-                return new LibraryManagerEventsHelper(ctx.GetRequiredService<ILibraryManager>(), ctx.GetRequiredService<IProviderManager>(), ctx.GetRequiredService<ILoggerFactory>(), ctx.GetRequiredService<BilibiliApi>(), ctx.GetRequiredService<IFileSystem>());
+                return new LibraryManagerEventsHelper(ctx.GetRequiredService<ILibraryManager>(), ctx.GetRequiredService<ILoggerFactory>(), ctx.GetRequiredService<BilibiliApi>(), ctx.GetRequiredService<IFileSystem>());
             });
         }
     }
