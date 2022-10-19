@@ -313,22 +313,6 @@ public class LibraryManagerEventsHelper : IDisposable
                 }
             }
 
-
-            //// 删除弹幕文件（jellyfin自己会删除）
-            //// 修改过名称了怎么办？？？
-            //if (eventType == EventType.Remove)
-            //{
-            //    foreach (var item in movies)
-            //    {
-            //        // 删除弹幕xml文件
-            //        var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
-            //        var fileMeta = _fileSystem.GetFileInfo(danmuPath);
-            //        if (fileMeta.Exists)
-            //        {
-            //            _fileSystem.DeleteFile(danmuPath);
-            //        }
-            //    }
-            //}
         }
         catch (Exception ex)
         {
