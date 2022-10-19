@@ -19,6 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Get tags (For CHANGELOG)
+        run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - name: Setup dotnet
         uses: actions/setup-dotnet@v3
         with:
