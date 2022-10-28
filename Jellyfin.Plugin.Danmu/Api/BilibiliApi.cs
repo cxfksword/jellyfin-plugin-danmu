@@ -23,10 +23,6 @@ using System.Web;
 using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 using Microsoft.Extensions.Caching.Memory;
 using Jellyfin.Plugin.Danmu.Providers;
-using Bilibili.Community.Service.Dm.V1;
-using System.IO;
-using Danmaku2Ass;
-using Jellyfin.Plugin.Danmu.Core.Danmaku2Ass;
 
 namespace Jellyfin.Plugin.Danmu.Api
 {
@@ -266,98 +262,6 @@ namespace Jellyfin.Plugin.Danmu.Api
 
             _memoryCache.Set<Video?>(cacheKey, null, expiredOption);
             return null;
-        }
-
-        /// <summary>
-        /// 下载实时弹幕，返回弹幕列表
-        /// </summary>
-        /// <param name="avid">稿件avID</param>
-        /// <param name="cid">视频CID</param>
-        public async Task<byte[]> GetDanmuProtoAsync(long avid, long cid, CancellationToken cancellationToken)
-        {
-
-            var sb = new StringBuilder();
-            sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><i>");
-            try
-            {
-                var segmentIndex = 1;  // 分包，每6分钟一包
-                while (true)
-                {
-                    var url = $"https://api.bilibili.com/x/v2/dm/web/seg.so?type=1&oid={cid}&pid={avid}&segment_index={segmentIndex}";
-
-                    var bytes = await httpClient.GetByteArrayAsync(url, cancellationToken).ConfigureAwait(false);
-                    var danmuReply = DmSegMobileReply.Parser.ParseFrom(bytes);
-                    if (danmuReply == null)
-                    {
-                        break;
-                    }
-                    foreach (var dm in danmuReply.Elems)
-                    {
-                        // <d p="944.95400,5,25,16707842,1657598634,0,ece5c9d1,1094775706690331648,11">今天的风儿甚是喧嚣</d>
-                        // time, mode, size, color, create, pool, sender, id, weight(屏蔽等级)
-                        var str = string.Format("<d p=\"{0:0.#####},{1},{2},{3},{4},{5},{6},{7},{8}\">{9}</d>", (double)dm.Progress / 1000, dm.Mode, dm.Fontsize, dm.Color, dm.Ctime, dm.Pool, dm.MidHash, dm.IdStr, dm.Weight, dm.Content);
-                        sb.AppendFormat("<d p=\"{0},{1},{2},{3},{4},{5},{6},{7},{8}\">{9}</d>", (double)dm.Progress / 1000, dm.Mode, dm.Fontsize, dm.Color, dm.Ctime, dm.Pool, dm.MidHash, dm.IdStr, dm.Weight, dm.Content);
-                    }
-
-                    segmentIndex += 1;
-                }
-            } catch(Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-
-            sb.Append("</i>");
-            return Encoding.UTF8.GetBytes(sb.ToString());
-        }
-
-
-        /// <summary>
-        /// 下载历史弹幕，返回弹幕列表
-        /// </summary>
-        /// <param name="cid">视频CID</param>
-        /// <param name="date">弹幕日期，格式：YYYY-MM-DD</param>
-        public async Task<byte[]> GetDanmuHistoryProtoAsync(long cid, string date, CancellationToken cancellationToken)
-        {
-
-            var sb = new StringBuilder();
-            sb.Append("<?xml version=\"1.0\" encoding=\"UTF-8\"?><i>");
-            try
-            {
-                var segmentIndex = 1;  // 分包，每6分钟一包
-                while (true)
-                {
-                    var url = $"http://api.bilibili.com/x/v2/dm/web/history/seg.so?type=1&oid={cid}&date={date}";
-
-                    var bytes = await httpClient.GetByteArrayAsync(url, cancellationToken).ConfigureAwait(false);
-                    var danmuReply = DmSegMobileReply.Parser.ParseFrom(bytes);
-                    if (danmuReply == null)
-                    {
-                        break;
-                    }
-                    foreach (var dm in danmuReply.Elems)
-                    {
-                        // <d p="944.95400,5,25,16707842,1657598634,0,ece5c9d1,1094775706690331648,11">今天的风儿甚是喧嚣</d>
-                        // time, mode, size, color, create, pool, sender, id, weight(屏蔽等级)
-                        var str = string.Format("<d p=\"{0:0.#####},{1},{2},{3},{4},{5},{6},{7},{8}\">{9}</d>", (double)dm.Progress / 1000, dm.Mode, dm.Fontsize, dm.Color, dm.Ctime, dm.Pool, dm.MidHash, dm.IdStr, dm.Weight, dm.Content);
-                        sb.AppendFormat("<d p=\"{0},{1},{2},{3},{4},{5},{6},{7},{8}\">{9}</d>", (double)dm.Progress / 1000, dm.Mode, dm.Fontsize, dm.Color, dm.Ctime, dm.Pool, dm.MidHash, dm.IdStr, dm.Weight, dm.Content);
-                    }
-
-                    segmentIndex += 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-
-            sb.Append("</i>");
-            return Encoding.UTF8.GetBytes(sb.ToString());
-        }
-
-        public async Task<String> CheckDanmuHistoryListAsync(long cid, string month, CancellationToken cancellationToken)
-        {
-            var url = $"http://api.bilibili.com/x/v2/dm/history/index?type=1&oid={cid}&month={month}";
-            return await httpClient.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task EnsureSessionCookie(CancellationToken cancellationToken)

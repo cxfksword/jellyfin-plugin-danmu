@@ -264,7 +264,9 @@ public class LibraryManagerEventsHelper : IDisposable
                         }
 
                         // 下载弹幕xml文件
-                        await this.DownloadDanmu(item, epId).ConfigureAwait(false);
+                        var bytes = await _api.GetDanmuContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
+                        var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
+                        await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
                     }
                     // 延迟200毫秒，避免请求太频繁
                     Thread.Sleep(200);
@@ -824,7 +826,7 @@ public class LibraryManagerEventsHelper : IDisposable
                 }
 
                 var assPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".danmu.ass");
-                Danmaku2Ass.Bilibili.GetInstance().Create(Encoding.UTF8.GetString(bytes), assConfig, assPath);
+                Bilibili.GetInstance().Create(Encoding.UTF8.GetString(bytes), assConfig, assPath);
             }
 
             this._logger.LogInformation("弹幕下载成功：name={0}", item.Name);

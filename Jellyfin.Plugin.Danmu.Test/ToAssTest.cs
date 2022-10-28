@@ -1,5 +1,4 @@
 ﻿using Danmaku2Ass;
-using Jellyfin.Plugin.Danmu.Api;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +24,7 @@ namespace Jellyfin.Plugin.Danmu.Test
                 <d p=""55.38000,1,25,16777215,1660413677,0,9c28a5a9,1118390004910248704,11"">这个op看得我好迷茫</d></i>
             ";
 
-            var ass = Danmaku2Ass.Bilibili.GetInstance().ToASS(xml, new Config());
+            var ass = Bilibili.GetInstance().ToASS(xml, new Config());
             Console.WriteLine(ass);
             Assert.IsNotNull(ass);
 
@@ -37,7 +36,7 @@ namespace Jellyfin.Plugin.Danmu.Test
             var xml = File.ReadAllText(@"F:\ddd\11111.xml");
 
 
-            Danmaku2Ass.Bilibili.GetInstance().Create(xml, new Config(), @"F:\ddd\11111.ass");
+             Bilibili.GetInstance().Create(xml, new Config(), @"F:\ddd\11111.ass");
  
         }
     }
