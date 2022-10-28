@@ -19,6 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.21.9" />
     <PackageReference Include="Jellyfin.Controller" Version="10.8.0" />
     <PackageReference Include="Jellyfin.Model" Version="10.8.0" />
   </ItemGroup>
