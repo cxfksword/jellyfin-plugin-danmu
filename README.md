@@ -43,9 +43,9 @@ jellyfin的b站弹幕自动下载插件，会匹配b站番剧和电影视频，�
 ## 如何播放
 
 xml格式：
-
-* [弹弹play](https://www.dandanplay.com/) (Windows/Mac/Android)
+* [KikoPlay](https://github.com/KikoPlayProject/KikoPlay) (Windows/Mac)
 * [Fileball](https://fileball.app/) (iOS/iPadOS/AppleTV)
+* [弹弹play](https://www.dandanplay.com/) (Windows/Mac/Android)
 
 ass格式：
 
