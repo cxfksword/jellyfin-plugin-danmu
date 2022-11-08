@@ -147,9 +147,11 @@ public class LibraryManagerEventsHelper : IDisposable
             switch (ev.Item)
             {
                 case Movie when ev.EventType is EventType.Add:
+                    _logger.LogInformation("Movie add: {0}", ev.Item.Name);
                     queuedMovieAdds.Add(ev);
                     break;
                 case Movie when ev.EventType is EventType.Update:
+                    _logger.LogInformation("Movie update: {0}", ev.Item.Name);
                     queuedMovieUpdates.Add(ev);
                     break;
                 case Series when ev.EventType is EventType.Add:
@@ -239,8 +241,8 @@ public class LibraryManagerEventsHelper : IDisposable
                         if (epId <= 0)
                         {
                             // 搜索查找匹配的视频
-                            var searchName = this.GetSearchMovieName(item.Name);
-                            var seasonId = await GetMatchSeasonId(item, searchName).ConfigureAwait(false);
+                            var searchName = this.NormalizeSearchName(item.Name);
+                            var seasonId = await GetMatchBiliSeasonId(item, searchName).ConfigureAwait(false);
                             var season = await _api.GetSeasonAsync(seasonId, CancellationToken.None).ConfigureAwait(false);
                             if (season == null)
                             {
@@ -385,6 +387,12 @@ public class LibraryManagerEventsHelper : IDisposable
                 var queueUpdateMeta = new List<BaseItem>();
                 foreach (var season in seasons)
                 {
+                    if (season.IndexNumber.HasValue && season.IndexNumber == 0)
+                    {
+                        _logger.LogInformation("特典不处理：name={0} number={1}", season.Name, season.IndexNumber);
+                        continue;
+                    }
+
                     var series = season.GetParent();
                     var providerVal = season.GetProviderId(Plugin.ProviderId) ?? string.Empty;
                     // 支持视频分片BV号
@@ -399,11 +407,11 @@ public class LibraryManagerEventsHelper : IDisposable
                         // 根据名称搜索剧集对应的视频
                         if (seasonId <= 0)
                         {
-                            var searchName = GetSearchSeasonName(series.Name, season.IndexNumber ?? 0);
-                            seasonId = await GetMatchSeasonId(season, searchName).ConfigureAwait(false);
+                            var searchName = this.NormalizeSearchName(series.Name);
+                            seasonId = await GetMatchBiliSeasonId(season, searchName).ConfigureAwait(false);
                             if (seasonId <= 0)
                             {
-                                _logger.LogInformation("b站没有找到对应视频信息：name={0}", searchName);
+                                _logger.LogInformation("b站没有找到对应视频信息：name={0} number={1}", season.Name, season.IndexNumber);
                                 continue;
                             }
 
@@ -643,10 +651,13 @@ public class LibraryManagerEventsHelper : IDisposable
     }
 
     // 根据名称搜索对应的seasonId
-    private async Task<long> GetMatchSeasonId(BaseItem item, string searchName)
+    private async Task<long> GetMatchBiliSeasonId(BaseItem item, string searchName)
     {
         try
         {
+            // 读取最新数据，要不然取不到年份信息
+            var currentItem = _libraryManager.GetItemById(item.Id);
+
             var searchResult = await _api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
             if (searchResult != null && searchResult.Result.Length > 0)
             {
@@ -662,14 +673,14 @@ public class LibraryManagerEventsHelper : IDisposable
 
                             // 检测标题是否相似（越大越相似）
                             var score = searchName.Distance(title);
-                            if (score < 0.7)
+                            if (score < 0.8)
                             {
                                 _logger.LogInformation("[{0}] 标题差异太大，忽略处理. 搜索词：{1}, score:　{2}", title, searchName, score);
                                 continue;
                             }
 
                             // 检测年份是否一致
-                            var itemPubYear = item.ProductionYear ?? 0;
+                            var itemPubYear = currentItem.ProductionYear ?? 0;
                             if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
                             {
                                 _logger.LogInformation("[{0}] 发行年份不一致，忽略处理. b站：{1} jellyfin: {2}", title, pubYear, itemPubYear);
@@ -837,49 +848,12 @@ public class LibraryManagerEventsHelper : IDisposable
         }
     }
 
-    private string GetSearchMovieName(string movieName)
+    private string NormalizeSearchName(string name)
     {
         // 去掉可能存在的季名称
-        return Regex.Replace(movieName, @"\s*第.季", "");
+        return Regex.Replace(name, @"\s*第.季", "");
     }
 
-    private string GetSearchSeasonName(string seriesName, int seasonIndexNumber)
-    {
-        var indexName = "";
-        switch (seasonIndexNumber)
-        {
-            case 2:
-                indexName = "第二季";
-                break;
-            case 3:
-                indexName = "第三季";
-                break;
-            case 4:
-                indexName = "第四季";
-                break;
-            case 5:
-                indexName = "第五季";
-                break;
-            case 6:
-                indexName = "第六季";
-                break;
-            case 7:
-                indexName = "第七季";
-                break;
-            case 8:
-                indexName = "第八季";
-                break;
-            case 9:
-                indexName = "第九季";
-                break;
-            default:
-                break;
-        }
-
-        // 去掉已存在的季名称
-        seriesName = Regex.Replace(seriesName, @"\s*第.季", "");
-        return $"{seriesName} {indexName}";
-    }
 
     public void Dispose()
     {
