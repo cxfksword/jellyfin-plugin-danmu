@@ -122,15 +122,14 @@ namespace Jellyfin.Plugin.Danmu.Api
             var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception($"Request fail. cid={cid}");
+                throw new Exception($"Request fail. url={url} status_code={response.StatusCode}");
             }
 
             // 数据太小可能是已经被b站下架，返回了出错信息
             var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
             if (bytes == null || bytes.Length < 2000)
             {
-                this._logger.LogWarning("弹幕获取失败，可能视频已下架或弹幕太少. url: {0}", url);
-                throw new Exception($"Request fail. cid={cid}");
+                throw new Exception($"弹幕获取失败，可能视频已下架或弹幕太少. url: {url}");
             }
 
             return bytes;
@@ -141,7 +140,7 @@ namespace Jellyfin.Plugin.Danmu.Api
         {
             if (string.IsNullOrEmpty(keyword))
             {
-                throw new ArgumentNullException(nameof(keyword));
+                return new SearchResult();
             }
 
             var cacheKey = $"search_{keyword}";
@@ -152,7 +151,7 @@ namespace Jellyfin.Plugin.Danmu.Api
                 return searchResult;
             }
 
-            // this.LimitRequestFrequently();
+            this.LimitRequestFrequently();
             await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
             keyword = HttpUtility.UrlEncode(keyword);
@@ -280,20 +279,19 @@ namespace Jellyfin.Plugin.Danmu.Api
 
         protected void LimitRequestFrequently()
         {
-            var startTime = DateTime.Now;
+            var diff = 0;
             lock (_lock)
             {
                 var ts = DateTime.Now - lastRequestTime;
-                var diff = (int)(200 - ts.TotalMilliseconds);
-                if (diff > 0)
-                {
-                    Thread.Sleep(diff);
-                }
+                diff = (int)(1000 - ts.TotalMilliseconds);
                 lastRequestTime = DateTime.Now;
             }
-            var endTime = DateTime.Now;
-            var tt = (endTime - startTime).TotalMilliseconds;
-            Console.WriteLine(tt);
+
+            if (diff > 0)
+            {
+                this._logger.LogDebug("请求太频繁，等待{0}毫秒后继续执行...", diff);
+                Thread.Sleep(diff);
+            }
         }
 
         public void Dispose()

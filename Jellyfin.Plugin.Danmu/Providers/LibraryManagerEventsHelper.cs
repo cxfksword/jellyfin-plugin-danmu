@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -209,7 +210,7 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
-        _logger.LogInformation("Processing {Count} movies with event type {EventType}", events.Count, eventType);
+        _logger.LogDebug("Processing {Count} movies with event type {EventType}", events.Count, eventType);
 
         var movies = events.Select(lev => (Movie)lev.Item)
             .Where(lev => !string.IsNullOrEmpty(lev.Name))
@@ -269,9 +270,8 @@ public class LibraryManagerEventsHelper : IDisposable
                         var bytes = await _api.GetDanmuContentAsync(epId, CancellationToken.None).ConfigureAwait(false);
                         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
                         await File.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
+                        _logger.LogInformation("匹配成功：name={0} b站: {1}", item.Name, epId);
                     }
-                    // 延迟200毫秒，避免请求太频繁
-                    Thread.Sleep(200);
                 }
 
                 await ProcessQueuedUpdateMeta(queueUpdateMeta).ConfigureAwait(false);
@@ -313,6 +313,10 @@ public class LibraryManagerEventsHelper : IDisposable
             }
 
         }
+        catch (FrequentlyRequestException ex)
+        {
+            _logger.LogError(ex, "api接口触发风控，中止执行，请稍候再试.");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception handled processing queued movie events");
@@ -333,7 +337,7 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
-        _logger.LogInformation("Processing {Count} shows with event type {EventType}", events.Count, eventType);
+        _logger.LogDebug("Processing {Count} shows with event type {EventType}", events.Count, eventType);
 
         var series = events.Select(lev => (Series)lev.Item)
             .Where(lev => !string.IsNullOrEmpty(lev.Name))
@@ -374,7 +378,7 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
-        _logger.LogInformation("Processing {Count} seasons with event type {EventType}", events.Count, eventType);
+        _logger.LogDebug("Processing {Count} seasons with event type {EventType}", events.Count, eventType);
 
         var seasons = events.Select(lev => (Season)lev.Item)
             .Where(lev => !string.IsNullOrEmpty(lev.Name))
@@ -411,13 +415,14 @@ public class LibraryManagerEventsHelper : IDisposable
                             seasonId = await GetMatchBiliSeasonId(season, searchName).ConfigureAwait(false);
                             if (seasonId <= 0)
                             {
-                                _logger.LogInformation("b站没有找到对应视频信息：name={0} number={1}", season.Name, season.IndexNumber);
+                                _logger.LogInformation("b站没有找到对应视频信息：name={0} season_number={1}", searchName, season.IndexNumber);
                                 continue;
                             }
 
                             // 更新seasonId元数据
                             season.SetProviderId(Plugin.ProviderId, $"{seasonId}");
                             queueUpdateMeta.Add(season);
+                            _logger.LogInformation("匹配成功：name={0} season_number={1} b站: {2}", searchName, season.IndexNumber, seasonId);
                         }
 
 
@@ -455,6 +460,10 @@ public class LibraryManagerEventsHelper : IDisposable
                 }
             }
         }
+        catch (FrequentlyRequestException ex)
+        {
+            _logger.LogError(ex, "api接口触发风控，中止执行，请稍候再试.");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception handled processing queued show events");
@@ -476,7 +485,7 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
-        _logger.LogInformation("Processing {Count} episodes with event type {EventType}", events.Count, eventType);
+        _logger.LogDebug("Processing {Count} episodes with event type {EventType}", events.Count, eventType);
 
         var episodes = events.Select(lev => (Episode)lev.Item)
             .Where(lev => !string.IsNullOrEmpty(lev.Name))
@@ -659,7 +668,7 @@ public class LibraryManagerEventsHelper : IDisposable
             var currentItem = _libraryManager.GetItemById(item.Id);
 
             var searchResult = await _api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
-            if (searchResult != null && searchResult.Result.Length > 0)
+            if (searchResult != null && searchResult.Result != null)
             {
                 foreach (var result in searchResult.Result)
                 {
@@ -673,7 +682,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
                             // 检测标题是否相似（越大越相似）
                             var score = searchName.Distance(title);
-                            if (score < 0.8)
+                            if (score < 0.7)
                             {
                                 _logger.LogInformation("[{0}] 标题差异太大，忽略处理. 搜索词：{1}, score:　{2}", title, searchName, score);
                                 continue;
@@ -693,6 +702,14 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                 }
             }
+        }
+        catch (HttpRequestException ex)
+        {
+            if (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+            {
+                throw new FrequentlyRequestException(ex);
+            }
+            _logger.LogError(ex, "Exception handled GetMatchSeasonId. {0}", searchName);
         }
         catch (Exception ex)
         {

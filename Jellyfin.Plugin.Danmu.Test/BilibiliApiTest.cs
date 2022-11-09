@@ -10,21 +10,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Danmu.Test
 {
+
     [TestClass]
     public class BilibiliApiTest
     {
+        ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
+            builder.AddSimpleConsole(options =>
+            {
+                options.IncludeScopes = true;
+                options.SingleLine = true;
+                options.TimestampFormat = "hh:mm:ss ";
+            }));
+
         [TestMethod]
         public void TestSearch()
         {
-            var keyword = "哆啦A梦 第四季";
-
-            var loggerFactory = LoggerFactory.Create(builder =>
-                builder.AddSimpleConsole(options =>
-                {
-                    options.IncludeScopes = true;
-                    options.SingleLine = true;
-                    options.TimestampFormat = "hh:mm:ss ";
-                }));
+            var keyword = "V字仇杀队";
             var _bilibiliApi = new BilibiliApi(loggerFactory);
 
             Task.Run(async () =>
@@ -44,15 +45,6 @@ namespace Jellyfin.Plugin.Danmu.Test
         [TestMethod]
         public void TestSearchFrequently()
         {
-
-
-            var loggerFactory = LoggerFactory.Create(builder =>
-                builder.AddSimpleConsole(options =>
-                {
-                    options.IncludeScopes = true;
-                    options.SingleLine = true;
-                    options.TimestampFormat = "hh:mm:ss ";
-                }));
             var _bilibiliApi = new BilibiliApi(loggerFactory);
 
             Task.Run(async () =>
@@ -76,14 +68,6 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestGetVideoByBvidAsync()
         {
             var bvid = "BV1vs411U78W";
-
-            var loggerFactory = LoggerFactory.Create(builder =>
-                builder.AddSimpleConsole(options =>
-                {
-                    options.IncludeScopes = true;
-                    options.SingleLine = true;
-                    options.TimestampFormat = "hh:mm:ss ";
-                }));
             var _bilibiliApi = new BilibiliApi(loggerFactory);
 
             Task.Run(async () =>
