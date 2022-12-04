@@ -26,12 +26,15 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Controller.Persistence;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Jellyfin.Plugin.Danmu.Providers;
 
 public class LibraryManagerEventsHelper : IDisposable
 {
     private readonly List<LibraryEvent> _queuedEvents;
+    private readonly IMemoryCache _pendingAddEventCache;
+    private readonly MemoryCacheEntryOptions _expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
 
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<LibraryManagerEventsHelper> _logger;
@@ -50,6 +53,7 @@ public class LibraryManagerEventsHelper : IDisposable
     public LibraryManagerEventsHelper(ILibraryManager libraryManager, ILoggerFactory loggerFactory, BilibiliApi api, IFileSystem fileSystem)
     {
         _queuedEvents = new List<LibraryEvent>();
+        _pendingAddEventCache = new MemoryCache(new MemoryCacheOptions());
 
         _libraryManager = libraryManager;
         _logger = loggerFactory.CreateLogger<LibraryManagerEventsHelper>();
@@ -132,32 +136,26 @@ public class LibraryManagerEventsHelper : IDisposable
         var queuedSeasonAdds = new List<LibraryEvent>();
         var queuedSeasonUpdates = new List<LibraryEvent>();
 
-
-        queuedMovieAdds.Clear();
-        queuedMovieUpdates.Clear();
-        queuedEpisodeAdds.Clear();
-        queuedEpisodeUpdates.Clear();
-        queuedShowAdds.Clear();
-        queuedShowUpdates.Clear();
-        queuedSeasonAdds.Clear();
-        queuedSeasonUpdates.Clear();
-
+        // add事件可能会在获取元数据完之前执行，导致可能会中断元数据获取，通过pending集合把add事件延缓到获取元数据后再执行（获取完元数据后，一般会多推送一个update事件）
         foreach (var ev in queue)
         {
-
             switch (ev.Item)
             {
                 case Movie when ev.EventType is EventType.Add:
                     _logger.LogInformation("Movie add: {0}", ev.Item.Name);
-                    queuedMovieAdds.Add(ev);
+                    _pendingAddEventCache.Set<LibraryEvent>(ev.Item.Id, ev, _expiredOption);
                     break;
                 case Movie when ev.EventType is EventType.Update:
                     _logger.LogInformation("Movie update: {0}", ev.Item.Name);
-                    queuedMovieUpdates.Add(ev);
-                    break;
-                case Series when ev.EventType is EventType.Add:
-                    _logger.LogInformation("Series add: {0}", ev.Item.Name);
-                    queuedShowAdds.Add(ev);
+                    if (_pendingAddEventCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addMovieEv))
+                    {
+                        queuedMovieAdds.Add(addMovieEv);
+                        _pendingAddEventCache.Remove(ev.Item.Id);
+                    }
+                    else
+                    {
+                        queuedMovieUpdates.Add(ev);
+                    }
                     break;
                 case Series when ev.EventType is EventType.Update:
                     _logger.LogInformation("Series update: {0}", ev.Item.Name);
@@ -165,15 +163,19 @@ public class LibraryManagerEventsHelper : IDisposable
                     break;
                 case Season when ev.EventType is EventType.Add:
                     _logger.LogInformation("Season add: {0}", ev.Item.Name);
-                    queuedSeasonAdds.Add(ev);
+                    _pendingAddEventCache.Set<LibraryEvent>(ev.Item.Id, ev, _expiredOption);
                     break;
                 case Season when ev.EventType is EventType.Update:
                     _logger.LogInformation("Season update: {0}", ev.Item.Name);
-                    queuedSeasonUpdates.Add(ev);
-                    break;
-                case Episode when ev.EventType is EventType.Add:
-                    _logger.LogInformation("Episode add: {0}", ev.Item.Name);
-                    queuedEpisodeAdds.Add(ev);
+                    if (_pendingAddEventCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addSeasonEv))
+                    {
+                        queuedSeasonAdds.Add(addSeasonEv);
+                        _pendingAddEventCache.Remove(ev.Item.Id);
+                    }
+                    else
+                    {
+                        queuedSeasonUpdates.Add(ev);
+                    }
                     break;
                 case Episode when ev.EventType is EventType.Update:
                     _logger.LogInformation("Episode update: {0}", ev.Item.Name);
@@ -614,13 +616,13 @@ public class LibraryManagerEventsHelper : IDisposable
                     if (indexNumber <= 0)
                     {
                         // TODO: 通过Anitomy检测名称中的集号
-                        _logger.LogInformation("匹配失败，缺少集号. [{0}]{1}}", season.Name, episode.Name);
+                        _logger.LogInformation("匹配失败，缺少集号. [{0}]{1}", season.Name, episode.Name);
                         continue;
                     }
 
                     if (indexNumber > seasonData.Episodes.Length)
                     {
-                        _logger.LogInformation("匹配失败，集号过大. [{0}]{1}} indexNumber: {2}", season.Name, episode.Name, indexNumber);
+                        _logger.LogInformation("匹配失败，集号超过b站集数，可能集号错误. [{0}]{1} indexNumber: {2}", season.Name, episode.Name, indexNumber);
                         continue;
                     }
 
