@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Jellyfin.Plugin.Danmu.Core
+namespace Jellyfin.Plugin.Danmu.Core.Extensions
 {
     public static class ListExtension
     {

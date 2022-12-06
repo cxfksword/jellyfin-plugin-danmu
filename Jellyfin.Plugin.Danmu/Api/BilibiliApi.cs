@@ -22,7 +22,6 @@ using Jellyfin.Plugin.Danmu.Api.Http;
 using System.Web;
 using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 using Microsoft.Extensions.Caching.Memory;
-using Jellyfin.Plugin.Danmu.Providers;
 
 namespace Jellyfin.Plugin.Danmu.Api
 {

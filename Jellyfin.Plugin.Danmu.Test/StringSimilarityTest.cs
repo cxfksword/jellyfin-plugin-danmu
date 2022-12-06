@@ -1,5 +1,6 @@
 
 using Jellyfin.Plugin.Danmu.Core;
+using Jellyfin.Plugin.Danmu.Core.Extensions;
 
 namespace Jellyfin.Plugin.Danmu.Test
 {

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Danmu.Api;
 using Jellyfin.Plugin.Danmu.Model;
-using Jellyfin.Plugin.Danmu.Providers;
+using Jellyfin.Plugin.Danmu.Scrapers;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
@@ -22,27 +22,73 @@ namespace Jellyfin.Plugin.Danmu.Test
     [TestClass]
     public class LibraryManagerEventsHelperTest
     {
-        [TestMethod]
-        public void TestUpdateMovie()
-        {
-            var loggerFactory = LoggerFactory.Create(builder =>
-                builder.AddSimpleConsole(options =>
-                {
-                    options.IncludeScopes = true;
-                    options.SingleLine = true;
-                    options.TimestampFormat = "hh:mm:ss ";
-                }));
-            var _bilibiliApi = new BilibiliApi(loggerFactory);
+        ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
+              builder.AddSimpleConsole(options =>
+              {
+                  options.IncludeScopes = true;
+                  options.SingleLine = true;
+                  options.TimestampFormat = "hh:mm:ss ";
+              }));
 
-            var fileSystemStub = new Mock<IFileSystem>();
+        [TestMethod]
+        public void TestAddMovie()
+        {
+
+            var _bilibiliApi = new BilibiliApi(loggerFactory);
+            var scraperFactory = new ScraperFactory(loggerFactory, _bilibiliApi);
+
+            var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
+
             var directoryServiceStub = new Mock<IDirectoryService>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, _bilibiliApi, fileSystemStub.Object);
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperFactory);
 
             var item = new Movie
             {
-                Name = "机器人总动员"
+                Name = "你的名字"
             };
+
+            var list = new List<LibraryEvent>();
+            list.Add(new LibraryEvent { Item = item, EventType = EventType.Add });
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await libraryManagerEventsHelper.ProcessQueuedMovieEvents(list, EventType.Add);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+
+        }
+
+        [TestMethod]
+        public void TestUpdateMovie()
+        {
+
+            var _bilibiliApi = new BilibiliApi(loggerFactory);
+            var scraperFactory = new ScraperFactory(loggerFactory, _bilibiliApi);
+
+            var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
+            fileSystemStub.Setup(x => x.Exists(It.IsAny<string>())).Returns(true);
+            fileSystemStub.Setup(x => x.GetLastWriteTime(It.IsAny<string>())).Returns(DateTime.Now.AddDays(-1));
+            fileSystemStub.Setup(x => x.WriteAllBytesAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()));
+            var mediaSourceManagerStub = new Mock<IMediaSourceManager>();
+            mediaSourceManagerStub.Setup(x => x.GetPathProtocol(It.IsAny<string>())).Returns(MediaBrowser.Model.MediaInfo.MediaProtocol.File);
+            var directoryServiceStub = new Mock<IDirectoryService>();
+            var libraryManagerStub = new Mock<ILibraryManager>();
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperFactory);
+
+            var item = new Movie
+            {
+                Name = "四海",
+                ProviderIds = new Dictionary<string, string>() { { "BilibiliID", "BV1Sx411c7wA" } },
+                Path = "/tmp/test.mp4",
+            };
+            Movie.MediaSourceManager = mediaSourceManagerStub.Object;
 
             var list = new List<LibraryEvent>();
             list.Add(new LibraryEvent { Item = item, EventType = EventType.Update });
@@ -62,25 +108,53 @@ namespace Jellyfin.Plugin.Danmu.Test
         }
 
         [TestMethod]
-        public void TestUpdateShow()
+        public void TestAddSeason()
         {
-            var loggerFactory = LoggerFactory.Create(builder =>
-                builder.AddSimpleConsole(options =>
-                {
-                    options.IncludeScopes = true;
-                    options.SingleLine = true;
-                    options.TimestampFormat = "hh:mm:ss ";
-                }));
             var _bilibiliApi = new BilibiliApi(loggerFactory);
+            var scraperFactory = new ScraperFactory(loggerFactory, _bilibiliApi);
 
-            var fileSystemStub = new Mock<IFileSystem>();
+            var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, _bilibiliApi, fileSystemStub.Object);
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperFactory);
 
-            var item = new Series
+            var item = new Season
             {
                 Name = "奔跑吧兄弟"
+            };
+
+            var list = new List<LibraryEvent>();
+            list.Add(new LibraryEvent { Item = item, EventType = EventType.Add });
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await libraryManagerEventsHelper.ProcessQueuedSeasonEvents(list, EventType.Add);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+
+        }
+
+        [TestMethod]
+        public void TestUpdateSeason()
+        {
+            var _bilibiliApi = new BilibiliApi(loggerFactory);
+            var scraperFactory = new ScraperFactory(loggerFactory, _bilibiliApi);
+
+            var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
+            var directoryServiceStub = new Mock<IDirectoryService>();
+            var libraryManagerStub = new Mock<ILibraryManager>();
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperFactory);
+
+            var item = new Season
+            {
+                Name = "奔跑吧兄弟",
+                ProviderIds = new Dictionary<string, string>() { { "BilibiliID", "33930" } }
             };
 
             var list = new List<LibraryEvent>();
@@ -90,7 +164,7 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    await libraryManagerEventsHelper.ProcessQueuedShowEvents(list, EventType.Update);
+                    await libraryManagerEventsHelper.ProcessQueuedSeasonEvents(list, EventType.Update);
                 }
                 catch (Exception ex)
                 {

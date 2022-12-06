@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using StringMetric;
 
-namespace Jellyfin.Plugin.Danmu.Core
+namespace Jellyfin.Plugin.Danmu.Core.Extensions
 {
     public static class StringExtension
     {

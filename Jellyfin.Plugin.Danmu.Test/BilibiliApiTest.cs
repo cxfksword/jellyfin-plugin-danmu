@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Danmu.Api;
 using Jellyfin.Plugin.Danmu.Model;
-using Jellyfin.Plugin.Danmu.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Danmu.Test

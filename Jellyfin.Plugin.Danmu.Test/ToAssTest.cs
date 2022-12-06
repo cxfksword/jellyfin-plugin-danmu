@@ -24,7 +24,7 @@ namespace Jellyfin.Plugin.Danmu.Test
                 <d p=""55.38000,1,25,16777215,1660413677,0,9c28a5a9,1118390004910248704,11"">这个op看得我好迷茫</d></i>
             ";
 
-            var ass = Bilibili.GetInstance().ToASS(xml, new Config());
+            var ass = Danmaku2Ass.Bilibili.GetInstance().ToASS(Encoding.UTF8.GetBytes(xml), new Config());
             Console.WriteLine(ass);
             Assert.IsNotNull(ass);
 
@@ -33,11 +33,11 @@ namespace Jellyfin.Plugin.Danmu.Test
         [TestMethod]
         public void TestToAssFile()
         {
-            var xml = File.ReadAllText(@"F:\ddd\11111.xml");
+            var xml = File.ReadAllBytes(@"F:\ddd\11111.xml");
 
 
-             Bilibili.GetInstance().Create(xml, new Config(), @"F:\ddd\11111.ass");
- 
+            Danmaku2Ass.Bilibili.GetInstance().Create(xml, new Config(), @"F:\ddd\11111.ass");
+
         }
     }
 }

@@ -17,7 +17,6 @@ using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Controller.Providers;
-using Jellyfin.Plugin.Danmu.Providers;
 
 namespace Jellyfin.Plugin.Danmu
 {

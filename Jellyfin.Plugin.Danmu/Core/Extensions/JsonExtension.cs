@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Jellyfin.Plugin.Danmu.Core
+namespace Jellyfin.Plugin.Danmu.Core.Extensions
 {
     public static class JsonExtension
     {
