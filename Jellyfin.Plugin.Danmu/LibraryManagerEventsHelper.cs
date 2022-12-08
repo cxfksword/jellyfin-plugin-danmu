@@ -11,8 +11,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.Danmu.Api;
-using Jellyfin.Plugin.Danmu.Api.Entity;
 using Jellyfin.Plugin.Danmu.Core;
 using Jellyfin.Plugin.Danmu.Model;
 using MediaBrowser.Common.Extensions;
@@ -29,6 +27,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
 using Jellyfin.Plugin.Danmu.Scrapers;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
+using Jellyfin.Plugin.Danmu.Configuration;
 
 namespace Jellyfin.Plugin.Danmu;
 
@@ -42,7 +41,15 @@ public class LibraryManagerEventsHelper : IDisposable
     private readonly ILogger<LibraryManagerEventsHelper> _logger;
     private readonly Jellyfin.Plugin.Danmu.Core.IFileSystem _fileSystem;
     private Timer _queueTimer;
-    private readonly ScraperFactory _scraperFactory;
+    private readonly ScraperManager _scraperManager;
+
+    public PluginConfiguration Config
+    {
+        get
+        {
+            return Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
+        }
+    }
 
 
     /// <summary>
@@ -52,7 +59,7 @@ public class LibraryManagerEventsHelper : IDisposable
     /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
     /// <param name="api">The <see cref="BilibiliApi"/>.</param>
     /// <param name="fileSystem">Instance of the <see cref="IFileSystem"/> interface.</param>
-    public LibraryManagerEventsHelper(ILibraryManager libraryManager, ILoggerFactory loggerFactory, Jellyfin.Plugin.Danmu.Core.IFileSystem fileSystem, ScraperFactory scraperFactory)
+    public LibraryManagerEventsHelper(ILibraryManager libraryManager, ILoggerFactory loggerFactory, Jellyfin.Plugin.Danmu.Core.IFileSystem fileSystem, ScraperManager scraperManager)
     {
         _queuedEvents = new List<LibraryEvent>();
         _pendingAddEventCache = new MemoryCache(new MemoryCacheOptions());
@@ -60,7 +67,7 @@ public class LibraryManagerEventsHelper : IDisposable
         _libraryManager = libraryManager;
         _logger = loggerFactory.CreateLogger<LibraryManagerEventsHelper>();
         _fileSystem = fileSystem;
-        _scraperFactory = scraperFactory;
+        _scraperManager = scraperManager;
     }
 
     /// <summary>
@@ -228,7 +235,7 @@ public class LibraryManagerEventsHelper : IDisposable
             var queueUpdateMeta = new List<BaseItem>();
             foreach (var item in movies)
             {
-                foreach (var scraper in _scraperFactory.All())
+                foreach (var scraper in _scraperManager.All())
                 {
                     try
                     {
@@ -260,11 +267,11 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     catch (FrequentlyRequestException ex)
                     {
-                        _logger.LogError(ex, "api接口触发风控，中止执行，请稍候再试.");
+                        _logger.LogError(ex, "[{0}]api接口触发风控，中止执行，请稍候再试.", scraper.Name);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Exception handled processing queued movie events");
+                        _logger.LogError(ex, "[{0}]Exception handled processing queued movie events", scraper.Name);
                     }
                 }
             }
@@ -278,7 +285,7 @@ public class LibraryManagerEventsHelper : IDisposable
         {
             foreach (var item in movies)
             {
-                foreach (var scraper in _scraperFactory.All())
+                foreach (var scraper in _scraperManager.All())
                 {
                     try
                     {
@@ -291,6 +298,8 @@ public class LibraryManagerEventsHelper : IDisposable
                                 // 下载弹幕xml文件
                                 await this.DownloadDanmu(scraper, item, episode.CommentId).ConfigureAwait(false);
                             }
+
+                            // TODO：兼容支持用户设置seasonId？？？
                             break;
                         }
                     }
@@ -383,7 +392,7 @@ public class LibraryManagerEventsHelper : IDisposable
                 }
 
                 var series = season.GetParent();
-                foreach (var scraper in _scraperFactory.All())
+                foreach (var scraper in _scraperManager.All())
                 {
                     try
                     {
@@ -432,7 +441,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     continue;
                 }
 
-                foreach (var scraper in _scraperFactory.All())
+                foreach (var scraper in _scraperManager.All())
                 {
                     try
                     {
@@ -533,7 +542,7 @@ public class LibraryManagerEventsHelper : IDisposable
         {
             foreach (var item in episodes)
             {
-                foreach (var scraper in _scraperFactory.All())
+                foreach (var scraper in _scraperManager.All())
                 {
                     try
                     {
@@ -590,7 +599,7 @@ public class LibraryManagerEventsHelper : IDisposable
         _logger.LogInformation("更新epid到元数据完成。item数：{0}", queue.Count);
     }
 
-    private async Task DownloadDanmu(AbstractScraper scraper, BaseItem item, string commentId)
+    public async Task DownloadDanmu(AbstractScraper scraper, BaseItem item, string commentId)
     {
         // 下载弹幕xml文件
         try
@@ -611,7 +620,7 @@ public class LibraryManagerEventsHelper : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception handled download danmu file");
+            _logger.LogError(ex, "[{0}]Exception handled download danmu file. name={1}", scraper.Name, item.Name);
         }
     }
 
@@ -634,30 +643,29 @@ public class LibraryManagerEventsHelper : IDisposable
         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
         await this._fileSystem.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
 
-        var config = Plugin.Instance.Configuration;
-        if (config.ToAss && bytes.Length > 0)
+        if (this.Config.ToAss && bytes.Length > 0)
         {
             var assConfig = new Danmaku2Ass.Config();
             assConfig.Title = item.Name;
-            if (!string.IsNullOrEmpty(config.AssFont.Trim()))
+            if (!string.IsNullOrEmpty(this.Config.AssFont.Trim()))
             {
-                assConfig.FontName = config.AssFont;
+                assConfig.FontName = this.Config.AssFont;
             }
-            if (!string.IsNullOrEmpty(config.AssFontSize.Trim()))
+            if (!string.IsNullOrEmpty(this.Config.AssFontSize.Trim()))
             {
-                assConfig.BaseFontSize = config.AssFontSize.Trim().ToInt();
+                assConfig.BaseFontSize = this.Config.AssFontSize.Trim().ToInt();
             }
-            if (!string.IsNullOrEmpty(config.AssTextOpacity.Trim()))
+            if (!string.IsNullOrEmpty(this.Config.AssTextOpacity.Trim()))
             {
-                assConfig.TextOpacity = config.AssTextOpacity.Trim().ToFloat();
+                assConfig.TextOpacity = this.Config.AssTextOpacity.Trim().ToFloat();
             }
-            if (!string.IsNullOrEmpty(config.AssLineCount.Trim()))
+            if (!string.IsNullOrEmpty(this.Config.AssLineCount.Trim()))
             {
-                assConfig.LineCount = config.AssLineCount.Trim().ToInt();
+                assConfig.LineCount = this.Config.AssLineCount.Trim().ToInt();
             }
-            if (!string.IsNullOrEmpty(config.AssSpeed.Trim()))
+            if (!string.IsNullOrEmpty(this.Config.AssSpeed.Trim()))
             {
-                assConfig.TuneDuration = config.AssSpeed.Trim().ToInt() - 8;
+                assConfig.TuneDuration = this.Config.AssSpeed.Trim().ToInt() - 8;
             }
 
             var assPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".danmu.ass");

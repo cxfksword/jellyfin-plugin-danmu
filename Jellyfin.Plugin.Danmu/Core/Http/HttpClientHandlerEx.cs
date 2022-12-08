@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Jellyfin.Plugin.Danmu.Api.Http
+namespace Jellyfin.Plugin.Danmu.Core.Http
 {
     public class HttpClientHandlerEx : HttpClientHandler
     {

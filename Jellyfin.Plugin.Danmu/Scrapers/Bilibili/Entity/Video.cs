@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace Jellyfin.Plugin.Danmu.Api.Entity
+namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity
 {
     public class Video
     {

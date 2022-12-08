@@ -7,8 +7,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
-using Jellyfin.Plugin.Danmu.Api;
-using Jellyfin.Plugin.Danmu.Core;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using Jellyfin.Plugin.Danmu.Model;
 using Jellyfin.Plugin.Danmu.Scrapers;
@@ -25,7 +23,7 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
     public class ScanLibraryTask : IScheduledTask
     {
         private readonly ILibraryManager _libraryManager;
-        private readonly ScraperFactory _scraperFactory;
+        private readonly ScraperManager _scraperManager;
         private readonly ILogger _logger;
         private readonly LibraryManagerEventsHelper _libraryManagerEventsHelper;
 
@@ -42,13 +40,12 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
         /// Initializes a new instance of the <see cref="ScanLibraryTask"/> class.
         /// </summary>
         /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
-        /// <param name="api">Instance of the <see cref="BilibiliApi"/> interface.</param>
         /// <param name="libraryManager">Instance of the <see cref="ILibraryManager"/> interface.</param>
-        public ScanLibraryTask(ILoggerFactory loggerFactory, ILibraryManager libraryManager, LibraryManagerEventsHelper libraryManagerEventsHelper, ScraperFactory scraperFactory)
+        public ScanLibraryTask(ILoggerFactory loggerFactory, ILibraryManager libraryManager, LibraryManagerEventsHelper libraryManagerEventsHelper, ScraperManager scraperManager)
         {
             _logger = loggerFactory.CreateLogger<ScanLibraryTask>();
             _libraryManager = libraryManager;
-            _scraperFactory = scraperFactory;
+            _scraperManager = scraperManager;
             _libraryManagerEventsHelper = libraryManagerEventsHelper;
         }
 
@@ -63,7 +60,7 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
             progress?.Report(0);
 
-            var scrapers = this._scraperFactory.All();
+            var scrapers = this._scraperManager.All();
             var items = _libraryManager.GetItemList(new InternalItemsQuery
             {
                 // MediaTypes = new[] { MediaType.Video },
@@ -86,6 +83,7 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
                     // 有epid的忽略处理（不需要再匹配）
                     if (this.HasAnyScraperProviderId(scrapers, item))
                     {
+                        successCount++;
                         continue;
                     }
 
@@ -129,7 +127,6 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
                 var providerVal = item.GetProviderId(scraper.ProviderId);
                 if (!string.IsNullOrEmpty(providerVal))
                 {
-                    _logger.LogInformation(scraper.Name + " -> " + providerVal);
                     return true;
                 }
             }

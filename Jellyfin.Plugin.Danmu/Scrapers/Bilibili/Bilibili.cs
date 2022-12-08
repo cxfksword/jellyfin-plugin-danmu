@@ -4,8 +4,6 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.Danmu.Api;
-using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
@@ -22,11 +20,15 @@ public class Bilibili : AbstractScraper
 
     private readonly BilibiliApi _api;
 
-    public Bilibili(ILoggerFactory logManager, BilibiliApi api)
+    public Bilibili(ILoggerFactory logManager)
         : base(logManager.CreateLogger<Bilibili>())
     {
-        _api = api;
+        _api = new BilibiliApi(logManager);
     }
+
+    public override int DefaultOrder => 1;
+
+    public override bool DefaultEnable => true;
 
     public override string Name => "bilibili";
 

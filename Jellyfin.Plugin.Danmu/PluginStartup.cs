@@ -9,7 +9,6 @@ using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller.Session;
 using Microsoft.Extensions.Logging;
-using Jellyfin.Plugin.Danmu.Api;
 using MediaBrowser.Common.Net;
 using Jellyfin.Plugin.Danmu.Model;
 using MediaBrowser.Model.Entities;

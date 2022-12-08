@@ -4,7 +4,7 @@
 [![Danmu](https://img.shields.io/badge/jellyfin-10.8.x-lightgrey)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
 [![Danmu](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
 
-jellyfin的b站弹幕自动下载插件，会匹配b站番剧和电影视频，自动下载对应弹幕，并定时更新。
+jellyfin的弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play。
 
 支持功能：
 
@@ -76,7 +76,7 @@ $ dotnet publish Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
 
 2. Create a folder, like `Danmu` and copy  `bin/Release/Jellyfin.Plugin.Danmu.dll` into it
 
-3. Move folder `Danmu` to jellyfin `data/plugin` folder
+3. Move folder `Danmu` to jellyfin `data/plugins` folder
 
 ## Thanks
 

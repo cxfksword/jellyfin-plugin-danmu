@@ -5,6 +5,8 @@ using System.Xml.Serialization;
 using System.IO;
 using System.Xml.Schema;
 using System.Xml;
+using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Entity;
 
@@ -85,13 +87,13 @@ public class ScraperDanmakuText : IXmlSerializable
     public long Id { get; set; }          //弹幕dmID
     public int Progress { get; set; }     //出现时间(单位ms)
     public int Mode { get; set; }         //弹幕类型 1 2 3:普通弹幕 4:底部弹幕 5:顶部弹幕 6:逆向弹幕 7:高级弹幕 8:代码弹幕 9:BAS弹幕(pool必须为2)
-    public int Fontsize { get; set; }     //文字大小
+    public int Fontsize { get; set; } = 25;    //文字大小
     public uint Color { get; set; }       //弹幕颜色
     public string MidHash { get; set; }   //发送者UID的HASH
     public string Content { get; set; }   //弹幕内容
     public long Ctime { get; set; }       //发送时间
-    public int Weight { get; set; }       //权重
-                                          //public string Action { get; set; }    //动作？
+    public int Weight { get; set; } = 1;       //权重
+                                               //public string Action { get; set; }    //动作？
     public int Pool { get; set; }         //弹幕池
 
     public XmlSchema? GetSchema()
@@ -106,12 +108,39 @@ public class ScraperDanmakuText : IXmlSerializable
 
     public void WriteXml(XmlWriter writer)
     {
+
         // bilibili弹幕格式：
         // <d p="944.95400,5,25,16707842,1657598634,0,ece5c9d1,1094775706690331648,11">今天的风儿甚是喧嚣</d>
         // time, mode, size, color, create, pool, sender, id, weight(屏蔽等级)
         var time = (Convert.ToDouble(Progress) / 1000).ToString("F05");
         var attr = string.Format("{0},{1},{2},{3},{4},{5},{6},{7},{8}", time, Mode, Fontsize, Color, Ctime, Pool, MidHash, Id, Weight);
         writer.WriteAttributeString("p", attr);
-        writer.WriteString(Content);
+        if (IsValidXmlString(Content))
+        {
+            writer.WriteString(Content);
+        }
+        else
+        {
+            writer.WriteString(RemoveInvalidXmlChars(Content));
+        }
+    }
+
+    private string RemoveInvalidXmlChars(string text)
+    {
+        var validXmlChars = text.Where(ch => XmlConvert.IsXmlChar(ch)).ToArray();
+        return new string(validXmlChars);
+    }
+
+    private bool IsValidXmlString(string text)
+    {
+        try
+        {
+            XmlConvert.VerifyXmlChars(text);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

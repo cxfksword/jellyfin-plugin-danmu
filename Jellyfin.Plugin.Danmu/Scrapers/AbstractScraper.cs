@@ -9,6 +9,10 @@ public abstract class AbstractScraper
 {
     protected ILogger log;
 
+    public virtual int DefaultOrder => 999;
+
+    public virtual bool DefaultEnable => false;
+
     public abstract string Name { get; }
 
     /// <summary>
