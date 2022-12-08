@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Controller.Providers;
-using Jellyfin.Plugin.Danmu.Providers;
 using System.Runtime.InteropServices;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Entities.Movies;

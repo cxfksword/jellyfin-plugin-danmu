@@ -1,46 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Template</title>
 </head>
+
 <body>
-    <div id="TemplateConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+    <div id="TemplateConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
+        data-require="emby-input,emby-button,emby-select,emby-checkbox">
         <div data-role="content">
             <div class="content-primary">
+                <div class="verticalSection verticalSection">
+                    <div class="sectionTitleContainer flex align-items-center">
+                        <h2 class="sectionTitle">Danmu 配置</h2><span id="current_version" name="current_version"
+                            is="emby-linkbutton" class="emby-button"></span>
+                        <a is="emby-linkbutton" class="raised button-alt headerHelpButton emby-button" target="_blank"
+                            href="https://github.com/cxfksword/jellyfin-plugin-danmu">源码</a>
+                    </div>
+                </div>
+
+
                 <form id="TemplateConfigForm">
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input id="ToAss" name="ToAss" type="checkbox" is="emby-checkbox" />
-                            <span>同时生成ASS格式弹幕</span>
-                        </label>
-                        <div class="fieldDescription">勾选后，会在视频目录下生成ass格式的弹幕，命名格式：[视频名].danmu.ass</div>
-                    </div>
-                    <div class="inputContainer ass">
-                        <label class="inputLabel inputLabelUnfocused" for="AssFont">ass弹幕字体</label>
-                        <input id="AssFont" name="AssFont" type="text" is="emby-input" />
-                        <div class="fieldDescription">可为空，默认黑体.</div>
-                    </div>
-                    <div class="inputContainer ass">
-                        <label class="inputLabel inputLabelUnfocused" for="AssFontSize">ass弹幕字体大小</label>
-                        <input id="AssFontSize" name="AssFontSize" type="number" is="emby-input" min="25" />
-                        <div class="fieldDescription">可为空，默认60，可以此为基准，增大或缩小.</div>
-                    </div>
-                    <div class="inputContainer ass">
-                        <label class="inputLabel inputLabelUnfocused" for="AssTextOpacity">ass弹幕字体透明度</label>
-                        <input id="AssTextOpacity" name="AssTextOpacity" type="text" is="emby-input" />
-                        <div class="fieldDescription">可为空，默认1，表示不透明，数值在0.0~1.0之间</div>
-                    </div>
-                    <div class="inputContainer ass">
-                        <label class="inputLabel inputLabelUnfocused" for="AssLineCount">ass弹幕显示行数</label>
-                        <input id="AssLineCount" name="AssLineCount" type="number" is="emby-input" min="0" />
-                        <div class="fieldDescription">可为空，默认全屏显示，1/4屏可填5，半屏可填9</div>
-                    </div>
-                    <div class="inputContainer ass">
-                        <label class="inputLabel inputLabelUnfocused" for="AssSpeed">ass弹幕移动速度</label>
-                        <input id="AssSpeed" name="AssSpeed" type="number" is="emby-input" min="0" />
-                        <div class="fieldDescription">可为空，默认8秒</div>
-                    </div>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend>
+                            <h3>弹幕源配置</h3>
+                        </legend>
+                        <div class="checkboxList paperList checkboxList-paperList" id="Scrapers" name="Scrapers">
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend>
+                            <h3>弹弹play配置</h3>
+                        </legend>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="WithRelatedDanmu" name="WithRelatedDanmu" type="checkbox"
+                                    is="emby-checkbox" />
+                                <span>同时获取关联的第三方弹幕</span>
+                            </label>
+                            <div class="fieldDescription">勾选后，返回此弹幕库对应的所有第三方关联网址的弹幕.</div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="ChConvert">弹幕中文简繁转换</label>
+                            <input id="ChConvert" name="ChConvert" type="number" is="emby-input" />
+                            <div class="fieldDescription">中文简繁转换。0-不转换，1-转换为简体，2-转换为繁体。</div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend>
+                            <h3>生成ASS配置</h3>
+                        </legend>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="ToAss" name="ToAss" type="checkbox" is="emby-checkbox" />
+                                <span>同时生成ASS格式弹幕</span>
+                            </label>
+                            <div class="fieldDescription">勾选后，会在视频目录下生成ass格式的弹幕，命名格式：[视频名].danmu.ass</div>
+                        </div>
+                        <div class="inputContainer ass">
+                            <label class="inputLabel inputLabelUnfocused" for="AssFont">ass弹幕字体</label>
+                            <input id="AssFont" name="AssFont" type="text" is="emby-input" />
+                            <div class="fieldDescription">可为空，默认黑体.</div>
+                        </div>
+                        <div class="inputContainer ass">
+                            <label class="inputLabel inputLabelUnfocused" for="AssFontSize">ass弹幕字体大小</label>
+                            <input id="AssFontSize" name="AssFontSize" type="number" is="emby-input" min="25" />
+                            <div class="fieldDescription">可为空，默认60，可以此为基准，增大或缩小.</div>
+                        </div>
+                        <div class="inputContainer ass">
+                            <label class="inputLabel inputLabelUnfocused" for="AssTextOpacity">ass弹幕字体透明度</label>
+                            <input id="AssTextOpacity" name="AssTextOpacity" type="text" is="emby-input" />
+                            <div class="fieldDescription">可为空，默认1，表示不透明，数值在0.0~1.0之间</div>
+                        </div>
+                        <div class="inputContainer ass">
+                            <label class="inputLabel inputLabelUnfocused" for="AssLineCount">ass弹幕显示行数</label>
+                            <input id="AssLineCount" name="AssLineCount" type="number" is="emby-input" min="0" />
+                            <div class="fieldDescription">可为空，默认全屏显示，1/4屏可填5，半屏可填9</div>
+                        </div>
+                        <div class="inputContainer ass">
+                            <label class="inputLabel inputLabelUnfocused" for="AssSpeed">ass弹幕移动速度</label>
+                            <input id="AssSpeed" name="AssSpeed" type="number" is="emby-input" min="0" />
+                            <div class="fieldDescription">可为空，默认8秒</div>
+                        </div>
+                    </fieldset>
+
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -55,38 +104,109 @@
             };
 
             document.querySelector('#TemplateConfigPage')
-                .addEventListener('pageshow', function() {
+                .addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+                        $('#current_version').text("v" + config.Version);
+
                         document.querySelector('#ToAss').checked = config.ToAss;
                         document.querySelector('#AssFont').value = config.AssFont;
                         document.querySelector('#AssFontSize').value = config.AssFontSize;
                         document.querySelector('#AssTextOpacity').value = config.AssTextOpacity;
                         document.querySelector('#AssLineCount').value = config.AssLineCount;
                         document.querySelector('#AssSpeed').value = config.AssSpeed;
+
+                        document.querySelector('#WithRelatedDanmu').checked = config.Dandan.WithRelatedDanmu;
+                        document.querySelector('#ChConvert').value = config.Dandan.ChConvert;
+
+
+                        var html = '';
+                        config.Scrapers.forEach(function (e) {
+                            html += '<div class="listItem listItem-border sortableOption sortItem" data-sort="' + e + '">';
+                            html += '    <label class="listItemCheckboxContainer emby-checkbox-label">';
+                            html += '        <input type="checkbox" is="emby-checkbox" class="chkEnableCodec emby-checkbox emby-checkbox-focusring" name="ScraperItem" ' + (e.Enable ? 'checked' : '') + ' value="' + e.Name + '" >';
+                            html += '        <span class="checkboxLabel" style="width:200px" >' + e.Name + '</span>';
+                            html += '    </label>';
+                            html += '    <div class="listItemBody two-line listItemBodyText"></div>';
+                            html += '    <button type="button" is="paper-icon-button-light" title="上" class="btnSortable paper-icon-button-light btnSortableMoveUp btnViewItemUp" data-pluginindex="2"><span class="material-icons keyboard_arrow_up"></span></button>';
+                            html += '    <button type="button" is="paper-icon-button-light" title="下" class="btnSortable paper-icon-button-light btnSortableMoveDown btnViewItemDown" data-pluginindex="0"><span class="material-icons keyboard_arrow_down"></span></button>';
+                            html += '</div>';
+                            html += '\r\n';
+                        });
+
+                        $('#Scrapers').empty().append(html);
+                        setButtons();
+
                         Dashboard.hideLoadingMsg();
                     });
                 });
 
             document.querySelector('#TemplateConfigForm')
-                .addEventListener('submit', function(e) {
-                Dashboard.showLoadingMsg();
-                ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
-                    config.ToAss = document.querySelector('#ToAss').checked;
-                    config.AssFont = document.querySelector('#AssFont').value;
-                    config.AssFontSize = document.querySelector('#AssFontSize').value;
-                    config.AssTextOpacity = document.querySelector('#AssTextOpacity').value;
-                    config.AssLineCount = document.querySelector('#AssLineCount').value;
-                    config.AssSpeed = document.querySelector('#AssSpeed').value;
-                    ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
-                        Dashboard.processPluginConfigurationUpdateResult(result);
+                .addEventListener('submit', function (e) {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(TemplateConfig.pluginUniqueId).then(function (config) {
+                        config.ToAss = document.querySelector('#ToAss').checked;
+                        config.AssFont = document.querySelector('#AssFont').value;
+                        config.AssFontSize = document.querySelector('#AssFontSize').value;
+                        config.AssTextOpacity = document.querySelector('#AssTextOpacity').value;
+                        config.AssLineCount = document.querySelector('#AssLineCount').value;
+                        config.AssSpeed = document.querySelector('#AssSpeed').value;
+
+                        var scrapers = [];
+                        $('input[name=ScraperItem]').each(function (index) {
+                            var scraper = new Object();
+                            scraper.Name = $(this).prop('value');
+                            scraper.Enable = $(this).prop('checked');
+                            scrapers.push(scraper);
+                        });
+                        config.Scrapers = scrapers;
+
+                        var dandan = new Object();
+                        dandan.WithRelatedDanmu = document.querySelector('#WithRelatedDanmu').checked;
+                        dandan.ChConvert = document.querySelector('#ChConvert').value;
+                        config.Dandan = dandan;
+
+                        ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
+                            Dashboard.processPluginConfigurationUpdateResult(result);
+                        });
                     });
+
+                    e.preventDefault();
+                    return false;
                 });
 
-                e.preventDefault();
-                return false;
+
+            function setButtons() {
+                $('.sortItem button').css('visibility', 'visible')
+                $('.sortItem:first-child button.btnViewItemUp').css('visibility', 'hidden')
+                $('.sortItem:last-child button.btnViewItemDown').css('visibility', 'hidden')
+                $(".sortItem").addClass("listItem-border");
+                // $(".sortItem:last-child").removeClass("listItem-border");
+                var i = 0;
+                $('.sortItem').each(function () {
+                    $(this).attr("data-sort", i);
+                    i++;
+                });
+            }
+
+            $(document).ready(function () {
+                setButtons();
+                $(document).on('click', '.btnViewItemDown', function (e) {
+                    var cCard = $(this).closest('.sortItem');
+                    var tCard = cCard.next('.sortItem');
+                    cCard.insertAfter(tCard);
+                    setButtons();
+                });
+
+                $(document).on('click', '.btnViewItemUp', function (e) {
+                    var cCard = $(this).closest('.sortItem');
+                    var tCard = cCard.prev('.sortItem');
+                    cCard.insertBefore(tCard);
+                    setButtons();
+                });
             });
         </script>
     </div>
 </body>
+
 </html>

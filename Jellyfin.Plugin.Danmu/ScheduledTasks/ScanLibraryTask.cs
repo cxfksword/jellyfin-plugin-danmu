@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
-using Jellyfin.Plugin.Danmu.Api;
-using Jellyfin.Plugin.Danmu.Core;
+using Jellyfin.Plugin.Danmu.Core.Extensions;
 using Jellyfin.Plugin.Danmu.Model;
-using Jellyfin.Plugin.Danmu.Providers;
+using Jellyfin.Plugin.Danmu.Scrapers;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -23,7 +23,7 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
     public class ScanLibraryTask : IScheduledTask
     {
         private readonly ILibraryManager _libraryManager;
-        private readonly BilibiliApi _api;
+        private readonly ScraperManager _scraperManager;
         private readonly ILogger _logger;
         private readonly LibraryManagerEventsHelper _libraryManagerEventsHelper;
 
@@ -32,7 +32,7 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
         public string Name => "扫描媒体库匹配弹幕";
 
-        public string Description => $"扫描缺少弹幕的视频，匹配b站元数据后，下载对应弹幕文件。";
+        public string Description => $"扫描缺少弹幕的视频，搜索匹配后，再下载对应弹幕文件。";
 
         public string Category => Plugin.Instance.Name;
 
@@ -40,13 +40,12 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
         /// Initializes a new instance of the <see cref="ScanLibraryTask"/> class.
         /// </summary>
         /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
-        /// <param name="api">Instance of the <see cref="BilibiliApi"/> interface.</param>
         /// <param name="libraryManager">Instance of the <see cref="ILibraryManager"/> interface.</param>
-        public ScanLibraryTask(ILoggerFactory loggerFactory, BilibiliApi api, ILibraryManager libraryManager, LibraryManagerEventsHelper libraryManagerEventsHelper)
+        public ScanLibraryTask(ILoggerFactory loggerFactory, ILibraryManager libraryManager, LibraryManagerEventsHelper libraryManagerEventsHelper, ScraperManager scraperManager)
         {
-            _logger = loggerFactory.CreateLogger<RefreshDanmuTask>();
+            _logger = loggerFactory.CreateLogger<ScanLibraryTask>();
             _libraryManager = libraryManager;
-            _api = api;
+            _scraperManager = scraperManager;
             _libraryManagerEventsHelper = libraryManagerEventsHelper;
         }
 
@@ -61,16 +60,19 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
             progress?.Report(0);
 
+            var scrapers = this._scraperManager.All();
             var items = _libraryManager.GetItemList(new InternalItemsQuery
             {
                 // MediaTypes = new[] { MediaType.Video },
-                ExcludeProviderIds = new Dictionary<string, string> { { Plugin.ProviderId, string.Empty } },
+                ExcludeProviderIds = this.GetScraperFilter(scrapers),
                 IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Season }
             }).ToList();
 
             _logger.LogInformation("Scan danmu for {0} videos.", items.Count);
 
 
+            var successCount = 0;
+            var failCount = 0;
             foreach (var (item, idx) in items.WithIndex())
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -79,9 +81,9 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
                 try
                 {
                     // 有epid的忽略处理（不需要再匹配）
-                    var providerVal = item.GetProviderId(Plugin.ProviderId) ?? string.Empty;
-                    if (!string.IsNullOrEmpty(providerVal))
+                    if (this.HasAnyScraperProviderId(scrapers, item))
                     {
+                        successCount++;
                         continue;
                     }
 
@@ -105,17 +107,42 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
                             //     await _libraryManagerEventsHelper.ProcessQueuedEpisodeEvents(new List<LibraryEvent>() { new LibraryEvent { Item = item, EventType = EventType.Add } }, EventType.Add).ConfigureAwait(false);
                             //     break;
                     }
+                    successCount++;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Scan danmu failed for video {0}: {1}", item.Name, ex.Message);
+                    failCount++;
                 }
-
-                // 延迟200毫秒，避免搜索请求太频繁
-                Thread.Sleep(200);
             }
 
             progress?.Report(100);
+            _logger.LogInformation("Exectue task completed. success: {0} fail: {1}", successCount, failCount);
+        }
+
+        private bool HasAnyScraperProviderId(ReadOnlyCollection<AbstractScraper> scrapers, BaseItem item)
+        {
+            foreach (var scraper in scrapers)
+            {
+                var providerVal = item.GetProviderId(scraper.ProviderId);
+                if (!string.IsNullOrEmpty(providerVal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Dictionary<string, string> GetScraperFilter(ReadOnlyCollection<AbstractScraper> scrapers)
+        {
+            var filter = new Dictionary<string, string>();
+            foreach (var scraper in scrapers)
+            {
+                filter.Add(scraper.ProviderId, string.Empty);
+            }
+
+            return filter;
         }
     }
 }

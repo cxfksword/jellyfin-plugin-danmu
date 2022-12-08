@@ -7,10 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
-using Jellyfin.Plugin.Danmu.Api;
-using Jellyfin.Plugin.Danmu.Core;
 using Jellyfin.Plugin.Danmu.Model;
-using Jellyfin.Plugin.Danmu.Providers;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Entities.Movies;
@@ -18,13 +15,16 @@ using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.Tasks;
 using MediaBrowser.Model.Entities;
 using Microsoft.Extensions.Logging;
+using Jellyfin.Plugin.Danmu.Core.Extensions;
+using Jellyfin.Plugin.Danmu.Scrapers;
+using System.Collections.ObjectModel;
 
 namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 {
     public class RefreshDanmuTask : IScheduledTask
     {
         private readonly ILibraryManager _libraryManager;
-        private readonly BilibiliApi _api;
+        private readonly ScraperManager _scraperManager;
         private readonly ILogger _logger;
         private readonly LibraryManagerEventsHelper _libraryManagerEventsHelper;
 
@@ -33,7 +33,7 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
         public string Name => "更新弹幕文件";
 
-        public string Description => $"根据视频b站元数据下载最新的弹幕文件。";
+        public string Description => $"根据视频元数据下载最新的弹幕文件。";
 
         public string Category => Plugin.Instance.Name;
 
@@ -41,13 +41,12 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
         /// Initializes a new instance of the <see cref="RefreshDanmuTask"/> class.
         /// </summary>
         /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
-        /// <param name="api">Instance of the <see cref="BilibiliApi"/> interface.</param>
         /// <param name="libraryManager">Instance of the <see cref="ILibraryManager"/> interface.</param>
-        public RefreshDanmuTask(ILoggerFactory loggerFactory, BilibiliApi api, ILibraryManager libraryManager, LibraryManagerEventsHelper libraryManagerEventsHelper)
+        public RefreshDanmuTask(ILoggerFactory loggerFactory, ILibraryManager libraryManager, LibraryManagerEventsHelper libraryManagerEventsHelper, ScraperManager scraperManager)
         {
             _logger = loggerFactory.CreateLogger<RefreshDanmuTask>();
             _libraryManager = libraryManager;
-            _api = api;
+            _scraperManager = scraperManager;
             _libraryManagerEventsHelper = libraryManagerEventsHelper;
         }
 
@@ -67,10 +66,11 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
             progress?.Report(0);
 
+            var scrapers = this._scraperManager.All();
             var items = _libraryManager.GetItemList(new InternalItemsQuery
             {
                 // MediaTypes = new[] { MediaType.Video },
-                HasAnyProviderId = new Dictionary<string, string> { { Plugin.ProviderId, string.Empty } },
+                HasAnyProviderId = GetScraperFilter(scrapers),
                 IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Season }
             }).ToList();
 
@@ -85,10 +85,10 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
                 try
                 {
-                    // 没epid的不处理
-                    var providerVal = item.GetProviderId(Plugin.ProviderId) ?? string.Empty;
-                    if (string.IsNullOrEmpty(providerVal))
+                    // 没epid元数据的不处理
+                    if (!this.HasAnyScraperProviderId(scrapers, item))
                     {
+                        successCount++;
                         continue;
                     }
 
@@ -114,6 +114,31 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
             progress?.Report(100);
             _logger.LogInformation("Exectue task completed. success: {0} fail: {1}", successCount, failCount);
+        }
+
+        private bool HasAnyScraperProviderId(ReadOnlyCollection<AbstractScraper> scrapers, BaseItem item)
+        {
+            foreach (var scraper in scrapers)
+            {
+                var providerVal = item.GetProviderId(scraper.ProviderId);
+                if (!string.IsNullOrEmpty(providerVal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Dictionary<string, string> GetScraperFilter(ReadOnlyCollection<AbstractScraper> scrapers)
+        {
+            var filter = new Dictionary<string, string>();
+            foreach (var scraper in scrapers)
+            {
+                filter.Add(scraper.ProviderId, string.Empty);
+            }
+
+            return filter;
         }
     }
 }

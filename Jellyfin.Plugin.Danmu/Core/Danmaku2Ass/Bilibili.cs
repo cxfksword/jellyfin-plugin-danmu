@@ -1,6 +1,7 @@
 ﻿using Jellyfin.Plugin.Danmu.Core.Danmaku2Ass;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Xml;
 
@@ -128,7 +129,7 @@ namespace Danmaku2Ass
             //studio.CreateAssFile(assFile);
         }
 
-        public void Create(string xml, Config subtitleConfig, string assFile)
+        public void Create(byte[] xml, Config subtitleConfig, string assFile)
         {
             var danmakus = ParseXml(xml);
 
@@ -143,7 +144,7 @@ namespace Danmaku2Ass
             studio.CreateAssFile(assFile);
         }
 
-        public string ToASS(string xml, Config subtitleConfig)
+        public string ToASS(byte[] xml, Config subtitleConfig)
         {
             var danmakus = ParseXml(xml);
 
@@ -158,10 +159,13 @@ namespace Danmaku2Ass
             return studio.GetText();
         }
 
-        public List<Danmaku> ParseXml(string xml)
+        public List<Danmaku> ParseXml(byte[] xml)
         {
             var doc = new XmlDocument();
-            doc.LoadXml(xml);
+            using (var stream = new MemoryStream(xml))
+            {
+                doc.Load(stream);
+            }
 
             var calFontSizeDict = new Dictionary<int, int>();
             var biliDanmakus = new List<BiliDanmaku>();
@@ -201,6 +205,7 @@ namespace Danmaku2Ass
                     calFontSizeDict[danmaku.Fontsize] = 1;
                 }
             }
+
 
             // 按弹幕出现顺序排序
             biliDanmakus.Sort((x, y) => { return x.Progress.CompareTo(y.Progress); });

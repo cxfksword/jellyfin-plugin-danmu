@@ -4,15 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Danmu.Model;
-using Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
-using Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity;
+using Jellyfin.Plugin.Danmu.Scrapers.Dandan;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Danmu.Test
 {
 
     [TestClass]
-    public class BilibiliApiTest
+    public class DandanApiTest
     {
         ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
             builder.AddSimpleConsole(options =>
@@ -25,14 +24,14 @@ namespace Jellyfin.Plugin.Danmu.Test
         [TestMethod]
         public void TestSearch()
         {
-            var keyword = "V字仇杀队";
-            var _bilibiliApi = new BilibiliApi(loggerFactory);
+            var keyword = "混沌武士";
+            var _api = new DandanApi(loggerFactory);
 
             Task.Run(async () =>
             {
                 try
                 {
-                    var result = await _bilibiliApi.SearchAsync(keyword, CancellationToken.None);
+                    var result = await _api.SearchAsync(keyword, CancellationToken.None);
                     Console.WriteLine(result);
                 }
                 catch (Exception ex)
@@ -45,16 +44,16 @@ namespace Jellyfin.Plugin.Danmu.Test
         [TestMethod]
         public void TestSearchFrequently()
         {
-            var _bilibiliApi = new BilibiliApi(loggerFactory);
+            var _api = new DandanApi(loggerFactory);
 
             Task.Run(async () =>
             {
                 try
                 {
-                    var keyword = "哆啦A梦 第四季";
-                    var result = await _bilibiliApi.SearchAsync(keyword, CancellationToken.None);
+                    var keyword = "剑风传奇";
+                    var result = await _api.SearchAsync(keyword, CancellationToken.None);
                     keyword = "哆啦A梦";
-                    result = await _bilibiliApi.SearchAsync(keyword, CancellationToken.None);
+                    result = await _api.SearchAsync(keyword, CancellationToken.None);
                     Console.WriteLine(result);
                 }
                 catch (Exception ex)
@@ -65,16 +64,36 @@ namespace Jellyfin.Plugin.Danmu.Test
         }
 
         [TestMethod]
-        public void TestGetVideoByBvidAsync()
+        public void TestGetAnimeAsync()
         {
-            var bvid = "BV1vs411U78W";
-            var _bilibiliApi = new BilibiliApi(loggerFactory);
+            long animeID = 11829;
+            var _api = new DandanApi(loggerFactory);
 
             Task.Run(async () =>
             {
                 try
                 {
-                    var result = await _bilibiliApi.GetVideoByBvidAsync(bvid, CancellationToken.None);
+                    var result = await _api.GetAnimeAsync(animeID, CancellationToken.None);
+                    Console.WriteLine(result);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+        }
+
+        [TestMethod]
+        public void TestGetCommentsAsync()
+        {
+            long epId = 118290001;
+            var _api = new DandanApi(loggerFactory);
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var result = await _api.GetCommentsAsync(epId, CancellationToken.None);
                     Console.WriteLine(result);
                 }
                 catch (Exception ex)
