@@ -166,9 +166,21 @@ public class LibraryManagerEventsHelper : IDisposable
                         queuedMovieUpdates.Add(ev);
                     }
                     break;
+                case Series when ev.EventType is EventType.Add:
+                    _logger.LogInformation("Series add: {0}", ev.Item.Name);
+                    _pendingAddEventCache.Set<LibraryEvent>(ev.Item.Id, ev, _expiredOption);
+                    break;
                 case Series when ev.EventType is EventType.Update:
                     _logger.LogInformation("Series update: {0}", ev.Item.Name);
-                    queuedShowUpdates.Add(ev);
+                    if (_pendingAddEventCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addSerieEv))
+                    {
+                        // 紧跟add事件的update事件不需要处理
+                        _pendingAddEventCache.Remove(ev.Item.Id);
+                    }
+                    else
+                    {
+                        queuedShowUpdates.Add(ev);
+                    }
                     break;
                 case Season when ev.EventType is EventType.Add:
                     _logger.LogInformation("Season add: {0}", ev.Item.Name);
@@ -578,7 +590,7 @@ public class LibraryManagerEventsHelper : IDisposable
     // 调用UpdateToRepositoryAsync后，但未完成时，会导致GetEpisodes返回缺少正在处理的集数，所以采用统一最后处理
     private async Task ProcessQueuedUpdateMeta(List<BaseItem> queue)
     {
-        if (queue.Count <= 0)
+        if (queue == null || queue.Count <= 0)
         {
             return;
         }
@@ -587,14 +599,17 @@ public class LibraryManagerEventsHelper : IDisposable
         {
             // 获取最新的item数据
             var item = _libraryManager.GetItemById(queueItem.Id);
-            // 合并新添加的provider id
-            foreach (var pair in queueItem.ProviderIds)
+            if (item != null)
             {
-                item.ProviderIds[pair.Key] = pair.Value;
-            }
+                // 合并新添加的provider id
+                foreach (var pair in queueItem.ProviderIds)
+                {
+                    item.ProviderIds[pair.Key] = pair.Value;
+                }
 
-            // Console.WriteLine(JsonSerializer.Serialize(item));
-            await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
+                // Console.WriteLine(JsonSerializer.Serialize(item));
+                await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
+            }
         }
         _logger.LogInformation("更新epid到元数据完成。item数：{0}", queue.Count);
     }
