@@ -168,19 +168,19 @@ public class LibraryManagerEventsHelper : IDisposable
                     break;
                 case Series when ev.EventType is EventType.Add:
                     _logger.LogInformation("Series add: {0}", ev.Item.Name);
-                    _pendingAddEventCache.Set<LibraryEvent>(ev.Item.Id, ev, _expiredOption);
+                    // _pendingAddEventCache.Set<LibraryEvent>(ev.Item.Id, ev, _expiredOption);
                     break;
                 case Series when ev.EventType is EventType.Update:
                     _logger.LogInformation("Series update: {0}", ev.Item.Name);
-                    if (_pendingAddEventCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addSerieEv))
-                    {
-                        // 紧跟add事件的update事件不需要处理
-                        _pendingAddEventCache.Remove(ev.Item.Id);
-                    }
-                    else
-                    {
-                        queuedShowUpdates.Add(ev);
-                    }
+                    // if (_pendingAddEventCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addSerieEv))
+                    // {
+                    //     // 紧跟add事件的update事件不需要处理
+                    //     _pendingAddEventCache.Remove(ev.Item.Id);
+                    // }
+                    // else
+                    // {
+                    //     queuedShowUpdates.Add(ev);
+                    // }
                     break;
                 case Season when ev.EventType is EventType.Add:
                     _logger.LogInformation("Season add: {0}", ev.Item.Name);
