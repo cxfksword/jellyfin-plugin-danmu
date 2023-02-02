@@ -98,7 +98,6 @@ public class DandanApi : AbstractApi
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var ddd = response.Content.ToString();
         var result = await response.Content.ReadFromJsonAsync<AnimeResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Success)
         {
