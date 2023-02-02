@@ -1,10 +1,10 @@
 # jellyfin-plugin-danmu
 
 [![Danmu](https://img.shields.io/github/v/release/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
-[![Danmu](https://img.shields.io/badge/jellyfin-10.8.x-lightgrey)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
+[![Danmu](https://img.shields.io/badge/jellyfin-10.8.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
 [![Danmu](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
 
-jellyfin的弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play。
+jellyfin的弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play，优酷。
 
 支持功能：
 
@@ -82,7 +82,3 @@ $ dotnet publish Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
 
 [downkyi](https://github.com/leiurayer/downkyi)
 
-
-## License
-
-Apache License Version 2.0
