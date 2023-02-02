@@ -17,6 +17,7 @@ using MediaBrowser.Controller.Providers;
 using System.Runtime.InteropServices;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Dto;
 
 namespace Jellyfin.Plugin.Danmu.Controllers
 {
@@ -123,9 +124,20 @@ namespace Jellyfin.Plugin.Danmu.Controllers
                 throw new ResourceNotFoundException();
             }
 
-            if (item is Movie || item is Series || item is Season || item is Episode)
+            if (item is Movie || item is Season)
             {
                 _libraryManagerEventsHelper.QueueItem(item, Model.EventType.Add);
+                _libraryManagerEventsHelper.QueueItem(item, Model.EventType.Update);
+            }
+
+            if (item is Series)
+            {
+                var seasons = ((Series)item).GetSeasons(null, new DtoOptions(false));
+                foreach (var season in seasons)
+                {
+                    _libraryManagerEventsHelper.QueueItem(season, Model.EventType.Add);
+                    _libraryManagerEventsHelper.QueueItem(season, Model.EventType.Update);
+                }
             }
 
             return "ok";

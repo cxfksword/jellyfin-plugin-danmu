@@ -4,7 +4,7 @@
 [![Danmu](https://img.shields.io/badge/jellyfin-10.8.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
 [![Danmu](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
 
-jellyfin的弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play，优酷。
+jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play，优酷。
 
 支持功能：
 
@@ -13,7 +13,7 @@ jellyfin的弹幕自动下载插件，已支持的弹幕来源：b站，弹弹pl
 * 定时更新
 * 支持api访问弹幕
 
-![preview](doc/logo.png)
+![logo](doc/logo.png)
 
 ## 安装插件
 
