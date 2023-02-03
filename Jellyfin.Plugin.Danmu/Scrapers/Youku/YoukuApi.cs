@@ -48,60 +48,61 @@ public class YoukuApi : AbstractApi
     }
 
 
-    public async Task<List<YoukuTrackInfo>> SearchAsync(string keyword, CancellationToken cancellationToken)
+    public async Task<List<YoukuVideo>> SearchAsync(string keyword, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(keyword))
         {
-            return new List<YoukuTrackInfo>();
+            return new List<YoukuVideo>();
         }
 
         var cacheKey = $"search_{keyword}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-        if (_memoryCache.TryGetValue<List<YoukuTrackInfo>>(cacheKey, out var searchResult))
+        if (_memoryCache.TryGetValue<List<YoukuVideo>>(cacheKey, out var cacheValue))
         {
-            return searchResult;
+            return cacheValue;
         }
 
         await this.LimitRequestFrequently();
 
         keyword = HttpUtility.UrlEncode(keyword);
-        var url = $"https://search.youku.com/search_video?keyword={keyword}";
+        var ua = HttpUtility.UrlEncode(HTTP_USER_AGENT);
+        var url = $"https://search.youku.com/api/search?keyword={keyword}&userAgent={ua}&site=1&categories=0&ftype=0&ob=0&pg=1";
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-
-        var result = new List<YoukuTrackInfo>();
-        var matchs = moviesReg.Matches(body);
-        foreach (Match match in matchs)
+        var result = new List<YoukuVideo>();
+        var searchResult = await response.Content.ReadFromJsonAsync<YoukuSearchResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (searchResult != null && searchResult.PageComponentList != null)
         {
-            var text = HttpUtility.HtmlDecode(match.Groups[1].Value);
-            var trackInfoJson = trackInfoReg.FirstMatchGroup(text);
-            try
+            foreach (YoukuSearchComponent component in searchResult.PageComponentList)
             {
-                if (string.IsNullOrEmpty(trackInfoJson))
+                if (component.CommonData == null
+                || component.CommonData.TitleDTO == null
+                || component.CommonData.HasYouku != 1
+                || component.CommonData.IsYouku != 1
+                || component.CommonData.UgcSupply == 1)
                 {
                     continue;
                 }
 
-                var trackInfo = JsonSerializer.Deserialize<YoukuTrackInfo>(trackInfoJson);
-                if (trackInfo != null && trackInfo.ObjectType == 101 && !trackInfo.ObjectTitle.Contains("中配版"))
+                if (component.CommonData.TitleDTO.DisplayName.Contains("中配版"))
                 {
-                    var featureInfo = featureReg.FirstMatchGroup(text);
-                    var year = yearReg.FirstMatch(featureInfo).ToInt();
-                    trackInfo.Year = year > 0 ? year : null;
-                    trackInfo.Type = featureInfo.Contains("电影") ? "movie" : "tv";
-                    trackInfo.ObjectTitle = unusedReg.Replace(trackInfo.ObjectTitle, "");
-                    result.Add(trackInfo);
+                    continue;
                 }
-            }
-            catch (Exception ex)
-            {
 
+                var year = yearReg.FirstMatch(component.CommonData.Feature).ToInt();
+                result.Add(new YoukuVideo()
+                {
+                    ID = component.CommonData.ShowId,
+                    Type = component.CommonData.Feature.Contains("电影") ? "movie" : "tv",
+                    Year = year > 0 ? year : null,
+                    Title = unusedReg.Replace(component.CommonData.TitleDTO.DisplayName, ""),
+                    Total = component.CommonData.EpisodeTotal
+                });
             }
         }
 
-        _memoryCache.Set<List<YoukuTrackInfo>>(cacheKey, result, expiredOption);
+        _memoryCache.Set<List<YoukuVideo>>(cacheKey, result, expiredOption);
         return result;
     }
 
@@ -119,6 +120,8 @@ public class YoukuApi : AbstractApi
             return video;
         }
 
+        // 获取影片信息：https://openapi.youku.com/v2/shows/show.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&show_id=0b39c5b6569311e5b2ad
+        // 获取影片剧集信息：https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id=XMTM1MTc4MDU3Ng==
         var url = $"https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id={id}";
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();

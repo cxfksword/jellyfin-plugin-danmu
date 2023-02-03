@@ -45,8 +45,8 @@ public class Youku : AbstractScraper
         var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var video in videos)
         {
-            var videoId = video.GroupID;
-            var title = video.ObjectTitle;
+            var videoId = video.ID;
+            var title = video.Title;
             var pubYear = video.Year;
             var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
 

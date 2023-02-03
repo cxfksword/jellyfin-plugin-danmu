@@ -15,5 +15,17 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Youku.Entity
         [JsonPropertyName("videos")]
         public List<YoukuEpisode> Videos { get; set; } = new List<YoukuEpisode>();
 
+        [JsonIgnore]
+        public string ID { get; set; }
+
+        [JsonIgnore]
+        public string Title { get; set; }
+
+        [JsonIgnore]
+        public int? Year { get; set; }
+
+        [JsonIgnore]
+        public string Type { get; set; }
+
     }
 }
