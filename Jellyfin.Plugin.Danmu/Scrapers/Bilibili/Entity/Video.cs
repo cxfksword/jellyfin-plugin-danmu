@@ -24,5 +24,8 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity
 
         [JsonPropertyName("pages")]
         public VideoPart[] Pages { get; set; }
+
+        [JsonPropertyName("ugc_season")]
+        public VideoUgcSeason? UgcSeason { get; set; }
     }
 }

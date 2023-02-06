@@ -64,9 +64,21 @@ public class Bilibili : AbstractScraper
 
             media.Id = id;
             media.Name = video.Title;
-            foreach (var (page, idx) in video.Pages.WithIndex())
+            if (video.UgcSeason != null && video.UgcSeason.Sections != null && video.UgcSeason.Sections.Count > 0)
             {
-                media.Episodes.Add(new ScraperEpisode() { Id = "", CommentId = $"{page.Cid}" });
+                // 合集
+                foreach (var (page, idx) in video.UgcSeason.Sections[0].Episodes.WithIndex())
+                {
+                    media.Episodes.Add(new ScraperEpisode() { Id = "", CommentId = $"{page.CId}" });
+                }
+            }
+            else
+            {
+                // 分P
+                foreach (var (page, idx) in video.Pages.WithIndex())
+                {
+                    media.Episodes.Add(new ScraperEpisode() { Id = "", CommentId = $"{page.Cid}" });
+                }
             }
 
             return media;
