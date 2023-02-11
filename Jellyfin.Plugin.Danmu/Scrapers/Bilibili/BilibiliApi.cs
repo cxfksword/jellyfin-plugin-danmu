@@ -21,6 +21,8 @@ using System.Web;
 using Microsoft.Extensions.Caching.Memory;
 using Jellyfin.Plugin.Danmu.Core.Http;
 using Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity;
+using RateLimiter;
+using ComposableAsync;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
 
@@ -33,7 +35,7 @@ public class BilibiliApi : IDisposable
     private CookieContainer _cookieContainer;
     private readonly IMemoryCache _memoryCache;
     private static readonly object _lock = new object();
-    private DateTime lastRequestTime = DateTime.Now.AddDays(-1);
+    private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BilibiliApi"/> class.
@@ -97,7 +99,7 @@ public class BilibiliApi : IDisposable
 
 
         var season = await GetEpisodeAsync(epId, cancellationToken).ConfigureAwait(false);
-        if (season != null && season.Episodes.Length > 0)
+        if (season != null && season.Episodes.Count > 0)
         {
             var episode = season.Episodes.First(x => x.Id == epId);
             if (episode != null)
@@ -142,14 +144,14 @@ public class BilibiliApi : IDisposable
         }
 
         var cacheKey = $"search_{keyword}";
-        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
         SearchResult searchResult;
         if (_memoryCache.TryGetValue<SearchResult>(cacheKey, out searchResult))
         {
             return searchResult;
         }
 
-        this.LimitRequestFrequently();
+        await this.LimitRequestFrequently();
         await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
         keyword = HttpUtility.UrlEncode(keyword);
@@ -275,21 +277,9 @@ public class BilibiliApi : IDisposable
         response.EnsureSuccessStatusCode();
     }
 
-    protected void LimitRequestFrequently()
+    protected async Task LimitRequestFrequently()
     {
-        var diff = 0;
-        lock (_lock)
-        {
-            var ts = DateTime.Now - lastRequestTime;
-            diff = (int)(1000 - ts.TotalMilliseconds);
-            lastRequestTime = DateTime.Now;
-        }
-
-        if (diff > 0)
-        {
-            this._logger.LogDebug("请求太频繁，等待{0}毫秒后继续执行...", diff);
-            Thread.Sleep(diff);
-        }
+        await this._timeConstraint;
     }
 
     public void Dispose()

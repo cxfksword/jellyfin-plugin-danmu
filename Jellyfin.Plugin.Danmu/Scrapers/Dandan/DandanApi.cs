@@ -55,7 +55,7 @@ public class DandanApi : AbstractApi
         }
 
         var cacheKey = $"search_{keyword}";
-        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
         List<Anime> searchResult;
         if (_memoryCache.TryGetValue<List<Anime>>(cacheKey, out searchResult))
         {

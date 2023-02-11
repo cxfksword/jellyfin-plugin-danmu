@@ -56,7 +56,7 @@ public class YoukuApi : AbstractApi
         }
 
         var cacheKey = $"search_{keyword}";
-        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
         if (_memoryCache.TryGetValue<List<YoukuVideo>>(cacheKey, out var cacheValue))
         {
             return cacheValue;
@@ -79,8 +79,7 @@ public class YoukuApi : AbstractApi
                 if (component.CommonData == null
                 || component.CommonData.TitleDTO == null
                 || component.CommonData.HasYouku != 1
-                || component.CommonData.IsYouku != 1
-                || component.CommonData.UgcSupply == 1)
+                || component.CommonData.IsYouku != 1)
                 {
                     continue;
                 }
@@ -259,7 +258,6 @@ public class YoukuApi : AbstractApi
         }
         response.EnsureSuccessStatusCode();
 
-        var dd = await response.Content.ReadAsStringAsync();
         var result = await response.Content.ReadFromJsonAsync<YoukuRpcResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && !string.IsNullOrEmpty(result.Data.Result))
         {

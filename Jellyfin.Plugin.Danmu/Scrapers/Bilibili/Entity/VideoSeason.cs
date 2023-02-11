@@ -17,7 +17,7 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity
 
 
         [JsonPropertyName("episodes")]
-        public VideoEpisode[] Episodes { get; set; }
+        public List<VideoEpisode> Episodes { get; set; }
 
     }
 }

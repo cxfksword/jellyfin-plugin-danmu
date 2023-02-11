@@ -3,29 +3,31 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 
-namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan.ExternalId
+namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.ExternalId
 {
+
     /// <inheritdoc />
-    public class MovieExternalId : IExternalId
+    public class SeasonExternalId : IExternalId
     {
         /// <inheritdoc />
-        public string ProviderName => Dandan.ScraperProviderName;
+        public string ProviderName => Iqiyi.ScraperProviderName;
 
         /// <inheritdoc />
-        public string Key => Dandan.ScraperProviderId;
+        public string Key => Iqiyi.ScraperProviderId;
 
         /// <inheritdoc />
         public ExternalIdMediaType? Type => null;
 
         /// <inheritdoc />
-        public string UrlFormatString => "https://api.dandanplay.net/api/v2/bangumi/{0}";
+        public string UrlFormatString => "https://www.iqiyi.com/a_{0}.html";
 
         /// <inheritdoc />
-        public bool Supports(IHasProviderIds item) => item is Movie;
+        public bool Supports(IHasProviderIds item) => item is Season;
     }
+
 }

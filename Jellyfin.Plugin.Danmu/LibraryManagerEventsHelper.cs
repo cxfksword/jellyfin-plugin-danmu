@@ -254,18 +254,18 @@ public class LibraryManagerEventsHelper : IDisposable
                         // 读取最新数据，要不然取不到年份信息
                         var currentItem = _libraryManager.GetItemById(item.Id) ?? item;
 
-                        var mediaId = await scraper.GetMatchMediaId(currentItem);
+                        var mediaId = await scraper.SearchMediaId(currentItem);
                         if (string.IsNullOrEmpty(mediaId))
                         {
-                            _logger.LogInformation("[{0}]匹配失败：{1}", scraper.Name, item.Name);
+                            _logger.LogInformation("[{0}]匹配失败：{1} ({2})", scraper.Name, item.Name, item.ProductionYear);
                             continue;
                         }
 
-                        var media = await scraper.GetMedia(mediaId);
-                        if (media != null && media.Episodes.Count > 0)
+                        var media = await scraper.GetMedia(item, mediaId);
+                        if (media != null)
                         {
-                            var providerVal = media.Episodes[0].Id;
-                            var commentId = media.Episodes[0].CommentId;
+                            var providerVal = media.Id;
+                            var commentId = media.CommentId;
                             _logger.LogInformation("[{0}]匹配成功：name={1} ProviderId: {2}", scraper.Name, item.Name, providerVal);
 
                             // 更新epid元数据
@@ -304,7 +304,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         var providerVal = item.GetProviderId(scraper.ProviderId);
                         if (!string.IsNullOrEmpty(providerVal))
                         {
-                            var episode = await scraper.GetMediaEpisode(providerVal);
+                            var episode = await scraper.GetMediaEpisode(item, providerVal);
                             if (episode != null)
                             {
                                 // 下载弹幕xml文件
@@ -415,17 +415,20 @@ public class LibraryManagerEventsHelper : IDisposable
                         {
                             currentItem.Name = series.Name;
                         }
-                        var mediaId = await scraper.GetMatchMediaId(currentItem);
-
-                        if (!string.IsNullOrEmpty(mediaId))
+                        var mediaId = await scraper.SearchMediaId(currentItem);
+                        if (string.IsNullOrEmpty(mediaId))
                         {
-                            // 更新seasonId元数据
-                            season.SetProviderId(scraper.ProviderId, mediaId);
-                            queueUpdateMeta.Add(season);
-
-                            _logger.LogInformation("[{0}]匹配成功：name={1} season_number={2} ProviderId: {3}", scraper.Name, season.Name, season.IndexNumber, mediaId);
-                            break;
+                            _logger.LogInformation("[{0}]匹配失败：{1} ({2})", scraper.Name, currentItem.Name, currentItem.ProductionYear);
+                            continue;
                         }
+
+
+                        // 更新seasonId元数据
+                        season.SetProviderId(scraper.ProviderId, mediaId);
+                        queueUpdateMeta.Add(season);
+
+                        _logger.LogInformation("[{0}]匹配成功：name={1} season_number={2} ProviderId: {3}", scraper.Name, season.Name, season.IndexNumber, mediaId);
+                        break;
                     }
                     catch (FrequentlyRequestException ex)
                     {
@@ -463,7 +466,7 @@ public class LibraryManagerEventsHelper : IDisposable
                             continue;
                         }
 
-                        var media = await scraper.GetMedia(providerVal);
+                        var media = await scraper.GetMedia(season, providerVal);
                         if (media == null)
                         {
                             _logger.LogInformation("[{0}]获取不到视频信息. ProviderId: {1}", scraper.Name, providerVal);
@@ -489,7 +492,7 @@ public class LibraryManagerEventsHelper : IDisposable
                             {
                                 var epId = media.Episodes[idx].Id;
                                 var commentId = media.Episodes[idx].CommentId;
-                                _logger.LogInformation("[{0}]成功匹配. {1} -> epId: {2} cid: {3}", scraper.Name, episode.Name, epId, commentId);
+                                _logger.LogInformation("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, indexNumber, episode.Name, epId, commentId);
 
                                 // 更新eposide元数据
                                 var episodeProviderVal = episode.GetProviderId(scraper.ProviderId);
@@ -564,7 +567,7 @@ public class LibraryManagerEventsHelper : IDisposable
                             continue;
                         }
 
-                        var episode = await scraper.GetMediaEpisode(providerVal);
+                        var episode = await scraper.GetMediaEpisode(item, providerVal);
                         if (episode != null)
                         {
                             // 下载弹幕xml文件
@@ -619,14 +622,14 @@ public class LibraryManagerEventsHelper : IDisposable
         // 下载弹幕xml文件
         try
         {
-            // 弹幕一分钟内更新过，忽略处理（有时Update事件会重复执行）
+            // 弹幕5分钟内更新过，忽略处理（有时Update事件会重复执行）
             if (IsRepeatAction(item))
             {
-                _logger.LogInformation("[{0}]最近1分钟已更新过弹幕xml，忽略处理：{1}", scraper.Name, item.Name);
+                _logger.LogInformation("[{0}]最近5分钟已更新过弹幕xml，忽略处理：{1}", scraper.Name, item.Name);
                 return;
             }
 
-            var danmaku = await scraper.GetDanmuContent(commentId);
+            var danmaku = await scraper.GetDanmuContent(item, commentId);
             if (danmaku != null)
             {
                 await this.DownloadDanmuInternal(item, danmaku.ToXml());
@@ -641,6 +644,9 @@ public class LibraryManagerEventsHelper : IDisposable
 
     private bool IsRepeatAction(BaseItem item)
     {
+        // 单元测试时为null
+        if (item.FileNameWithoutExtension == null) return false;
+
         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
         if (!this._fileSystem.Exists(danmuPath))
         {
@@ -649,11 +655,14 @@ public class LibraryManagerEventsHelper : IDisposable
 
         var lastWriteTime = this._fileSystem.GetLastWriteTime(danmuPath);
         var diff = DateTime.Now - lastWriteTime;
-        return diff.TotalSeconds < 60;
+        return diff.TotalSeconds < 300;
     }
 
     private async Task DownloadDanmuInternal(BaseItem item, byte[] bytes)
     {
+        // 单元测试时为null
+        if (item.FileNameWithoutExtension == null) return;
+
         // 下载弹幕xml文件
         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
         await this._fileSystem.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);

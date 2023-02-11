@@ -12,28 +12,28 @@ using System.Collections.Generic;
 using System.Xml;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using System.Text.Json;
-using Jellyfin.Plugin.Danmu.Scrapers.Youku.Entity;
+using Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity;
 
-namespace Jellyfin.Plugin.Danmu.Scrapers.Youku;
+namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 
-public class Youku : AbstractScraper
+public class Iqiyi : AbstractScraper
 {
-    public const string ScraperProviderName = "优酷";
-    public const string ScraperProviderId = "YoukuID";
+    public const string ScraperProviderName = "爱奇艺";
+    public const string ScraperProviderId = "IqiyiID";
 
-    private readonly YoukuApi _api;
+    private readonly IqiyiApi _api;
 
-    public Youku(ILoggerFactory logManager)
-        : base(logManager.CreateLogger<Youku>())
+    public Iqiyi(ILoggerFactory logManager)
+        : base(logManager.CreateLogger<Iqiyi>())
     {
-        _api = new YoukuApi(logManager);
+        _api = new IqiyiApi(logManager);
     }
 
-    public override int DefaultOrder => 3;
+    public override int DefaultOrder => 4;
 
     public override bool DefaultEnable => false;
 
-    public override string Name => "优酷";
+    public override string Name => "爱奇艺";
 
     public override string ProviderName => ScraperProviderName;
 
@@ -42,20 +42,20 @@ public class Youku : AbstractScraper
     public override async Task<string?> SearchMediaId(BaseItem item)
     {
         var searchName = this.NormalizeSearchName(item.Name);
-        var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
+        var videos = await this._api.GetSuggestAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var video in videos)
         {
-            var videoId = video.ID;
-            var title = video.Title;
+            var videoId = video.VideoId;
+            var title = video.Name;
             var pubYear = video.Year;
             var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
 
-            if (isMovieItemType && video.Type != "movie")
+            if (isMovieItemType && video.ChannelName != "电影")
             {
                 continue;
             }
 
-            if (!isMovieItemType && video.Type == "movie")
+            if (!isMovieItemType && video.ChannelName == "电影")
             {
                 continue;
             }
@@ -72,11 +72,11 @@ public class Youku : AbstractScraper
             var itemPubYear = item.ProductionYear ?? 0;
             if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
             {
-                log.LogInformation("[{0}] 发行年份不一致，忽略处理. Youku：{1} jellyfin: {2}", title, pubYear, itemPubYear);
+                log.LogInformation("[{0}] 发行年份不一致，忽略处理. Iqiyi：{1} jellyfin: {2}", title, pubYear, itemPubYear);
                 continue;
             }
 
-            return $"{videoId}";
+            return video.LinkId;
         }
 
         return null;
@@ -90,36 +90,40 @@ public class Youku : AbstractScraper
             return null;
         }
 
-        var video = await _api.GetVideoAsync(id, CancellationToken.None).ConfigureAwait(false);
+        // id是编码后的，需要还原为真实id
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+        var tvId = await _api.GetTvId(id, !isMovieItemType, CancellationToken.None);
+        if (string.IsNullOrEmpty(tvId))
+        {
+            return null;
+        }
+
+        var video = await _api.GetVideoAsync(tvId, CancellationToken.None).ConfigureAwait(false);
         if (video == null)
         {
             log.LogInformation("[{0}]获取不到视频信息：id={1}", this.Name, id);
             return null;
         }
 
-        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
-        var media = new ScraperMedia();
-        if (video.Videos != null && video.Videos.Count > 0)
-        {
-            foreach (var ep in video.Videos)
-            {
-                media.Episodes.Add(new ScraperEpisode() { Id = $"{ep.ID}", CommentId = $"{ep.ID}" });
-            }
-        }
 
-        if (isMovieItemType)
+        var media = new ScraperMedia();
+        media.Id = video.LinkId;  // 使用url编码后的id，movie使用vid，电视剧使用aid
+        if (isMovieItemType && video.Epsodelist != null && video.Epsodelist.Count > 0)
         {
-            media.Id = media.Episodes.Count > 0 ? $"{media.Episodes[0].Id}" : "";
-            media.CommentId = media.Episodes.Count > 0 ? $"{media.Episodes[0].CommentId}" : "";
+            media.CommentId = $"{video.Epsodelist[0].TvId}";
         }
-        else
+        if (video.Epsodelist != null && video.Epsodelist.Count > 0)
         {
-            media.Id = id;
+            foreach (var ep in video.Epsodelist)
+            {
+                media.Episodes.Add(new ScraperEpisode() { Id = $"{ep.LinkId}", CommentId = $"{ep.TvId}" });
+            }
         }
 
         return media;
     }
 
+    /// <inheritdoc />
     public override async Task<ScraperEpisode?> GetMediaEpisode(BaseItem item, string id)
     {
         if (string.IsNullOrEmpty(id))
@@ -127,7 +131,14 @@ public class Youku : AbstractScraper
             return null;
         }
 
-        return new ScraperEpisode() { Id = id, CommentId = id };
+        // id是编码后的，需要还原为真实id
+        var tvId = await _api.GetTvId(id, false, CancellationToken.None);
+        if (string.IsNullOrEmpty(tvId))
+        {
+            return null;
+        }
+
+        return new ScraperEpisode() { Id = id, CommentId = tvId };
     }
 
     public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)
@@ -139,23 +150,21 @@ public class Youku : AbstractScraper
 
         var comments = await _api.GetDanmuContentAsync(commentId, CancellationToken.None).ConfigureAwait(false);
         var danmaku = new ScraperDanmaku();
-        danmaku.ChatId = 1000;
-        danmaku.ChatServer = "acs.youku.com";
+        danmaku.ChatId = commentId.ToLong();
+        danmaku.ChatServer = "cmts.iqiyi.com";
         foreach (var comment in comments)
         {
             try
             {
                 var danmakuText = new ScraperDanmakuText();
-                danmakuText.Progress = (int)comment.Playat;
+                danmakuText.Progress = (int)comment.ShowTime * 1000;
                 danmakuText.Mode = 1;
-                danmakuText.MidHash = $"[youku]{comment.Uid}";
-                danmakuText.Id = comment.ID;
+                danmakuText.MidHash = $"[iqiyi]{comment.UserInfo.Uid}";
+                danmakuText.Id = comment.ContentId.ToLong();
                 danmakuText.Content = comment.Content;
-
-                var property = JsonSerializer.Deserialize<YoukuCommentProperty>(comment.Propertis);
-                if (property != null)
+                if (uint.TryParse(comment.Color, System.Globalization.NumberStyles.HexNumber, null, out var color))
                 {
-                    danmakuText.Color = property.Color;
+                    danmakuText.Color = color;
                 }
 
                 danmaku.Items.Add(danmakuText);

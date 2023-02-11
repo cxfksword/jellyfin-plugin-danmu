@@ -36,7 +36,7 @@ public class Bilibili : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
-    public override async Task<string?> GetMatchMediaId(BaseItem item)
+    public override async Task<string?> SearchMediaId(BaseItem item)
     {
         var searchName = this.NormalizeSearchName(item.Name);
         var seasonId = await GetMatchBiliSeasonId(item, searchName).ConfigureAwait(false);
@@ -49,9 +49,11 @@ public class Bilibili : AbstractScraper
     }
 
 
-    public override async Task<ScraperMedia?> GetMedia(string id)
+    public override async Task<ScraperMedia?> GetMedia(BaseItem item, string id)
     {
         var media = new ScraperMedia();
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+
         if (id.StartsWith("BV", StringComparison.CurrentCulture))
         {
             var video = await _api.GetVideoByBvidAsync(id, CancellationToken.None).ConfigureAwait(false);
@@ -61,9 +63,6 @@ public class Bilibili : AbstractScraper
                 return null;
             }
 
-
-            media.Id = id;
-            media.Name = video.Title;
             if (video.UgcSeason != null && video.UgcSeason.Sections != null && video.UgcSeason.Sections.Count > 0)
             {
                 // 合集
@@ -79,6 +78,16 @@ public class Bilibili : AbstractScraper
                 {
                     media.Episodes.Add(new ScraperEpisode() { Id = "", CommentId = $"{page.Cid}" });
                 }
+            }
+
+            if (isMovieItemType)
+            {
+                media.Id = id;
+                media.CommentId = media.Episodes.Count > 0 ? $"{media.Episodes[0].CommentId}" : "";
+            }
+            else
+            {
+                media.Id = id;
             }
 
             return media;
@@ -97,17 +106,25 @@ public class Bilibili : AbstractScraper
             return null;
         }
 
-        media.Id = id;
-        media.Name = season.Title;
-        foreach (var item in season.Episodes)
+        foreach (var ep in season.Episodes)
         {
-            media.Episodes.Add(new ScraperEpisode() { Id = $"{item.Id}", CommentId = $"{item.CId}" });
+            media.Episodes.Add(new ScraperEpisode() { Id = $"{ep.Id}", CommentId = $"{ep.CId}" });
+        }
+
+        if (isMovieItemType)
+        {
+            media.Id = season.Episodes.Count > 0 ? $"{season.Episodes[0].Id}" : "";
+            media.CommentId = season.Episodes.Count > 0 ? $"{season.Episodes[0].CId}" : "";
+        }
+        else
+        {
+            media.Id = id;
         }
 
         return media;
     }
 
-    public override async Task<ScraperEpisode?> GetMediaEpisode(string id)
+    public override async Task<ScraperEpisode?> GetMediaEpisode(BaseItem item, string id)
     {
         var episode = new ScraperEpisode();
         if (id.StartsWith("BV", StringComparison.CurrentCulture))
@@ -141,7 +158,7 @@ public class Bilibili : AbstractScraper
             return null;
         }
 
-        if (season.Episodes.Length > 0)
+        if (season.Episodes.Count > 0)
         {
             return new ScraperEpisode() { Id = $"{season.Episodes[0].Id}", CommentId = $"{season.Episodes[0].CId}" };
         }
@@ -149,7 +166,7 @@ public class Bilibili : AbstractScraper
         return null;
     }
 
-    public override async Task<ScraperDanmaku?> GetDanmuContent(string commentId)
+    public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)
     {
         var cid = commentId.ToLong();
         if (cid > 0)
