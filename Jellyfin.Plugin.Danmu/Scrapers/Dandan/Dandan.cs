@@ -37,8 +37,9 @@ public class Dandan : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
-    public override async Task<string?> GetMatchMediaId(BaseItem item)
+    public override async Task<string?> SearchMediaId(BaseItem item)
     {
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
         var searchName = this.NormalizeSearchName(item.Name);
         var animes = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var anime in animes)
@@ -46,7 +47,6 @@ public class Dandan : AbstractScraper
             var animeId = anime.AnimeId;
             var title = anime.AnimeTitle;
             var pubYear = anime.Year;
-            var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
 
             if (isMovieItemType && anime.Type != "movie")
             {
@@ -81,13 +81,14 @@ public class Dandan : AbstractScraper
     }
 
 
-    public override async Task<ScraperMedia?> GetMedia(string id)
+    public override async Task<ScraperMedia?> GetMedia(BaseItem item, string id)
     {
         var animeId = id.ToLong();
         if (animeId <= 0)
         {
             return null;
         }
+
 
         var anime = await _api.GetAnimeAsync(animeId, CancellationToken.None).ConfigureAwait(false);
         if (anime == null)
@@ -96,32 +97,54 @@ public class Dandan : AbstractScraper
             return null;
         }
 
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
         var media = new ScraperMedia();
+
         media.Id = id;
-        media.Name = anime.AnimeTitle;
+        if (isMovieItemType && anime.Episodes != null && anime.Episodes.Count > 0)
+        {
+            media.CommentId = $"{anime.Episodes[0].EpisodeId}";
+        }
         if (anime.Episodes != null && anime.Episodes.Count > 0)
         {
-            foreach (var item in anime.Episodes)
+            foreach (var ep in anime.Episodes)
             {
-                media.Episodes.Add(new ScraperEpisode() { Id = $"{item.EpisodeId}", CommentId = $"{item.EpisodeId}" });
+                media.Episodes.Add(new ScraperEpisode() { Id = $"{ep.EpisodeId}", CommentId = $"{ep.EpisodeId}" });
             }
         }
+
 
         return media;
     }
 
-    public override async Task<ScraperEpisode?> GetMediaEpisode(string id)
+    public override async Task<ScraperEpisode?> GetMediaEpisode(BaseItem item, string id)
     {
-        var epId = id.ToLong();
-        if (epId <= 0)
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+        if (isMovieItemType)
         {
-            return null;
-        }
+            // id是animeId
+            var anime = await _api.GetAnimeAsync(id.ToLong(), CancellationToken.None).ConfigureAwait(false);
+            if (anime == null || anime.Episodes == null || anime.Episodes.Count <= 0)
+            {
+                return null;
+            }
 
-        return new ScraperEpisode() { Id = id, CommentId = id };
+            return new ScraperEpisode() { Id = id, CommentId = $"{anime.Episodes[0].EpisodeId}" };
+        }
+        else
+        {
+            // id是episodeId
+            var epId = id.ToLong();
+            if (epId <= 0)
+            {
+                return null;
+            }
+
+            return new ScraperEpisode() { Id = id, CommentId = id };
+        }
     }
 
-    public override async Task<ScraperDanmaku?> GetDanmuContent(string commentId)
+    public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)
     {
         var cid = commentId.ToLong();
         if (cid <= 0)
@@ -133,16 +156,16 @@ public class Dandan : AbstractScraper
         var danmaku = new ScraperDanmaku();
         danmaku.ChatId = cid;
         danmaku.ChatServer = "api.dandanplay.net";
-        foreach (var item in comments)
+        foreach (var comment in comments)
         {
             var danmakuText = new ScraperDanmakuText();
-            var arr = item.P.Split(",");
+            var arr = comment.P.Split(",");
             danmakuText.Progress = (int)(Convert.ToDouble(arr[0]) * 1000);
             danmakuText.Mode = Convert.ToInt32(arr[1]);
             danmakuText.Color = Convert.ToUInt32(arr[2]);
             danmakuText.MidHash = arr[3];
-            danmakuText.Id = item.Cid;
-            danmakuText.Content = item.Text;
+            danmakuText.Id = comment.Cid;
+            danmakuText.Content = comment.Text;
 
             danmaku.Items.Add(danmakuText);
 

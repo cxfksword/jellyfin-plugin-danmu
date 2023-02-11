@@ -1,0 +1,13 @@
+{
+  "category": "Metadata",
+  "changelog": "NA",
+  "description": "jellyfin的b站弹幕自动下载插件，会匹配b站番剧/电影视频，自动下载对应弹幕，并定时更新。",
+  "guid": "5B39DA44-5314-4940-8E26-54C821C17F86",
+  "imageUrl": "https://github.com/cxfksword/jellyfin-plugin-danmu/raw/main/doc/logo.png",
+  "name": "Danmu",
+  "overview": "jellyfin弹幕下载插件",
+  "owner": "cxfksword",
+  "targetAbi": "10.8.0.0",
+  "timestamp": "1970-01-01T00:00:00Z",
+  "version": "1.0.0.0"
+}

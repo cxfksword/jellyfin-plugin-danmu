@@ -12,8 +12,7 @@ namespace Jellyfin.Plugin.Danmu.Core.Extensions
     {
         public static long ToLong(this string s)
         {
-            long val;
-            if (long.TryParse(s, out val))
+            if (long.TryParse(s, out var val))
             {
                 return val;
             }
@@ -23,8 +22,17 @@ namespace Jellyfin.Plugin.Danmu.Core.Extensions
 
         public static int ToInt(this string s)
         {
-            int val;
-            if (int.TryParse(s, out val))
+            if (int.TryParse(s, out var val))
+            {
+                return val;
+            }
+
+            return 0;
+        }
+
+        public static Int64 ToInt64(this string s)
+        {
+            if (Int64.TryParse(s, out var val))
             {
                 return val;
             }
@@ -45,8 +53,7 @@ namespace Jellyfin.Plugin.Danmu.Core.Extensions
 
         public static double ToDouble(this string s)
         {
-            double val;
-            if (double.TryParse(s, out val))
+            if (double.TryParse(s, out var val))
             {
                 return val;
             }
