@@ -1,3 +1,4 @@
+using System.Web;
 using System.Linq;
 using System;
 using System.Net.Http;
@@ -124,6 +125,7 @@ public class Youku : AbstractScraper
             return null;
         }
 
+        id = HttpUtility.UrlDecode(id);
         var video = await _api.GetVideoAsync(id, CancellationToken.None).ConfigureAwait(false);
         if (video == null)
         {
@@ -141,14 +143,15 @@ public class Youku : AbstractScraper
             }
         }
 
+        // 优酷的id包括非法的=符号，会导致jellyfin自动删除，这里做下encode
         if (isMovieItemType)
         {
-            media.Id = media.Episodes.Count > 0 ? $"{media.Episodes[0].Id}" : "";
+            media.Id = HttpUtility.UrlEncode(media.Episodes.Count > 0 ? $"{media.Episodes[0].Id}" : "");
             media.CommentId = media.Episodes.Count > 0 ? $"{media.Episodes[0].CommentId}" : "";
         }
         else
         {
-            media.Id = id;
+            media.Id = HttpUtility.UrlEncode(id);
         }
 
         return media;
@@ -161,6 +164,7 @@ public class Youku : AbstractScraper
             return null;
         }
 
+        id = HttpUtility.UrlDecode(id);
         return new ScraperEpisode() { Id = id, CommentId = id };
     }
 
