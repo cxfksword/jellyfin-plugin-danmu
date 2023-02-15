@@ -44,6 +44,7 @@ public class DandanApi : AbstractApi
     public DandanApi(ILoggerFactory loggerFactory)
         : base(loggerFactory.CreateLogger<DandanApi>())
     {
+        httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
     }
 
 

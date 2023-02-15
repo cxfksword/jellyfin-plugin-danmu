@@ -52,12 +52,13 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {
-            yield return new TaskTriggerInfo
-            {
-                Type = TaskTriggerInfo.TriggerWeekly,
-                DayOfWeek = DayOfWeek.Monday,
-                TimeOfDayTicks = TimeSpan.FromHours(4).Ticks
-            };
+            return new List<TaskTriggerInfo>();
+            // yield return new TaskTriggerInfo
+            // {
+            //     Type = TaskTriggerInfo.TriggerWeekly,
+            //     DayOfWeek = DayOfWeek.Monday,
+            //     TimeOfDayTicks = TimeSpan.FromHours(4).Ticks
+            // };
         }
 
         public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
@@ -89,6 +90,12 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
                     if (!this.HasAnyScraperProviderId(scrapers, item))
                     {
                         successCount++;
+                        continue;
+                    }
+
+                    // item所在的媒体库不启用弹幕插件，忽略处理
+                    if (_libraryManagerEventsHelper.IsIgnoreItem(item))
+                    {
                         continue;
                     }
 

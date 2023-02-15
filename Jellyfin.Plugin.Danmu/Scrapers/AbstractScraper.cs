@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using MediaBrowser.Controller.Entities;
@@ -32,7 +33,14 @@ public abstract class AbstractScraper
     }
 
     /// <summary>
-    /// 搜索影片id
+    /// 搜索影片
+    /// </summary>
+    /// <param name="item">元数据item</param>
+    /// <returns>影片列表</returns>
+    public abstract Task<List<ScraperSearchInfo>> Search(BaseItem item);
+
+    /// <summary>
+    /// 搜索匹配的影片id
     /// </summary>
     /// <param name="item">元数据item</param>
     /// <returns>影片id</returns>

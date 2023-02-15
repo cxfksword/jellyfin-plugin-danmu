@@ -20,6 +20,10 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity
 
         [JsonPropertyName("season_type")]
         public int SeasonType { get; set; }
+        [JsonPropertyName("season_type_name")]
+        public string SeasonTypeName { get; set; }
+        [JsonPropertyName("ep_size")]
+        public int EpisodeSize { get; set; }
         [JsonPropertyName("season_id")]
         public long SeasonId { get; set; }
 

@@ -18,5 +18,22 @@ namespace Jellyfin.Plugin.Danmu.Core.Extensions
             jso.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
             return JsonSerializer.Serialize(obj, jso);
         }
+
+        public static T? FromJson<T>(this string str)
+        {
+            if (string.IsNullOrEmpty(str)) return default(T?);
+
+            // 不指定UnsafeRelaxedJsonEscaping，+号会被转码为unicode字符，和js/java的序列化不一致
+            var jso = new JsonSerializerOptions();
+            jso.Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+            try
+            {
+                return JsonSerializer.Deserialize<T>(str, jso);
+            }
+            catch (Exception ex)
+            {
+                return default(T?);
+            }
+        }
     }
 }

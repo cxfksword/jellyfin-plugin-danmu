@@ -52,6 +52,40 @@ public class BilibiliApi : IDisposable
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
     }
 
+
+    public async Task<SearchResult> SearchAsync(string keyword, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(keyword))
+        {
+            return new SearchResult();
+        }
+
+        var cacheKey = $"search_{keyword}";
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
+        SearchResult searchResult;
+        if (_memoryCache.TryGetValue<SearchResult>(cacheKey, out searchResult))
+        {
+            return searchResult;
+        }
+
+        await this.LimitRequestFrequently();
+        await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
+
+        keyword = HttpUtility.UrlEncode(keyword);
+        var url = $"http://api.bilibili.com/x/web-interface/search/all/v2?keyword={keyword}";
+        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<ApiResult<SearchResult>>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (result != null && result.Code == 0 && result.Data != null)
+        {
+            _memoryCache.Set<SearchResult>(cacheKey, result.Data, expiredOption);
+            return result.Data;
+        }
+
+        _memoryCache.Set<SearchResult>(cacheKey, new SearchResult(), expiredOption);
+        return new SearchResult();
+    }
+
     /// <summary>
     /// Get bilibili danmu data.
     /// </summary>
@@ -136,38 +170,6 @@ public class BilibiliApi : IDisposable
     }
 
 
-    public async Task<SearchResult> SearchAsync(string keyword, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(keyword))
-        {
-            return new SearchResult();
-        }
-
-        var cacheKey = $"search_{keyword}";
-        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
-        SearchResult searchResult;
-        if (_memoryCache.TryGetValue<SearchResult>(cacheKey, out searchResult))
-        {
-            return searchResult;
-        }
-
-        await this.LimitRequestFrequently();
-        await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
-
-        keyword = HttpUtility.UrlEncode(keyword);
-        var url = $"http://api.bilibili.com/x/web-interface/search/all/v2?keyword={keyword}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<ApiResult<SearchResult>>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-        if (result != null && result.Code == 0 && result.Data != null)
-        {
-            _memoryCache.Set<SearchResult>(cacheKey, result.Data, expiredOption);
-            return result.Data;
-        }
-
-        _memoryCache.Set<SearchResult>(cacheKey, new SearchResult(), expiredOption);
-        return new SearchResult();
-    }
 
     public async Task<VideoSeason?> GetSeasonAsync(long seasonId, CancellationToken cancellationToken)
     {

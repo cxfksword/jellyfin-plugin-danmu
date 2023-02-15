@@ -1,3 +1,4 @@
+using System.Web;
 using System.Linq;
 using System;
 using System.Net.Http;
@@ -39,8 +40,10 @@ public class Youku : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
-    public override async Task<string?> SearchMediaId(BaseItem item)
+    public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
+        var list = new List<ScraperSearchInfo>();
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
         var searchName = this.NormalizeSearchName(item.Name);
         var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var video in videos)
@@ -48,7 +51,40 @@ public class Youku : AbstractScraper
             var videoId = video.ID;
             var title = video.Title;
             var pubYear = video.Year;
-            var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+
+            if (isMovieItemType && video.Type != "movie")
+            {
+                continue;
+            }
+
+            if (!isMovieItemType && video.Type == "movie")
+            {
+                continue;
+            }
+
+            list.Add(new ScraperSearchInfo()
+            {
+                Id = $"{videoId}",
+                Name = title,
+                Category = video.Type == "movie" ? "电影" : "电视剧",
+                Year = pubYear,
+                EpisodeSize = video.Total,
+            });
+        }
+
+        return list;
+    }
+
+    public override async Task<string?> SearchMediaId(BaseItem item)
+    {
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+        var searchName = this.NormalizeSearchName(item.Name);
+        var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
+        foreach (var video in videos)
+        {
+            var videoId = video.ID;
+            var title = video.Title;
+            var pubYear = video.Year;
 
             if (isMovieItemType && video.Type != "movie")
             {
@@ -90,6 +126,7 @@ public class Youku : AbstractScraper
             return null;
         }
 
+        id = HttpUtility.UrlDecode(id);
         var video = await _api.GetVideoAsync(id, CancellationToken.None).ConfigureAwait(false);
         if (video == null)
         {
@@ -107,14 +144,15 @@ public class Youku : AbstractScraper
             }
         }
 
+        // 优酷的id包括非法的=符号，会导致jellyfin自动删除，这里做下encode
         if (isMovieItemType)
         {
-            media.Id = media.Episodes.Count > 0 ? $"{media.Episodes[0].Id}" : "";
+            media.Id = HttpUtility.UrlEncode(media.Episodes.Count > 0 ? $"{media.Episodes[0].Id}" : "");
             media.CommentId = media.Episodes.Count > 0 ? $"{media.Episodes[0].CommentId}" : "";
         }
         else
         {
-            media.Id = id;
+            media.Id = HttpUtility.UrlEncode(id);
         }
 
         return media;
@@ -127,6 +165,7 @@ public class Youku : AbstractScraper
             return null;
         }
 
+        id = HttpUtility.UrlDecode(id);
         return new ScraperEpisode() { Id = id, CommentId = id };
     }
 
