@@ -86,6 +86,7 @@ public class DanmuSubtitleProvider : ISubtitleProvider
             return list;
         }
 
+        // 媒体库未启用就不处理
         if (_libraryManagerEventsHelper.IsIgnoreItem(item))
         {
             return list;

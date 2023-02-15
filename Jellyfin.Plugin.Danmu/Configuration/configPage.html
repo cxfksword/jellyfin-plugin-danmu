@@ -46,8 +46,12 @@
                         </div>
                         <div class="inputContainer">
                             <label class="inputLabel inputLabelUnfocused" for="ChConvert">弹幕中文简繁转换</label>
-                            <input id="ChConvert" name="ChConvert" type="number" is="emby-input" />
-                            <div class="fieldDescription">中文简繁转换。0-不转换，1-转换为简体，2-转换为繁体。</div>
+                            <select is="emby-select" id="ChConvert" name="ChConvert"
+                                class="emby-select-withcolor emby-select">
+                                <option value="0">不转换</option>
+                                <option value="1">转换为简体</option>
+                                <option value="2">转换为繁体</option>
+                            </select>
                         </div>
                     </fieldset>
 
