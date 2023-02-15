@@ -80,6 +80,12 @@ namespace Jellyfin.Plugin.Danmu.Core.Extensions
             }
         }
 
+        public static string ToBase64(this string str)
+        {
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(str);
+            return System.Convert.ToBase64String(plainTextBytes);
+        }
+
         public static double Distance(this string s1, string s2)
         {
             var jw = new JaroWinkler();

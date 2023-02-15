@@ -87,6 +87,12 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
                         continue;
                     }
 
+                    // item所在的媒体库不启用弹幕插件，忽略处理
+                    if (_libraryManagerEventsHelper.IsIgnoreItem(item))
+                    {
+                        continue;
+                    }
+
                     // 推送刷新  (season刷新会同时刷新episode，所以不需要再推送episode，而且season是bv号的，只能通过season来刷新)
                     switch (item)
                     {

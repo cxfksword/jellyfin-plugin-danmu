@@ -24,5 +24,10 @@ public enum EventType
     /// <summary>
     /// The update event.
     /// </summary>
-    Update
+    Update,
+
+    /// <summary>
+    /// The force update event.
+    /// </summary>
+    Force
 }

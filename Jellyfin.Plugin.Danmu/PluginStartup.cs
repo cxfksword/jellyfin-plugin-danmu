@@ -95,6 +95,7 @@ namespace Jellyfin.Plugin.Danmu
                 return;
             }
 
+            // 当剧集没有SXX/Season XX季文件夹时，LocationType就是Virtual，动画经常没有季文件夹
             if (itemChangeEventArgs.Item.LocationType == LocationType.Virtual && itemChangeEventArgs.Item is not Season)
             {
                 return;
@@ -103,25 +104,6 @@ namespace Jellyfin.Plugin.Danmu
             _libraryManagerEventsHelper.QueueItem(itemChangeEventArgs.Item, EventType.Update);
         }
 
-        /// <summary>
-        /// Library item was removed.
-        /// </summary>
-        /// <param name="sender">The sending entity.</param>
-        /// <param name="itemChangeEventArgs">The <see cref="ItemChangeEventArgs"/>.</param>
-        private void LibraryManagerItemRemoved(object sender, ItemChangeEventArgs itemChangeEventArgs)
-        {
-            if (itemChangeEventArgs.Item is not Movie and not Episode and not Series and not Season)
-            {
-                return;
-            }
-
-            if (itemChangeEventArgs.Item.LocationType == LocationType.Virtual)
-            {
-                return;
-            }
-
-            _libraryManagerEventsHelper.QueueItem(itemChangeEventArgs.Item, EventType.Remove);
-        }
 
         /// <inheritdoc />
         public void Dispose()

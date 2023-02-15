@@ -37,6 +37,40 @@ public class Dandan : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
+    public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
+    {
+        var list = new List<ScraperSearchInfo>();
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+        var searchName = this.NormalizeSearchName(item.Name);
+        var animes = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
+        foreach (var anime in animes)
+        {
+            var animeId = anime.AnimeId;
+            var title = anime.AnimeTitle;
+            var pubYear = anime.Year;
+
+            if (isMovieItemType && anime.Type != "movie")
+            {
+                continue;
+            }
+
+            if (!isMovieItemType && anime.Type == "movie")
+            {
+                continue;
+            }
+
+            list.Add(new ScraperSearchInfo()
+            {
+                Id = $"{animeId}",
+                Name = title,
+                Category = anime.Type == "movie" ? "电影" : "电视剧",
+                Year = pubYear,
+            });
+        }
+
+        return list;
+    }
+
     public override async Task<string?> SearchMediaId(BaseItem item)
     {
         var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;

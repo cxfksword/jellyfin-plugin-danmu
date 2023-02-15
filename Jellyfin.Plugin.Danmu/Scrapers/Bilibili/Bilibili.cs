@@ -36,6 +36,46 @@ public class Bilibili : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
+    public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
+    {
+        var list = new List<ScraperSearchInfo>();
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+        var searchName = this.NormalizeSearchName(item.Name);
+        try
+        {
+            var searchResult = await _api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
+            if (searchResult != null && searchResult.Result != null)
+            {
+                foreach (var result in searchResult.Result)
+                {
+                    if ((result.ResultType == "media_ft" || result.ResultType == "media_bangumi") && result.Data.Length > 0)
+                    {
+                        foreach (var media in result.Data)
+                        {
+                            var seasonId = media.SeasonId;
+                            var title = media.Title;
+                            var pubYear = Jellyfin.Plugin.Danmu.Core.Utils.UnixTimeStampToDateTime(media.PublishTime).Year;
+
+                            list.Add(new ScraperSearchInfo()
+                            {
+                                Id = $"{seasonId}",
+                                Name = title,
+                                Category = media.SeasonTypeName,
+                                Year = pubYear,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Exception handled GetMatchSeasonId. {0}", searchName);
+        }
+
+        return list;
+    }
+
     public override async Task<string?> SearchMediaId(BaseItem item)
     {
         var searchName = this.NormalizeSearchName(item.Name);

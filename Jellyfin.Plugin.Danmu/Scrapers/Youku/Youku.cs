@@ -39,8 +39,10 @@ public class Youku : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
-    public override async Task<string?> SearchMediaId(BaseItem item)
+    public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
+        var list = new List<ScraperSearchInfo>();
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
         var searchName = this.NormalizeSearchName(item.Name);
         var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var video in videos)
@@ -48,7 +50,39 @@ public class Youku : AbstractScraper
             var videoId = video.ID;
             var title = video.Title;
             var pubYear = video.Year;
-            var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+
+            if (isMovieItemType && video.Type != "movie")
+            {
+                continue;
+            }
+
+            if (!isMovieItemType && video.Type == "movie")
+            {
+                continue;
+            }
+
+            list.Add(new ScraperSearchInfo()
+            {
+                Id = $"{videoId}",
+                Name = title,
+                Category = video.Type == "movie" ? "电影" : "电视剧",
+                Year = pubYear,
+            });
+        }
+
+        return list;
+    }
+
+    public override async Task<string?> SearchMediaId(BaseItem item)
+    {
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+        var searchName = this.NormalizeSearchName(item.Name);
+        var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
+        foreach (var video in videos)
+        {
+            var videoId = video.ID;
+            var title = video.Title;
+            var pubYear = video.Year;
 
             if (isMovieItemType && video.Type != "movie")
             {

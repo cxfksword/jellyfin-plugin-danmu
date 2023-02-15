@@ -39,8 +39,10 @@ public class Iqiyi : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
-    public override async Task<string?> SearchMediaId(BaseItem item)
+    public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
+        var list = new List<ScraperSearchInfo>();
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
         var searchName = this.NormalizeSearchName(item.Name);
         var videos = await this._api.GetSuggestAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var video in videos)
@@ -48,7 +50,40 @@ public class Iqiyi : AbstractScraper
             var videoId = video.VideoId;
             var title = video.Name;
             var pubYear = video.Year;
-            var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+
+            if (isMovieItemType && video.ChannelName != "电影")
+            {
+                continue;
+            }
+
+            if (!isMovieItemType && video.ChannelName == "电影")
+            {
+                continue;
+            }
+
+            list.Add(new ScraperSearchInfo()
+            {
+                Id = $"{video.LinkId}",
+                Name = title,
+                Category = video.ChannelName,
+                Year = pubYear,
+            });
+        }
+
+
+        return list;
+    }
+
+    public override async Task<string?> SearchMediaId(BaseItem item)
+    {
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+        var searchName = this.NormalizeSearchName(item.Name);
+        var videos = await this._api.GetSuggestAsync(searchName, CancellationToken.None).ConfigureAwait(false);
+        foreach (var video in videos)
+        {
+            var videoId = video.VideoId;
+            var title = video.Name;
+            var pubYear = video.Year;
 
             if (isMovieItemType && video.ChannelName != "电影")
             {
