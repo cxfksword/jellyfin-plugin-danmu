@@ -62,6 +62,7 @@ public class Bilibili : AbstractScraper
                                 Name = title,
                                 Category = media.SeasonTypeName,
                                 Year = pubYear,
+                                EpisodeSize = media.EpisodeSize,
                             });
                         }
                     }

@@ -68,6 +68,7 @@ public class Youku : AbstractScraper
                 Name = title,
                 Category = video.Type == "movie" ? "电影" : "电视剧",
                 Year = pubYear,
+                EpisodeSize = video.Total,
             });
         }
 

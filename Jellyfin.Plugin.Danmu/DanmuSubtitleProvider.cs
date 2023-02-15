@@ -63,47 +63,6 @@ public class DanmuSubtitleProvider : ISubtitleProvider
         {
             UpdateDanmuMetadata(item, scraper.ProviderId, info.Id);
             _libraryManagerEventsHelper.QueueItem(item, EventType.Force);
-
-            // if (item is Movie)
-            // {
-            //     var media = await scraper.GetMedia(item, info.Id);
-            //     if (media != null)
-            //     {
-            //         await ForceSaveProviderId(item, scraper.ProviderId, media.Id);
-            //     }
-            // }
-
-            // if (item is Episode)
-            // {
-            //     var season = ((Episode)item).Season;
-            //     if (season != null)
-            //     {
-            //         var media = await scraper.GetMedia(season, info.Id);
-            //         if (media != null)
-            //         {
-
-            //             // 更新季元数据
-            //             await ForceSaveProviderId(season, scraper.ProviderId, media.Id);
-
-            //             // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
-            //             var episodes = season.GetEpisodes(null, new DtoOptions(true));
-            //             foreach (var (episode, idx) in episodes.WithIndex())
-            //             {
-            //                 // 没对应剧集号的，忽略处理
-            //                 var indexNumber = episode.IndexNumber ?? 0;
-            //                 if (indexNumber < 1 || indexNumber > media.Episodes.Count)
-            //                 {
-            //                     continue;
-            //                 }
-
-            //                 var epId = media.Episodes[indexNumber - 1].Id;
-            //                 await ForceSaveProviderId(episode, scraper.ProviderId, epId);
-            //             }
-
-            //         }
-            //     }
-
-            // }
         }
 
         throw new Exception($"弹幕下载已由{Plugin.Instance?.Name}插件接管，请忽略本异常.");
@@ -123,6 +82,11 @@ public class DanmuSubtitleProvider : ISubtitleProvider
         }).FirstOrDefault();
 
         if (item == null)
+        {
+            return list;
+        }
+
+        if (_libraryManagerEventsHelper.IsIgnoreItem(item))
         {
             return list;
         }
@@ -149,6 +113,10 @@ public class DanmuSubtitleProvider : ISubtitleProvider
                     if (searchInfo.Year != null)
                     {
                         title += $" ({searchInfo.Year})";
+                    }
+                    if (searchInfo.EpisodeSize > 1)
+                    {
+                        title += $"【共{searchInfo.EpisodeSize}集】";
                     }
                     var idInfo = new SubtitleId() { ItemId = item.Id.ToString(), Id = searchInfo.Id.ToString(), ProviderId = scraper.ProviderId };
                     list.Add(new RemoteSubtitleInfo()

@@ -63,8 +63,9 @@ public class Dandan : AbstractScraper
             {
                 Id = $"{animeId}",
                 Name = title,
-                Category = anime.Type == "movie" ? "电影" : "电视剧",
+                Category = anime.TypeDescription,
                 Year = pubYear,
+                EpisodeSize = anime.EpisodeCount ?? 0,
             });
         }
 
