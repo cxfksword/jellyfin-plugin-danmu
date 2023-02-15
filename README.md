@@ -30,7 +30,7 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 1. 安装后，进入`控制台 -> 插件`，查看下`Danmu`插件是否是**Active**状态
 2. 进入`控制台 -> 媒体库`，点击任一媒体库进入配置页，在最下面的`字幕下载`选项中勾选**Danmu**，并保存
 
-   <img src="doc/tutorial.png"  width="400px" />
+   <img src="doc/tutorial.png"  width="720px" />
    
    假如想修正匹配错误的弹幕，请在电影或剧集中使用jellyfin的**修改字幕**功能
 
