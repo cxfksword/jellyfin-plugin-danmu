@@ -32,8 +32,8 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
                 }
             }
         }
-        [JsonPropertyName("uploader_id")]
-        public Int64 UploaderId { get; set; }
+        [JsonPropertyName("siteId")]
+        public string SiteId { get; set; }
         [JsonPropertyName("albumLink")]
         public string Link { get; set; }
         [JsonPropertyName("videoDocType")]

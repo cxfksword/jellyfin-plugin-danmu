@@ -83,7 +83,7 @@ public class IqiyiApi : AbstractApi
             result = searchResult.Data.DocInfos
                 .Where(x => x.Score > 0.7)
                 .Select(x => x.AlbumDocInfo)
-                .Where(x => !string.IsNullOrEmpty(x.Link) && x.Link.Contains("iqiyi.com") && x.VideoDocType == 1 && !x.Channel.Contains("原创"))
+                .Where(x => !string.IsNullOrEmpty(x.Link) && x.Link.Contains("iqiyi.com") && x.SiteId == "iqiyi" && x.VideoDocType == 1 && !x.Channel.Contains("原创"))
                 .ToList();
         }
 

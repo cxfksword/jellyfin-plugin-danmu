@@ -30,7 +30,7 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var keyword = "奔跑吧兄弟";
+                    var keyword = "回魂夜";
                     var result = await api.SearchAsync(keyword, CancellationToken.None);
                     Console.WriteLine(result);
                 }
@@ -72,7 +72,7 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var albumId = "7765466759502501"; 
+                    var albumId = "7765466759502501";
                     var result = await api.GetZongyiEpisodesAsync(albumId, CancellationToken.None);
                     Console.WriteLine(result);
                 }
