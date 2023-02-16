@@ -39,6 +39,8 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
         {
             get
             {
+                if (string.IsNullOrEmpty(AlbumUrl)) return null;
+
                 var match = regLinkId.Match(AlbumUrl);
                 if (match.Success && match.Groups.Count > 2)
                 {

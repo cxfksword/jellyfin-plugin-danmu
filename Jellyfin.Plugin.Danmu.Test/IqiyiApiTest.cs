@@ -30,8 +30,8 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var keyword = "狂飙";
-                    var result = await api.GetSuggestAsync(keyword, CancellationToken.None);
+                    var keyword = "奔跑吧兄弟";
+                    var result = await api.SearchAsync(keyword, CancellationToken.None);
                     Console.WriteLine(result);
                 }
                 catch (Exception ex)
@@ -54,6 +54,26 @@ namespace Jellyfin.Plugin.Danmu.Test
                     var vid = "3493131456125200"; // 电视剧
                     // var vid = "429872"; // 电影
                     var result = await api.GetVideoAsync(vid, CancellationToken.None);
+                    Console.WriteLine(result);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+        }
+
+        [TestMethod]
+        public void TestGetZongyiEpisodes()
+        {
+            var api = new IqiyiApi(loggerFactory);
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var albumId = "7765466759502501"; 
+                    var result = await api.GetZongyiEpisodesAsync(albumId, CancellationToken.None);
                     Console.WriteLine(result);
                 }
                 catch (Exception ex)

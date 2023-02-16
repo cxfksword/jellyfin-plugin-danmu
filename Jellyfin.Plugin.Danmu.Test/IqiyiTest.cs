@@ -133,5 +133,45 @@ namespace Jellyfin.Plugin.Danmu.Test
             }).GetAwaiter().GetResult();
 
         }
+
+        [TestMethod]
+        public void TestGetMedia()
+        {
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var api = new Iqiyi(loggerFactory);
+                    var media = await api.GetMedia(new Season(), "19rrhaen1h");
+                    Console.WriteLine(media);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+
+        }
+
+        [TestMethod]
+        public void TestGetZongyiMedia()
+        {
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var api = new Iqiyi(loggerFactory);
+                    var media = await api.GetMedia(new Season(), "25apmxdhmmh");
+                    Console.WriteLine(media);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+
+        }
     }
 }

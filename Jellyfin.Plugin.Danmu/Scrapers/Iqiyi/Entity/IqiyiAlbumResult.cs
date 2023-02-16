@@ -11,7 +11,7 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
     public class IqiyiAlbumResult
     {
         [JsonPropertyName("data")]
-        public IqiyiVideo Data { get; set; }
+        public IqiyiAlbum Data { get; set; }
     }
 
 }

@@ -44,7 +44,7 @@ public class Iqiyi : AbstractScraper
         var list = new List<ScraperSearchInfo>();
         var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
         var searchName = this.NormalizeSearchName(item.Name);
-        var videos = await this._api.GetSuggestAsync(searchName, CancellationToken.None).ConfigureAwait(false);
+        var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var video in videos)
         {
             var videoId = video.VideoId;
@@ -67,6 +67,7 @@ public class Iqiyi : AbstractScraper
                 Name = title,
                 Category = video.ChannelName,
                 Year = pubYear,
+                EpisodeSize = video.ItemTotalNumber,
             });
         }
 
@@ -78,7 +79,7 @@ public class Iqiyi : AbstractScraper
     {
         var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
         var searchName = this.NormalizeSearchName(item.Name);
-        var videos = await this._api.GetSuggestAsync(searchName, CancellationToken.None).ConfigureAwait(false);
+        var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var video in videos)
         {
             var videoId = video.VideoId;

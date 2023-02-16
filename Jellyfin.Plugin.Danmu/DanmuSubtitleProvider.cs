@@ -111,7 +111,7 @@ public class DanmuSubtitleProvider : ISubtitleProvider
                     {
                         title = $"[{searchInfo.Category}] {searchInfo.Name}";
                     }
-                    if (searchInfo.Year != null)
+                    if (searchInfo.Year != null && searchInfo.Year > 0)
                     {
                         title += $" ({searchInfo.Year})";
                     }

@@ -54,33 +54,40 @@ public class IqiyiApi : AbstractApi
     }
 
 
-    public async Task<List<IqiyiSuggest>> GetSuggestAsync(string keyword, CancellationToken cancellationToken)
+    public async Task<List<IqiyiSearchAlbumInfo>> SearchAsync(string keyword, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(keyword))
         {
-            return new List<IqiyiSuggest>();
+            return new List<IqiyiSearchAlbumInfo>();
         }
 
         var cacheKey = $"search_{keyword}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
-        if (_memoryCache.TryGetValue<List<IqiyiSuggest>>(cacheKey, out var cacheValue))
+        if (_memoryCache.TryGetValue<List<IqiyiSearchAlbumInfo>>(cacheKey, out var cacheValue))
         {
             return cacheValue;
         }
 
+        await this.LimitRequestFrequently();
+
         keyword = HttpUtility.UrlEncode(keyword);
-        var url = $"https://suggest.video.iqiyi.com/?key={keyword}&platform=11&rltnum=10&ppuid=";
+        var url = $"https://search.video.iqiyi.com/o?if=html5&key={keyword}&pageNum=1&pageSize=20";
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var result = new List<IqiyiSuggest>();
-        var searchResult = await response.Content.ReadFromJsonAsync<IqiyiSuggestResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var result = new List<IqiyiSearchAlbumInfo>();
+        var searchResult = await response.Content.ReadFromJsonAsync<IqiyiSearchResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (searchResult != null && searchResult.Data != null)
         {
-            result = searchResult.Data.Where(x => !string.IsNullOrEmpty(x.Link) && x.Link.Contains("iqiyi.com") && x.VideoId > 0).ToList();
+            // 综艺没找到接口获取准确的正片列表，忽略不处理
+            result = searchResult.Data.DocInfos
+                .Where(x => x.Score > 0.7)
+                .Select(x => x.AlbumDocInfo)
+                .Where(x => !string.IsNullOrEmpty(x.Link) && x.Link.Contains("iqiyi.com") && x.VideoDocType == 1 && !x.Channel.Contains("原创"))
+                .ToList();
         }
 
-        _memoryCache.Set<List<IqiyiSuggest>>(cacheKey, result, expiredOption);
+        _memoryCache.Set<List<IqiyiSearchAlbumInfo>>(cacheKey, result, expiredOption);
         return result;
     }
 
@@ -100,7 +107,8 @@ public class IqiyiApi : AbstractApi
 
         // 获取影片信息(vid)：https://pcw-api.iqiyi.com/video/video/baseinfo/429872
         // 获取电视剧信息(aid)：https://pcw-api.iqiyi.com/album/album/baseinfo/5328486914190101
-        // 获取影片剧集信息(aid)：https://pcw-api.iqiyi.com/albums/album/avlistinfo?aid=5328486914190101&page=1&size=100
+        // 获取电视剧剧集信息(综艺不适用)(aid)：https://pcw-api.iqiyi.com/albums/album/avlistinfo?aid=5328486914190101&page=1&size=100
+        // 获取电视剧剧集信息(综艺不适用)(aid)：https://pub.m.iqiyi.com/h5/main/videoList/album/?albumId=5328486914190101&size=39&page=1&needPrevue=true&needVipPrevue=false
         var url = $"https://pcw-api.iqiyi.com/video/video/baseinfo/{id}";
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
@@ -108,13 +116,16 @@ public class IqiyiApi : AbstractApi
         var result = await response.Content.ReadFromJsonAsync<IqiyiVideoResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Data != null)
         {
-            // 电视剧需要再获取剧集信息
-            if (result.Data.ChannelId != 1)
-            {
+            if (result.Data.ChannelId == 6)
+            { // 综艺需要特殊处理
+                result.Data.Epsodelist = await this.GetZongyiEpisodesAsync($"{result.Data.AlbumId}", cancellationToken).ConfigureAwait(false);
+            }
+            else if (result.Data.ChannelId != 1)
+            { // 电视剧需要再获取剧集信息
                 result.Data.Epsodelist = await this.GetEpisodesAsync($"{result.Data.AlbumId}", result.Data.VideoCount, cancellationToken).ConfigureAwait(false);
             }
             else
-            {
+            { // 电影
                 result.Data.Epsodelist = new List<IqiyiEpisode>() {
                     new IqiyiEpisode() {TvId = result.Data.TvId, Order = 1, Name = result.Data.Name, Duration = result.Data.Duration, PlayUrl = result.Data.PlayUrl}
                 };
@@ -128,6 +139,9 @@ public class IqiyiApi : AbstractApi
         return null;
     }
 
+    /// <summary>
+    /// 获取电视剧剧集列表(综艺不适用)
+    /// </summary>
     public async Task<List<IqiyiEpisode>> GetEpisodesAsync(string albumId, int size, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(albumId))
@@ -135,15 +149,76 @@ public class IqiyiApi : AbstractApi
             return new List<IqiyiEpisode>();
         }
 
-
         var url = $"https://pcw-api.iqiyi.com/albums/album/avlistinfo?aid={albumId}&page=1&size={size}";
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var albumResult = await response.Content.ReadFromJsonAsync<IqiyiAlbumResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var albumResult = await response.Content.ReadFromJsonAsync<IqiyiVideoResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (albumResult != null && albumResult.Data != null && albumResult.Data.Epsodelist != null)
         {
             return albumResult.Data.Epsodelist;
+        }
+
+        return new List<IqiyiEpisode>();
+    }
+
+    /// <summary>
+    /// 获取综艺剧集列表
+    /// </summary>
+    public async Task<List<IqiyiEpisode>> GetZongyiEpisodesAsync(string albumId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(albumId))
+        {
+            return new List<IqiyiEpisode>();
+        }
+
+
+        // 获取电视剧剧集信息(综艺不适用)
+        var url = $"https://pcw-api.iqiyi.com/album/album/baseinfo/{albumId}";
+        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var albumResult = await response.Content.ReadFromJsonAsync<IqiyiAlbumResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (albumResult != null && albumResult.Data != null && albumResult.Data.FirstVideo != null && albumResult.Data.LatestVideo != null)
+        {
+            var startDate = new DateTime(1970, 1, 1, 0, 0, 0, 0).AddMilliseconds(albumResult.Data.FirstVideo.publishTime).ToLocalTime();
+            var endDate = new DateTime(1970, 1, 1, 0, 0, 0, 0).AddMilliseconds(albumResult.Data.LatestVideo.publishTime).ToLocalTime();
+            // 超过一年的太大直接不处理
+            var totalDays = (endDate - startDate).TotalDays;
+            if (totalDays > 365)
+            {
+                return new List<IqiyiEpisode>();
+            }
+
+            var list = new List<IqiyiVideoListInfo>();
+            for (var begin = startDate; begin <= endDate; begin = begin.AddMonths(1))
+            {
+                var year = begin.Year;
+                var month = begin.ToString("MM");
+                url = $"https://pub.m.iqiyi.com/h5/main/videoList/source/month/?sourceId={albumId}&year={year}&month={month}";
+                response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                var videoListResult = await response.Content.ReadFromJsonAsync<IqiyiVideoListResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+                if (videoListResult != null && videoListResult.Data != null && videoListResult.Data.Videos != null && videoListResult.Data.Videos.Count > 0)
+                {
+                    list.AddRange(videoListResult.Data.Videos);
+                }
+                else
+                {
+                    break;
+                }
+
+                Thread.Sleep(200);
+            }
+
+            var result = new List<IqiyiEpisode>();
+            list = list.OrderBy(x => x.PublishTime).ToList();
+            for (int i = 0; i < list.Count; i++)
+            {
+                result.Add(new IqiyiEpisode() { TvId = list[i].Id, Name = list[i].ShortTitle, Order = (i + 1), Duration = list[i].Duration, PlayUrl = list[i].PlayUrl });
+            }
+            return result;
         }
 
         return new List<IqiyiEpisode>();
