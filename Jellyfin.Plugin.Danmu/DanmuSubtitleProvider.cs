@@ -61,7 +61,16 @@ public class DanmuSubtitleProvider : ISubtitleProvider
         var scraper = _scraperManager.All().FirstOrDefault(x => x.ProviderId == info.ProviderId);
         if (scraper != null)
         {
-            UpdateDanmuMetadata(item, scraper.ProviderId, info.Id);
+            // 注意！！：item这里要使用临时对象，假如直接修改原始item的ProviderIds，会导致直接修改原始item数据
+            if (item is Movie)
+            {
+                item = new Movie() { Id = item.Id, Name = item.Name, ProviderIds = new Dictionary<string, string>() { { scraper.ProviderId, info.Id } } };
+            }
+            if (item is Episode)
+            {
+                item = new Episode() { Id = item.Id, Name = item.Name, ProviderIds = new Dictionary<string, string>() { { scraper.ProviderId, info.Id } } };
+            }
+
             _libraryManagerEventsHelper.QueueItem(item, EventType.Force);
         }
 

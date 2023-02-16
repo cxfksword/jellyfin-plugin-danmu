@@ -104,6 +104,40 @@ namespace Jellyfin.Plugin.Danmu.Controllers
             return File(System.IO.File.ReadAllBytes(danmuPath), "text/xml");
         }
 
+        /// <summary>
+        /// 跳转链接.
+        /// </summary>
+        [Route("goto")]
+        [HttpGet]
+        public RedirectResult GoTo(string provider, string id, string type)
+        {
+            var url = $"/";
+            switch (provider)
+            {
+                case "bilibili":
+                    if (id.StartsWith("BV"))
+                    {
+                        url = $"https://www.bilibili.com/video/{id}/";
+                    }
+                    else
+                    {
+                        if (type == "movie")
+                        {
+                            url = $"https://www.bilibili.com/bangumi/play/ep{id}";
+                        }
+                        else
+                        {
+                            url = $"https://www.bilibili.com/bangumi/play/ss{id}";
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+            return Redirect(url);
+        }
+
+
 
         /// <summary>
         /// 重新获取对应的弹幕id.

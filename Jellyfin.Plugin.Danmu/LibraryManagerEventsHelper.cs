@@ -364,25 +364,29 @@ public class LibraryManagerEventsHelper : IDisposable
         // 强制刷新指定来源弹幕
         if (eventType == EventType.Force)
         {
-            foreach (var item in movies)
+            foreach (var queueItem in movies)
             {
-                // 找到强制的scraper
-                var scraper = _scraperManager.All().FirstOrDefault(x => item.ProviderIds.ContainsKey(x.ProviderId));
+                // 找到选择的scraper
+                var scraper = _scraperManager.All().FirstOrDefault(x => queueItem.ProviderIds.ContainsKey(x.ProviderId));
                 if (scraper == null)
                 {
                     continue;
                 }
 
-                var mediaId = item.GetProviderId(scraper.ProviderId);
+                // 获取选择的弹幕Id
+                var mediaId = queueItem.GetProviderId(scraper.ProviderId);
                 if (string.IsNullOrEmpty(mediaId))
                 {
                     continue;
                 }
 
-
+                // 获取最新的item数据
+                var item = _libraryManager.GetItemById(queueItem.Id);
                 var media = await scraper.GetMedia(item, mediaId);
                 if (media != null)
                 {
+                    await this.ForceSaveProviderId(item, scraper.ProviderId, media.Id);
+
                     var episode = await scraper.GetMediaEpisode(item, media.Id);
                     if (episode != null)
                     {
@@ -390,7 +394,6 @@ public class LibraryManagerEventsHelper : IDisposable
                         await this.DownloadDanmu(scraper, item, episode.CommentId, true).ConfigureAwait(false);
                     }
 
-                    await this.ForceSaveProviderId(item, scraper.ProviderId, media.Id);
                 }
             }
         }
@@ -659,22 +662,25 @@ public class LibraryManagerEventsHelper : IDisposable
         // 强制刷新指定来源弹幕
         if (eventType == EventType.Force)
         {
-            foreach (var item in episodes)
+            foreach (var queueItem in episodes)
             {
-                // 找到强制的scraper
-                var scraper = _scraperManager.All().FirstOrDefault(x => item.ProviderIds.ContainsKey(x.ProviderId));
+                // 找到选择的scraper
+                var scraper = _scraperManager.All().FirstOrDefault(x => queueItem.ProviderIds.ContainsKey(x.ProviderId));
                 if (scraper == null)
                 {
                     continue;
                 }
 
-                var mediaId = item.GetProviderId(scraper.ProviderId);
+                // 获取选择的弹幕Id
+                var mediaId = queueItem.GetProviderId(scraper.ProviderId);
                 if (string.IsNullOrEmpty(mediaId))
                 {
                     continue;
                 }
 
 
+                // 获取最新的item数据
+                var item = _libraryManager.GetItemById(queueItem.Id);
                 var season = ((Episode)item).Season;
                 if (season == null)
                 {
@@ -684,6 +690,9 @@ public class LibraryManagerEventsHelper : IDisposable
                 var media = await scraper.GetMedia(season, mediaId);
                 if (media != null)
                 {
+                    // 更新季元数据
+                    await ForceSaveProviderId(season, scraper.ProviderId, media.Id);
+
                     // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
                     var episodeList = season.GetEpisodes(null, new DtoOptions(true));
                     foreach (var (episode, idx) in episodeList.WithIndex())
@@ -704,10 +713,6 @@ public class LibraryManagerEventsHelper : IDisposable
                         // 更新剧集元数据
                         await ForceSaveProviderId(episode, scraper.ProviderId, epId);
                     }
-
-                    // 更新季元数据
-                    await ForceSaveProviderId(season, scraper.ProviderId, media.Id);
-
                 }
             }
         }
