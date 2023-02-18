@@ -143,5 +143,25 @@ namespace Jellyfin.Plugin.Danmu.Test
             }).GetAwaiter().GetResult();
 
         }
+
+        [TestMethod]
+        public void TestGetDanmuContent()
+        {
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var api = new Tencent(loggerFactory);
+                    var media = await api.GetDanmuContent(new Movie(), "c0034tn5bx8");
+                    Console.WriteLine(media);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+
+        }
     }
 }

@@ -94,7 +94,10 @@ public class ScraperDanmakuText : IXmlSerializable
     /// </summary>
     public int Mode { get; set; }
     public int Fontsize { get; set; } = 25;    //文字大小
-    public uint Color { get; set; }       //弹幕颜色
+    /// <summary>
+    /// 弹幕颜色，默认白色
+    /// </summary>
+    public uint Color { get; set; } = 16777215;
     public string MidHash { get; set; }   //发送者UID的HASH
     public string Content { get; set; }   //弹幕内容
     public long Ctime { get; set; }       //发送时间
