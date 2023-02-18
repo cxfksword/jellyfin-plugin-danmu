@@ -193,7 +193,6 @@ public class Tencent : AbstractScraper
             try
             {
                 var midHash = string.IsNullOrEmpty(comment.Nick) ? "anonymous".ToBase64() : comment.Nick.ToBase64();
-                var mode = 1;
                 var danmakuText = new ScraperDanmakuText();
                 danmakuText.Progress = comment.TimeOffset.ToInt();
                 danmakuText.Mode = 1;
