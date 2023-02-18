@@ -19,6 +19,7 @@ using System.Text.Json;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Dto;
+using Jellyfin.Plugin.Danmu.Core;
 
 namespace Jellyfin.Plugin.Danmu;
 
@@ -74,7 +75,7 @@ public class DanmuSubtitleProvider : ISubtitleProvider
             _libraryManagerEventsHelper.QueueItem(item, EventType.Force);
         }
 
-        throw new Exception($"弹幕下载已由{Plugin.Instance?.Name}插件接管，请忽略本异常.");
+        throw new CanIgnoreException($"弹幕下载已由{Plugin.Instance?.Name}插件接管.");
     }
 
     public async Task<IEnumerable<RemoteSubtitleInfo>> Search(SubtitleSearchRequest request, CancellationToken cancellationToken)

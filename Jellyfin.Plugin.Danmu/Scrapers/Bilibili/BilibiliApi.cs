@@ -26,14 +26,8 @@ using ComposableAsync;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
 
-public class BilibiliApi : IDisposable
+public class BilibiliApi : AbstractApi
 {
-    const string HTTP_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36 Edg/93.0.961.44";
-    private readonly ILogger<BilibiliApi> _logger;
-    private readonly JsonSerializerOptions _jsonOptions = JsonDefaults.Options;
-    private HttpClient httpClient;
-    private CookieContainer _cookieContainer;
-    private readonly IMemoryCache _memoryCache;
     private static readonly object _lock = new object();
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
 
@@ -42,14 +36,8 @@ public class BilibiliApi : IDisposable
     /// </summary>
     /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
     public BilibiliApi(ILoggerFactory loggerFactory)
+        : base(loggerFactory.CreateLogger<BilibiliApi>())
     {
-        _logger = loggerFactory.CreateLogger<BilibiliApi>();
-
-        var handler = new HttpClientHandlerEx();
-        _cookieContainer = handler.CookieContainer;
-        httpClient = new HttpClient(handler, true);
-        httpClient.DefaultRequestHeaders.Add("user-agent", HTTP_USER_AGENT);
-        _memoryCache = new MemoryCache(new MemoryCacheOptions());
     }
 
 
@@ -284,18 +272,5 @@ public class BilibiliApi : IDisposable
         await this._timeConstraint;
     }
 
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _memoryCache.Dispose();
-        }
-    }
 }
 

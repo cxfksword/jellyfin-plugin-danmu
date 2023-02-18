@@ -60,10 +60,10 @@ namespace Jellyfin.Plugin.Danmu.Core.Http
                     log.Append("Response: ").Append(response).Append('\n');
                 }
 
-                if (response?.Content != null)
-                {
-                    log.Append("Content: ").Append(await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)).Append('\n');
-                }
+                // if (response?.Content != null)
+                // {
+                //     log.Append("Content: ").Append(await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)).Append('\n');
+                // }
             }
             catch
             {

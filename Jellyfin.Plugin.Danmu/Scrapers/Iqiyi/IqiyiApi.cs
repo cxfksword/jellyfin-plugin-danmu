@@ -25,7 +25,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 
 public class IqiyiApi : AbstractApi
 {
-    const string HTTP_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1 Edg/93.0.4577.63";
     private static readonly object _lock = new object();
     private static readonly Regex yearReg = new Regex(@"[12][890][0-9][0-9]", RegexOptions.Compiled);
     private static readonly Regex moviesReg = new Regex(@"<a.*?h5-show-card.*?>([\w\W]+?)</a>", RegexOptions.Compiled);
@@ -38,6 +37,7 @@ public class IqiyiApi : AbstractApi
     private DateTime lastRequestTime = DateTime.Now.AddDays(-1);
 
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
+    private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
 
     protected string _cna = string.Empty;
     protected string _token = string.Empty;
@@ -50,7 +50,6 @@ public class IqiyiApi : AbstractApi
     public IqiyiApi(ILoggerFactory loggerFactory)
         : base(loggerFactory.CreateLogger<IqiyiApi>())
     {
-        httpClient.DefaultRequestHeaders.Add("user-agent", HTTP_USER_AGENT);
     }
 
 
@@ -258,7 +257,9 @@ public class IqiyiApi : AbstractApi
             try
             {
                 var comments = await this.GetDanmuContentByMatAsync(tvId, mat, cancellationToken);
-                danmuList.AddRange(comments);
+
+                // 每段有300秒弹幕，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
+                danmuList.AddRange(comments.ExtractToNumber(1000));
             }
             catch (Exception ex)
             {
@@ -266,6 +267,9 @@ public class IqiyiApi : AbstractApi
             }
 
             mat++;
+
+            // 等待一段时间避免api请求太快
+            await _delayExecuteConstraint;
         } while (mat < 1000);
 
         return danmuList;

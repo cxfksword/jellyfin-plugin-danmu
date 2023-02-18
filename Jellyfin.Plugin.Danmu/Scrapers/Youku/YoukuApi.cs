@@ -21,7 +21,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Youku;
 
 public class YoukuApi : AbstractApi
 {
-    const string HTTP_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1 Edg/93.0.4577.63";
     private static readonly object _lock = new object();
     private static readonly Regex yearReg = new Regex(@"[12][890][0-9][0-9]", RegexOptions.Compiled);
     private static readonly Regex moviesReg = new Regex(@"<a.*?h5-show-card.*?>([\w\W]+?)</a>", RegexOptions.Compiled);
@@ -32,6 +31,7 @@ public class YoukuApi : AbstractApi
     private DateTime lastRequestTime = DateTime.Now.AddDays(-1);
 
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
+    private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
 
     protected string _cna = string.Empty;
     protected string _token = string.Empty;
@@ -44,7 +44,6 @@ public class YoukuApi : AbstractApi
     public YoukuApi(ILoggerFactory loggerFactory)
         : base(loggerFactory.CreateLogger<YoukuApi>())
     {
-        httpClient.DefaultRequestHeaders.Add("user-agent", HTTP_USER_AGENT);
     }
 
 
@@ -65,7 +64,7 @@ public class YoukuApi : AbstractApi
         await this.LimitRequestFrequently();
 
         keyword = HttpUtility.UrlEncode(keyword);
-        var ua = HttpUtility.UrlEncode(HTTP_USER_AGENT);
+        var ua = HttpUtility.UrlEncode(AbstractApi.HTTP_USER_AGENT);
         var url = $"https://search.youku.com/api/search?keyword={keyword}&userAgent={ua}&site=1&categories=0&ftype=0&ob=0&pg=1";
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
@@ -189,6 +188,9 @@ public class YoukuApi : AbstractApi
         {
             var comments = await this.GetDanmuContentByMatAsync(vid, mat, cancellationToken);
             danmuList.AddRange(comments);
+
+            // 等待一段时间避免api请求太快
+            await _delayExecuteConstraint;
         }
 
         return danmuList;
@@ -264,7 +266,8 @@ public class YoukuApi : AbstractApi
             var commentResult = JsonSerializer.Deserialize<YoukuCommentResult>(result.Data.Result);
             if (commentResult != null && commentResult.Data != null)
             {
-                return commentResult.Data.Result;
+                // 每段有60秒弹幕，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
+                return commentResult.Data.Result.ExtractToNumber(200).ToList();
             }
         }
 
