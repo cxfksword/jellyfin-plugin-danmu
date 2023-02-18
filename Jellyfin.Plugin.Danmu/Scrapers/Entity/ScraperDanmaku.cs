@@ -85,10 +85,19 @@ public class ScraperDanmaku
 public class ScraperDanmakuText : IXmlSerializable
 {
     public long Id { get; set; }          //弹幕dmID
-    public int Progress { get; set; }     //出现时间(单位ms)
-    public int Mode { get; set; }         //弹幕类型 1 2 3:普通弹幕 4:底部弹幕 5:顶部弹幕 6:逆向弹幕 7:高级弹幕 8:代码弹幕 9:BAS弹幕(pool必须为2)
+    /// <summary>
+    /// 出现时间(单位ms)
+    /// </summary>
+    public int Progress { get; set; }
+    /// <summary>
+    /// 弹幕类型 1 2 3:普通弹幕 4:底部弹幕 5:顶部弹幕 6:逆向弹幕 7:高级弹幕 8:代码弹幕 9:BAS弹幕(pool必须为2)
+    /// </summary>
+    public int Mode { get; set; }
     public int Fontsize { get; set; } = 25;    //文字大小
-    public uint Color { get; set; }       //弹幕颜色
+    /// <summary>
+    /// 弹幕颜色，默认白色
+    /// </summary>
+    public uint Color { get; set; } = 16777215;
     public string MidHash { get; set; }   //发送者UID的HASH
     public string Content { get; set; }   //弹幕内容
     public long Ctime { get; set; }       //发送时间

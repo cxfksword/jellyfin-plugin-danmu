@@ -13,10 +13,10 @@ namespace Jellyfin.Plugin.Danmu.Core.Http
     {
         public HttpClientHandlerEx()
         {
-            // 忽略SSL证书问题
-            ServerCertificateCustomValidationCallback = (message, certificate2, arg3, arg4) => true;
+            ServerCertificateCustomValidationCallback = (message, certificate2, arg3, arg4) => true; // 忽略SSL证书问题
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             CookieContainer = new CookieContainer();
+            UseCookies = true; // 使用cookie
         }
 
         protected override Task<HttpResponseMessage> SendAsync(

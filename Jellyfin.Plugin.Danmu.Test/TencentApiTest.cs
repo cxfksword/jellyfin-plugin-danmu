@@ -4,33 +4,24 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Danmu.Model;
-using Jellyfin.Plugin.Danmu.Scrapers.Youku;
+using Jellyfin.Plugin.Danmu.Scrapers.Tencent;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Danmu.Test
 {
 
     [TestClass]
-    public class YoukuApiTest
+    public class TencentApiTest : BaseTest
     {
-        ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
-            builder.AddSimpleConsole(options =>
-            {
-                options.IncludeScopes = true;
-                options.SingleLine = true;
-                options.TimestampFormat = "hh:mm:ss ";
-            }));
-
         [TestMethod]
         public void TestSearch()
         {
-            var keyword = "西虹市首富";
-            var api = new YoukuApi(loggerFactory);
-
             Task.Run(async () =>
             {
                 try
                 {
+                    var keyword = "流浪地球";
+                    var api = new TencentApi(loggerFactory);
                     var result = await api.SearchAsync(keyword, CancellationToken.None);
                     Console.WriteLine(result);
                 }
@@ -45,13 +36,12 @@ namespace Jellyfin.Plugin.Danmu.Test
         [TestMethod]
         public void TestGetVideo()
         {
-            var api = new YoukuApi(loggerFactory);
-
             Task.Run(async () =>
             {
                 try
                 {
-                    var vid = "0b39c5b6569311e5b2ad";
+                    var vid = "mzc00200koowgko";
+                    var api = new TencentApi(loggerFactory);
                     var result = await api.GetVideoAsync(vid, CancellationToken.None);
                     Console.WriteLine(result);
                 }
@@ -64,35 +54,15 @@ namespace Jellyfin.Plugin.Danmu.Test
 
 
         [TestMethod]
-        public void TestGetDanmuContentByMat()
-        {
-            var api = new YoukuApi(loggerFactory);
-
-            Task.Run(async () =>
-            {
-                try
-                {
-                    var vid = "XMTM1MTc4MDU3Ng==";
-                    var result = await api.GetDanmuContentByMatAsync(vid, 0, CancellationToken.None);
-                    Console.WriteLine(result);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-            }).GetAwaiter().GetResult();
-        }
-
-        [TestMethod]
         public void TestGetDanmu()
         {
-            var api = new YoukuApi(loggerFactory);
 
             Task.Run(async () =>
             {
                 try
                 {
-                    var vid = "XMTM1MTc4MDU3Ng==";
+                    var vid = "a00149qxvfz";
+                    var api = new TencentApi(loggerFactory);
                     var result = await api.GetDanmuContentAsync(vid, CancellationToken.None);
                     Console.WriteLine(result);
                 }
