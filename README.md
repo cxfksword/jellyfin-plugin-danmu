@@ -4,7 +4,7 @@
 [![Danmu](https://img.shields.io/badge/jellyfin-10.8.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
 [![Danmu](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
 
-jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play，优酷，爱奇艺，腾讯视频。
+jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play，优酷，爱奇艺，腾讯视频，芒果TV。
 
 支持功能：
 
@@ -31,16 +31,14 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 2. 进入`控制台 -> 媒体库`，点击任一媒体库进入配置页，在最下面的`字幕下载`选项中勾选**Danmu**，并保存
 
    <img src="doc/tutorial.png"  width="720px" />
-   
-   假如想修正匹配错误的弹幕，请在电影或剧集中使用jellyfin的**修改字幕**功能
 
 3. 新加入的影片会自动获取弹幕（只匹配番剧和电影视频），旧影片可以通过计划任务**扫描媒体库匹配弹幕**手动执行获取
-4. 可以在元数据中手动指定匹配的视频ID，如播放链接`https://www.bilibili.com/bangumi/play/ep682965`，对应的视频ID就是`682965`
-5. 对于电视剧和动画，可以在元数据中指定季ID，如播放链接`https://www.bilibili.com/bangumi/play/ss1564`，对应的季ID就是`1564`，只要集数和b站的集数的一致，并正确填写了集号，每季视频的弹幕会自动获取
+4. 假如弹幕匹配错误，请在电影或剧集中使用**修改字幕**功能搜索修正
+5. 对于电视剧或动画，需要保证每季视频集数一致，并正确填写集号，这样每季视频的弹幕才会自动获取
 6. 同时生成ass弹幕，需要在插件配置中打开，默认是关闭的
 7. 定时更新需要自己到计划任务中添加定时时间，默认手工执行更新
   
-> 电影或季元数据也支持手动指定BV号，来匹配UP主上传的视频弹幕。多P视频和剧集是按顺序一一对应匹配的，所以保证jellyfin中剧集有正确的集号很重要
+> B站电影或季元数据也支持手动指定BV号，来匹配UP主上传的视频弹幕。多P视频和剧集是按顺序一一对应匹配的，所以保证jellyfin中剧集有正确的集号很重要
 
 ## 支持的api接口
 

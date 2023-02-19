@@ -13,32 +13,37 @@ using System.Collections.Generic;
 using System.Xml;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using System.Text.Json;
-using Jellyfin.Plugin.Danmu.Scrapers.Tencent.Entity;
+using Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Entity;
+using MediaBrowser.Controller.Library;
 
-namespace Jellyfin.Plugin.Danmu.Scrapers.Tencent;
+namespace Jellyfin.Plugin.Danmu.Scrapers.Mgtv;
 
-public class Tencent : AbstractScraper
+public class Mgtv : AbstractScraper
 {
-    public const string ScraperProviderName = "腾讯";
-    public const string ScraperProviderId = "TencentID";
+    public const string ScraperProviderName = "芒果TV";
+    public const string ScraperProviderId = "MgtvID";
 
-    private readonly TencentApi _api;
+    private readonly MgtvApi _api;
+    private readonly ILibraryManager _libraryManager;
 
-    public Tencent(ILoggerFactory logManager)
-        : base(logManager.CreateLogger<Tencent>())
+    public Mgtv(ILoggerFactory logManager, ILibraryManager libraryManager)
+        : base(logManager.CreateLogger<Mgtv>())
     {
-        _api = new TencentApi(logManager);
+        _api = new MgtvApi(logManager);
+        _libraryManager = libraryManager;
     }
 
-    public override int DefaultOrder => 5;
+    public override int DefaultOrder => 6;
 
     public override bool DefaultEnable => false;
 
-    public override string Name => "腾讯";
+    public override string Name => "芒果TV";
 
     public override string ProviderName => ScraperProviderName;
 
     public override string ProviderId => ScraperProviderId;
+
+
 
     public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
@@ -146,13 +151,13 @@ public class Tencent : AbstractScraper
         media.Id = id;
         if (isMovieItemType && video.EpisodeList != null && video.EpisodeList.Count > 0)
         {
-            media.CommentId = $"{video.EpisodeList[0].Vid}";
+            media.CommentId = $"{id},{video.EpisodeList[0].VideoId}";
         }
         if (video.EpisodeList != null && video.EpisodeList.Count > 0)
         {
             foreach (var ep in video.EpisodeList)
             {
-                media.Episodes.Add(new ScraperEpisode() { Id = $"{ep.Vid}", CommentId = $"{ep.Vid}" });
+                media.Episodes.Add(new ScraperEpisode() { Id = $"{ep.VideoId}", CommentId = $"{id},{ep.VideoId}" });
             }
         }
 
@@ -171,10 +176,16 @@ public class Tencent : AbstractScraper
                 return null;
             }
 
-            return new ScraperEpisode() { Id = id, CommentId = $"{video.EpisodeList[0].Vid}" };
+            return new ScraperEpisode() { Id = id, CommentId = $"{id},{video.EpisodeList[0].VideoId}" };
         }
 
-        return new ScraperEpisode() { Id = id, CommentId = id };
+
+        // 从季信息元数据中，获取cid值
+        // 没SXX季文件夹时，GetParent是Series，有时，GetParent是Season，所以需要通过seasonId中获取
+        var seasonId = ((MediaBrowser.Controller.Entities.TV.Episode)item).FindSeasonId();
+        var season = _libraryManager.GetItemById(seasonId);
+        season.ProviderIds.TryGetValue(ScraperProviderId, out var cid);
+        return new ScraperEpisode() { Id = id, CommentId = $"{cid},{id}" };
     }
 
     public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)
@@ -184,50 +195,37 @@ public class Tencent : AbstractScraper
             return null;
         }
 
-        var comments = await _api.GetDanmuContentAsync(commentId, CancellationToken.None).ConfigureAwait(false);
+        var arr = commentId.Split(",");
+        if (arr.Length < 2)
+        {
+            return null;
+        }
+
+        var cid = arr[0];
+        var vid = arr[1];
+        if (string.IsNullOrEmpty(cid) || string.IsNullOrEmpty(vid))
+        {
+            return null;
+        }
+        var comments = await _api.GetDanmuContentAsync(cid, vid, CancellationToken.None).ConfigureAwait(false);
         var danmaku = new ScraperDanmaku();
-        danmaku.ChatId = 1000;
-        danmaku.ChatServer = "dm.video.qq.com";
+        danmaku.ChatId = vid.ToLong();
+        danmaku.ChatServer = "galaxy.bz.mgtv.com";
         foreach (var comment in comments)
         {
-            try
+
+            var danmakuText = new ScraperDanmakuText();
+            danmakuText.Progress = comment.Time;
+            danmakuText.Mode = 1;
+            danmakuText.MidHash = $"[mgtv]{comment.Uuid}";
+            danmakuText.Id = comment.Id;
+            danmakuText.Content = comment.Content;
+            if (comment.Color != null && comment.Color.ColorLeft != null)
             {
-                var midHash = string.IsNullOrEmpty(comment.Nick) ? "anonymous".ToBase64() : comment.Nick.ToBase64();
-                var danmakuText = new ScraperDanmakuText();
-                danmakuText.Progress = comment.TimeOffset.ToInt();
-                danmakuText.Mode = 1;
-                danmakuText.MidHash = $"[tencent]{midHash}";
-                danmakuText.Id = comment.Id.ToLong();
-                danmakuText.Content = comment.Content.Replace("VIP :", "");
-                if (!string.IsNullOrEmpty(comment.ContentStyle))
-                {
-                    var style = comment.ContentStyle.FromJson<TencentCommentContentStyle>();
-                    if (style != null && uint.TryParse(style.Color, System.Globalization.NumberStyles.HexNumber, null, out var color))
-                    {
-                        danmakuText.Color = color;
-                    }
-
-                    if (style != null && style.Position > 0)
-                    {
-                        switch (style.Position)
-                        {
-                            case 2:// top
-                                danmakuText.Mode = 5;
-                                break;
-                            case 3:// bottom
-                                danmakuText.Mode = 4;
-                                break;
-                        }
-                    }
-                }
-
-                danmaku.Items.Add(danmakuText);
-            }
-            catch (Exception ex)
-            {
-
+                danmakuText.Color = comment.Color.ColorLeft.HexNumber;
             }
 
+            danmaku.Items.Add(danmakuText);
         }
 
         return danmaku;

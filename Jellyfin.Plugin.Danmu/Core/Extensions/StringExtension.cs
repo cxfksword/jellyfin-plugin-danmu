@@ -30,15 +30,7 @@ namespace Jellyfin.Plugin.Danmu.Core.Extensions
             return 0;
         }
 
-        public static Int64 ToInt64(this string s)
-        {
-            if (Int64.TryParse(s, out var val))
-            {
-                return val;
-            }
 
-            return 0;
-        }
 
         public static float ToFloat(this string s)
         {
