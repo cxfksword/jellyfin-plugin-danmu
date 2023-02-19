@@ -21,22 +21,9 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Tencent;
 
 public class TencentApi : AbstractApi
 {
-    private static readonly object _lock = new object();
-    private static readonly Regex yearReg = new Regex(@"[12][890][0-9][0-9]", RegexOptions.Compiled);
-    private static readonly Regex moviesReg = new Regex(@"<a.*?h5-show-card.*?>([\w\W]+?)</a>", RegexOptions.Compiled);
-    private static readonly Regex trackInfoReg = new Regex(@"data-trackinfo=""(\{[\w\W]+?\})""", RegexOptions.Compiled);
-    private static readonly Regex featureReg = new Regex(@"<div.*?show-feature.*?>([\w\W]+?)</div>", RegexOptions.Compiled);
-    private static readonly Regex unusedReg = new Regex(@"\[.+?\]|\(.+?\)|【.+?】", RegexOptions.Compiled);
-
-    private DateTime lastRequestTime = DateTime.Now.AddDays(-1);
-
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
     private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
 
-
-    protected string _cna = string.Empty;
-    protected string _token = string.Empty;
-    protected string _tokenEnc = string.Empty;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TencentApi"/> class.
