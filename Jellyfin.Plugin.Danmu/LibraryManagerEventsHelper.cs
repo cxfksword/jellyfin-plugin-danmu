@@ -34,8 +34,9 @@ namespace Jellyfin.Plugin.Danmu;
 public class LibraryManagerEventsHelper : IDisposable
 {
     private readonly List<LibraryEvent> _queuedEvents;
-    private readonly IMemoryCache _pendingAddEventCache;
-    private readonly MemoryCacheEntryOptions _expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+    private readonly IMemoryCache _memoryCache;
+    private readonly MemoryCacheEntryOptions _pendingAddExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+    private readonly MemoryCacheEntryOptions _danmuUpdatedExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
 
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<LibraryManagerEventsHelper> _logger;
@@ -62,7 +63,7 @@ public class LibraryManagerEventsHelper : IDisposable
     public LibraryManagerEventsHelper(ILibraryManager libraryManager, ILoggerFactory loggerFactory, Jellyfin.Plugin.Danmu.Core.IFileSystem fileSystem, ScraperManager scraperManager)
     {
         _queuedEvents = new List<LibraryEvent>();
-        _pendingAddEventCache = new MemoryCache(new MemoryCacheOptions());
+        _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
         _libraryManager = libraryManager;
         _logger = loggerFactory.CreateLogger<LibraryManagerEventsHelper>();
@@ -162,14 +163,14 @@ public class LibraryManagerEventsHelper : IDisposable
             {
                 case Movie when ev.EventType is EventType.Add:
                     _logger.LogInformation("Movie add: {0}", ev.Item.Name);
-                    _pendingAddEventCache.Set<LibraryEvent>(ev.Item.Id, ev, _expiredOption);
+                    _memoryCache.Set<LibraryEvent>(ev.Item.Id, ev, _pendingAddExpiredOption);
                     break;
                 case Movie when ev.EventType is EventType.Update:
                     _logger.LogInformation("Movie update: {0}", ev.Item.Name);
-                    if (_pendingAddEventCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addMovieEv))
+                    if (_memoryCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addMovieEv))
                     {
                         queuedMovieAdds.Add(addMovieEv);
-                        _pendingAddEventCache.Remove(ev.Item.Id);
+                        _memoryCache.Remove(ev.Item.Id);
                     }
                     else
                     {
@@ -198,14 +199,14 @@ public class LibraryManagerEventsHelper : IDisposable
                     break;
                 case Season when ev.EventType is EventType.Add:
                     _logger.LogInformation("Season add: {0}", ev.Item.Name);
-                    _pendingAddEventCache.Set<LibraryEvent>(ev.Item.Id, ev, _expiredOption);
+                    _memoryCache.Set<LibraryEvent>(ev.Item.Id, ev, _pendingAddExpiredOption);
                     break;
                 case Season when ev.EventType is EventType.Update:
                     _logger.LogInformation("Season update: {0}", ev.Item.Name);
-                    if (_pendingAddEventCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addSeasonEv))
+                    if (_memoryCache.TryGetValue<LibraryEvent>(ev.Item.Id, out LibraryEvent addSeasonEv))
                     {
                         queuedSeasonAdds.Add(addSeasonEv);
-                        _pendingAddEventCache.Remove(ev.Item.Id);
+                        _memoryCache.Remove(ev.Item.Id);
                     }
                     else
                     {
@@ -466,9 +467,15 @@ public class LibraryManagerEventsHelper : IDisposable
             var queueUpdateMeta = new List<BaseItem>();
             foreach (var season in seasons)
             {
+                // // 虚拟季第一次请求忽略
+                // if (season.LocationType == LocationType.Virtual && season.IndexNumber is null)
+                // {
+                //     continue;
+                // }
+
                 if (season.IndexNumber.HasValue && season.IndexNumber == 0)
                 {
-                    _logger.LogInformation("特典不处理：name={0} number={1}", season.Name, season.IndexNumber);
+                    _logger.LogInformation("special特典文件夹不处理：name={0} number={1}", season.Name, season.IndexNumber);
                     continue;
                 }
 
@@ -518,12 +525,26 @@ public class LibraryManagerEventsHelper : IDisposable
         {
             foreach (var season in seasons)
             {
+                // // 虚拟季第一次请求忽略
+                // if (season.LocationType == LocationType.Virtual && season.IndexNumber is null)
+                // {
+                //     continue;
+                // }
+
                 var queueUpdateMeta = new List<BaseItem>();
                 // GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
                 var episodes = season.GetEpisodes(null, new DtoOptions(true));
                 if (episodes == null)
                 {
                     continue;
+                }
+
+                // 不处理季文件夹下的特典和extras影片（动画经常会混在一起）
+                var episodesWithoutSP = episodes.Where(x => x.ParentIndexNumber != null && x.ParentIndexNumber > 0).ToList();
+                if (episodes.Count != episodesWithoutSP.Count)
+                {
+                    _logger.LogInformation("{0}季存在{1}个特典或extra片段，忽略处理.", season.Name, (episodes.Count - episodesWithoutSP.Count));
+                    episodes = episodesWithoutSP;
                 }
 
                 foreach (var scraper in _scraperManager.All())
@@ -545,16 +566,17 @@ public class LibraryManagerEventsHelper : IDisposable
 
                         foreach (var (episode, idx) in episodes.WithIndex())
                         {
+                            var fileName = Path.GetFileName(episode.Path);
                             var indexNumber = episode.IndexNumber ?? 0;
                             if (indexNumber <= 0)
                             {
-                                _logger.LogInformation("[{0}]匹配失败，缺少集号. [{1}]{2}", scraper.Name, season.Name, episode.Name);
+                                _logger.LogInformation("[{0}]匹配失败，缺少集号. [{1}]{2}", scraper.Name, season.Name, fileName);
                                 continue;
                             }
 
                             if (indexNumber > media.Episodes.Count)
                             {
-                                _logger.LogInformation("[{0}]匹配失败，集号超过总集数，可能集号错误. [{1}]{2} indexNumber: {3}", scraper.Name, season.Name, episode.Name, indexNumber);
+                                _logger.LogInformation("[{0}]匹配失败，集号超过总集数，可能识别集号错误. [{1}]{2} indexNumber: {3}", scraper.Name, season.Name, fileName, indexNumber);
                                 continue;
                             }
 
@@ -697,10 +719,20 @@ public class LibraryManagerEventsHelper : IDisposable
                     var episodeList = season.GetEpisodes(null, new DtoOptions(true));
                     foreach (var (episode, idx) in episodeList.WithIndex())
                     {
+                        var fileName = Path.GetFileName(episode.Path);
+
                         // 没对应剧集号的，忽略处理
                         var indexNumber = episode.IndexNumber ?? 0;
                         if (indexNumber < 1 || indexNumber > media.Episodes.Count)
                         {
+                            _logger.LogInformation("[{0}]缺少集号或集号超过弹幕数，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
+                            continue;
+                        }
+
+                        // 特典或extras影片不处理（动画经常会放在季文件夹下）
+                        if (episode.ParentIndexNumber is null or 0)
+                        {
+                            _logger.LogInformation("[{0}]缺少季号，可能是特典或extras影片，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
                             continue;
                         }
 
@@ -757,17 +789,30 @@ public class LibraryManagerEventsHelper : IDisposable
         try
         {
             // 弹幕5分钟内更新过，忽略处理（有时Update事件会重复执行）
-            if (!ignoreCheck && IsRepeatAction(item))
+            var checkDownloadedKey = $"{item.Id}_{commentId}";
+            if (!ignoreCheck && _memoryCache.TryGetValue(checkDownloadedKey, out var latestDownloaded))
             {
-                _logger.LogInformation("[{0}]最近5分钟已更新过弹幕xml，忽略处理：{1}", scraper.Name, item.Name);
+                _logger.LogInformation("[{0}]最近5分钟已更新过弹幕xml，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                 return;
             }
 
+            _memoryCache.Set(checkDownloadedKey, true, _danmuUpdatedExpiredOption);
             var danmaku = await scraper.GetDanmuContent(item, commentId);
             if (danmaku != null)
             {
-                await this.DownloadDanmuInternal(item, danmaku.ToXml());
-                this._logger.LogInformation("[{0}]弹幕下载成功：name={1}", scraper.Name, item.Name);
+                var bytes = danmaku.ToXml();
+                if (bytes.Length < 10 * 1024)
+                {
+                    _memoryCache.Remove(checkDownloadedKey);
+                    _logger.LogInformation("[{0}]弹幕内容少于10KB，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                    return;
+                }
+                await this.SaveDanmu(item, bytes);
+                this._logger.LogInformation("[{0}]弹幕下载成功：name={1}.{2} commentId={3}", scraper.Name, item.IndexNumber, item.Name, commentId);
+            }
+            else
+            {
+                _memoryCache.Remove(checkDownloadedKey);
             }
         }
         catch (Exception ex)
@@ -776,11 +821,12 @@ public class LibraryManagerEventsHelper : IDisposable
         }
     }
 
-    private bool IsRepeatAction(BaseItem item)
+    private bool IsRepeatAction(BaseItem item, string checkDownloadedKey)
     {
         // 单元测试时为null
         if (item.FileNameWithoutExtension == null) return false;
 
+        // 通过xml文件属性判断（多线程时判断有误）
         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
         if (!this._fileSystem.Exists(danmuPath))
         {
@@ -792,7 +838,7 @@ public class LibraryManagerEventsHelper : IDisposable
         return diff.TotalSeconds < 300;
     }
 
-    private async Task DownloadDanmuInternal(BaseItem item, byte[] bytes)
+    private async Task SaveDanmu(BaseItem item, byte[] bytes)
     {
         // 单元测试时为null
         if (item.FileNameWithoutExtension == null) return;

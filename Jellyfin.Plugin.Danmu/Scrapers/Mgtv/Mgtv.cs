@@ -24,13 +24,11 @@ public class Mgtv : AbstractScraper
     public const string ScraperProviderId = "MgtvID";
 
     private readonly MgtvApi _api;
-    private readonly ILibraryManager _libraryManager;
 
-    public Mgtv(ILoggerFactory logManager, ILibraryManager libraryManager)
+    public Mgtv(ILoggerFactory logManager)
         : base(logManager.CreateLogger<Mgtv>())
     {
         _api = new MgtvApi(logManager);
-        _libraryManager = libraryManager;
     }
 
     public override int DefaultOrder => 6;
@@ -112,7 +110,7 @@ public class Mgtv : AbstractScraper
             var score = searchName.Distance(title);
             if (score < 0.7)
             {
-                log.LogInformation("[{0}] 标题差异太大，忽略处理. 搜索词：{1}, score:　{2}", title, searchName, score);
+                log.LogDebug("[{0}] 标题差异太大，忽略处理. 搜索词：{1}, score:　{2}", title, searchName, score);
                 continue;
             }
 
@@ -120,7 +118,7 @@ public class Mgtv : AbstractScraper
             var itemPubYear = item.ProductionYear ?? 0;
             if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
             {
-                log.LogInformation("[{0}] 发行年份不一致，忽略处理. year: {1} jellyfin: {2}", title, pubYear, itemPubYear);
+                log.LogDebug("[{0}] 发行年份不一致，忽略处理. year: {1} jellyfin: {2}", title, pubYear, itemPubYear);
                 continue;
             }
 
@@ -181,9 +179,8 @@ public class Mgtv : AbstractScraper
 
 
         // 从季信息元数据中，获取cid值
-        // 没SXX季文件夹时，GetParent是Series，有时，GetParent是Season，所以需要通过seasonId中获取
-        var seasonId = ((MediaBrowser.Controller.Entities.TV.Episode)item).FindSeasonId();
-        var season = _libraryManager.GetItemById(seasonId);
+        // 不能通过GetParent获取Season，因为没有SXX季文件夹时，GetParent是Series
+        var season = ((MediaBrowser.Controller.Entities.TV.Episode)item).Season;
         season.ProviderIds.TryGetValue(ScraperProviderId, out var cid);
         return new ScraperEpisode() { Id = id, CommentId = $"{cid},{id}" };
     }

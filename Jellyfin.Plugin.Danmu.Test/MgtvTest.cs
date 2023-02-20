@@ -24,7 +24,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         {
             var libraryManagerStub = new Mock<ILibraryManager>();
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory, libraryManagerStub.Object));
+            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -59,7 +59,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         {
             var libraryManagerStub = new Mock<ILibraryManager>();
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory, libraryManagerStub.Object));
+            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -96,7 +96,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         {
             var libraryManagerStub = new Mock<ILibraryManager>();
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory, libraryManagerStub.Object));
+            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -134,7 +134,7 @@ namespace Jellyfin.Plugin.Danmu.Test
                 try
                 {
                     var libraryManagerStub = new Mock<ILibraryManager>();
-                    var api = new Mgtv(loggerFactory, libraryManagerStub.Object);
+                    var api = new Mgtv(loggerFactory);
                     var media = await api.GetMedia(new Season(), "514446");
                     Console.WriteLine(media);
                 }
