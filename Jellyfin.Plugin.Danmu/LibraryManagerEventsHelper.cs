@@ -484,17 +484,21 @@ public class LibraryManagerEventsHelper : IDisposable
                 {
                     try
                     {
-                        // 读取最新数据，要不然取不到年份信息
-                        var currentItem = _libraryManager.GetItemById(season.Id) ?? season;
+                        // 读取最新数据，要不然取不到年份信息（不能对GetItemById的对象直接修改属性，要不然会直接改到数据！！！！）
+                        var currentItem = _libraryManager.GetItemById(season.Id);
+                        if (currentItem != null)
+                        {
+                            season.ProductionYear = currentItem.ProductionYear;
+                        }
                         // 季的名称不准确，改使用series的名称
                         if (series != null)
                         {
-                            currentItem.Name = series.Name;
+                            season.Name = series.Name;
                         }
-                        var mediaId = await scraper.SearchMediaId(currentItem);
+                        var mediaId = await scraper.SearchMediaId(season);
                         if (string.IsNullOrEmpty(mediaId))
                         {
-                            _logger.LogInformation("[{0}]匹配失败：{1} ({2})", scraper.Name, currentItem.Name, currentItem.ProductionYear);
+                            _logger.LogInformation("[{0}]匹配失败：{1} ({2})", scraper.Name, season.Name, season.ProductionYear);
                             continue;
                         }
 
@@ -599,7 +603,7 @@ public class LibraryManagerEventsHelper : IDisposable
                             }
                             else
                             {
-                                _logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1} 弹幕数：{2} 集数：{3}", scraper.Name, season.Name, media.Episodes.Count, episodes.Count);
+                                _logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, episode.Name, media.Episodes.Count, episodes.Count);
                             }
                         }
 
