@@ -103,5 +103,46 @@ namespace Jellyfin.Plugin.Danmu.Test
                 }
             }).GetAwaiter().GetResult();
         }
+
+        [TestMethod]
+        public void TestGetVideoByAvidAsync()
+        {
+            var _bilibiliApi = new BilibiliApi(loggerFactory);
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var avid = "av5048623";
+                    var result = await _bilibiliApi.GetVideoByAvidAsync(avid, CancellationToken.None);
+                    Console.WriteLine(result);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+        }
+
+        [TestMethod]
+        public void TestGetDanmuContentByProtoAsync()
+        {
+            var _bilibiliApi = new BilibiliApi(loggerFactory);
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var aid = 5048623;
+                    var cid = 9708007;
+                    var result = await _bilibiliApi.GetDanmuContentByProtoAsync(aid, cid, CancellationToken.None);
+                    Console.WriteLine(result);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+        }
     }
 }

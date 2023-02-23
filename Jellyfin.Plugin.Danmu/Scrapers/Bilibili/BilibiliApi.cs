@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,6 +24,8 @@ using Jellyfin.Plugin.Danmu.Core.Http;
 using Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity;
 using RateLimiter;
 using ComposableAsync;
+using Jellyfin.Plugin.Danmu.Scrapers.Entity;
+using Jellyfin.Plugin.Danmu.Core.Extensions;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
 
@@ -30,6 +33,9 @@ public class BilibiliApi : AbstractApi
 {
     private static readonly object _lock = new object();
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
+    private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
+
+    private static readonly Regex regBiliplusVideoInfo = new Regex(@"view\((.+?)\);", RegexOptions.Compiled);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BilibiliApi"/> class.
@@ -251,6 +257,102 @@ public class BilibiliApi : AbstractApi
 
         _memoryCache.Set<Video?>(cacheKey, null, expiredOption);
         return null;
+    }
+
+
+    public async Task<BiliplusVideo?> GetVideoByAvidAsync(string avid, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(avid))
+        {
+            return null;
+        }
+
+        var cacheKey = $"video_{avid}";
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+        BiliplusVideo? videoData;
+        if (_memoryCache.TryGetValue<BiliplusVideo?>(cacheKey, out videoData))
+        {
+            return videoData;
+        }
+
+        var url = $"https://www.biliplus.com/video/{avid}/";
+        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        var videoJson = regBiliplusVideoInfo.FirstMatchGroup(body);
+        if (!string.IsNullOrEmpty(videoJson))
+        {
+            var videoInfo = videoJson.FromJson<BiliplusVideo>();
+            _memoryCache.Set<BiliplusVideo?>(cacheKey, videoInfo, expiredOption);
+            return videoInfo;
+        }
+
+
+        _memoryCache.Set<BiliplusVideo?>(cacheKey, null, expiredOption);
+        return null;
+    }
+
+    /// <summary>
+    /// 下载实时弹幕，返回弹幕列表
+    /// protobuf定义：https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/grpc_api/bilibili/community/service/dm/v1/dm.proto
+    /// </summary>
+    /// <param name="aid">稿件avID</param>
+    /// <param name="cid">视频CID</param>
+    public async Task<ScraperDanmaku?> GetDanmuContentByProtoAsync(long aid, long cid, CancellationToken cancellationToken)
+    {
+        var danmaku = new ScraperDanmaku();
+        danmaku.ChatId = cid;
+        danmaku.ChatServer = "api.bilibili.com";
+        danmaku.Items = new List<ScraperDanmakuText>();
+
+        try
+        {
+            var segmentIndex = 1;  // 分包，每6分钟一包
+            while (true)
+            {
+                var url = $"https://api.bilibili.com/x/v2/dm/web/seg.so?type=1&oid={cid}&pid={aid}&segment_index={segmentIndex}";
+
+                var bytes = await httpClient.GetByteArrayAsync(url, cancellationToken).ConfigureAwait(false);
+                var danmuReply = Biliproto.Community.Service.Dm.V1.DmSegMobileReply.Parser.ParseFrom(bytes);
+                if (danmuReply == null || danmuReply.Elems == null || danmuReply.Elems.Count <= 0)
+                {
+                    break;
+                }
+
+                var segmentList = new List<ScraperDanmakuText>();
+                foreach (var dm in danmuReply.Elems)
+                {
+                    // <d p="944.95400,5,25,16707842,1657598634,0,ece5c9d1,1094775706690331648,11">今天的风儿甚是喧嚣</d>
+                    // time, mode, size, color, create, pool, sender, id, weight(屏蔽等级)
+                    segmentList.Add(new ScraperDanmakuText()
+                    {
+                        Id = dm.Id,
+                        Progress = dm.Progress,
+                        Mode = dm.Mode,
+                        Fontsize = dm.Fontsize,
+                        Color = dm.Color,
+                        MidHash = dm.MidHash,
+                        Content = dm.Content,
+                        Ctime = dm.Ctime,
+                        Weight = dm.Weight,
+                        Pool = dm.Pool,
+                    });
+                }
+
+                // 每段有6分钟弹幕，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
+                danmaku.Items.AddRange(segmentList.ExtractToNumber(1200));
+                segmentIndex += 1;
+
+                // 等待一段时间避免api请求太快
+                await _delayExecuteConstraint;
+            }
+        }
+        catch (Exception ex)
+        {
+        }
+
+        return danmaku;
     }
 
     private async Task EnsureSessionCookie(CancellationToken cancellationToken)

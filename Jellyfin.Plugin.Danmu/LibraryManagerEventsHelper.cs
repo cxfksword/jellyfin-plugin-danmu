@@ -245,9 +245,9 @@ public class LibraryManagerEventsHelper : IDisposable
     {
         // item所在的媒体库不启用弹幕插件，忽略处理
         var libraryOptions = _libraryManager.GetLibraryOptions(item);
-        if (libraryOptions == null || libraryOptions.DisabledSubtitleFetchers.Contains(Plugin.Instance?.Name))
+        if (libraryOptions != null && libraryOptions.DisabledSubtitleFetchers.Contains(Plugin.Instance?.Name))
         {
-            // Console.WriteLine($"ignore  {item.Path} {item.Name}");
+            this._logger.LogInformation($"媒体库已关闭danmu插件, 忽略处理[{item.Name}].");
             return true;
         }
 
@@ -807,12 +807,11 @@ public class LibraryManagerEventsHelper : IDisposable
                 var bytes = danmaku.ToXml();
                 if (bytes.Length < 10 * 1024)
                 {
-                    _memoryCache.Remove(checkDownloadedKey);
                     _logger.LogInformation("[{0}]弹幕内容少于10KB，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                     return;
                 }
                 await this.SaveDanmu(item, bytes);
-                this._logger.LogInformation("[{0}]弹幕下载成功：name={1}.{2} commentId={3}", scraper.Name, item.IndexNumber, item.Name, commentId);
+                this._logger.LogInformation("[{0}]弹幕下载成功：name={1}.{2} commentId={3}", scraper.Name, item.IndexNumber ?? 1, item.Name, commentId);
             }
             else
             {

@@ -95,7 +95,7 @@ public class Bilibili : AbstractScraper
         var media = new ScraperMedia();
         var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
 
-        if (id.StartsWith("BV", StringComparison.CurrentCulture))
+        if (id.StartsWith("BV", StringComparison.CurrentCultureIgnoreCase))
         {
             var video = await _api.GetVideoByBvidAsync(id, CancellationToken.None).ConfigureAwait(false);
             if (video == null)
@@ -125,6 +125,37 @@ public class Bilibili : AbstractScraper
             {
                 media.Id = id;
                 media.CommentId = media.Episodes.Count > 0 ? $"{media.Episodes[0].CommentId}" : "";
+            }
+            else
+            {
+                media.Id = id;
+            }
+
+            return media;
+        }
+
+        if (id.StartsWith("av", StringComparison.CurrentCultureIgnoreCase))
+        {
+            var biliplusVideo = await _api.GetVideoByAvidAsync(id, CancellationToken.None).ConfigureAwait(false);
+            if (biliplusVideo == null)
+            {
+                log.LogInformation("获取不到b站视频信息：avid={0}", id);
+                return null;
+            }
+
+            var aid = id.Substring(2);
+
+            // 分P
+            foreach (var (page, idx) in biliplusVideo.List.WithIndex())
+            {
+                media.Episodes.Add(new ScraperEpisode() { Id = "", CommentId = $"{aid},{page.Cid}" });
+            }
+
+
+            if (isMovieItemType)
+            {
+                media.Id = id;
+                media.CommentId = media.Episodes.Count > 0 ? $"{aid},{media.Episodes[0].CommentId}" : "";
             }
             else
             {
@@ -168,7 +199,7 @@ public class Bilibili : AbstractScraper
     public override async Task<ScraperEpisode?> GetMediaEpisode(BaseItem item, string id)
     {
         var episode = new ScraperEpisode();
-        if (id.StartsWith("BV", StringComparison.CurrentCulture))
+        if (id.StartsWith("BV", StringComparison.CurrentCultureIgnoreCase))
         {
             var video = await _api.GetVideoByBvidAsync(id, CancellationToken.None).ConfigureAwait(false);
             if (video == null)
@@ -181,6 +212,25 @@ public class Bilibili : AbstractScraper
             if (video.Pages.Length > 0)
             {
                 return new ScraperEpisode() { Id = "", CommentId = $"{video.Pages[0].Cid}" };
+            }
+
+            return null;
+        }
+
+        if (id.StartsWith("av", StringComparison.CurrentCultureIgnoreCase))
+        {
+            var biliplusVideo = await _api.GetVideoByAvidAsync(id, CancellationToken.None).ConfigureAwait(false);
+            if (biliplusVideo == null)
+            {
+                log.LogInformation("获取不到b站视频信息：avid={0}", id);
+                return null;
+            }
+
+
+            if (biliplusVideo.List.Length > 0)
+            {
+                var aid = id.Substring(2);
+                return new ScraperEpisode() { Id = "", CommentId = $"{aid},{biliplusVideo.List[0].Cid}" };
             }
 
             return null;
@@ -209,6 +259,22 @@ public class Bilibili : AbstractScraper
 
     public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)
     {
+        if (commentId.Contains(","))
+        {
+            var arr = commentId.Split(",");
+            if (arr.Length == 2)
+            {
+                var aid = arr[0].ToLong();
+                var cmid = arr[1].ToLong();
+                if (aid > 0 && cmid > 0)
+                {
+                    return await _api.GetDanmuContentByProtoAsync(aid, cmid, CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+            return null;
+        }
+
+
         var cid = commentId.ToLong();
         if (cid > 0)
         {

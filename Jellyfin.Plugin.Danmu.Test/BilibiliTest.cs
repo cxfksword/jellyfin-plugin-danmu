@@ -31,7 +31,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestSearch()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
+            scraperManager.register(new Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -64,7 +64,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestAddMovie()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
+            scraperManager.register(new Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -98,7 +98,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestUpdateMovie()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
+            scraperManager.register(new Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -109,6 +109,40 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 Name = "异邦人：无皇刃谭",
                 ProviderIds = new Dictionary<string, string>() { { Bilibili.ScraperProviderId, "2185" } },
+            };
+
+            var list = new List<LibraryEvent>();
+            list.Add(new LibraryEvent { Item = item, EventType = EventType.Update });
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await libraryManagerEventsHelper.ProcessQueuedMovieEvents(list, EventType.Update);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+
+        }
+
+        [TestMethod]
+        public void TestUpdateMovieWithAvid()
+        {
+            var scraperManager = new ScraperManager(loggerFactory);
+            scraperManager.register(new Bilibili(loggerFactory));
+
+            var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
+            var directoryServiceStub = new Mock<IDirectoryService>();
+            var libraryManagerStub = new Mock<ILibraryManager>();
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+
+            var item = new Movie
+            {
+                Name = "新龙门客栈",
+                ProviderIds = new Dictionary<string, string>() { { Bilibili.ScraperProviderId, "av5921024" } },
             };
 
             var list = new List<LibraryEvent>();
