@@ -242,19 +242,14 @@ public class Bilibili : AbstractScraper
             return null;
         }
 
-        var season = await _api.GetEpisodeAsync(epId, CancellationToken.None).ConfigureAwait(false);
-        if (season == null)
+        var epInfo = await _api.GetEpisodeAsync(epId, CancellationToken.None).ConfigureAwait(false);
+        if (epInfo == null)
         {
             log.LogInformation("获取不到b站视频信息：EpisodeId={0}", epId);
             return null;
         }
 
-        if (season.Episodes.Count > 0)
-        {
-            return new ScraperEpisode() { Id = $"{season.Episodes[0].Id}", CommentId = $"{season.Episodes[0].CId}" };
-        }
-
-        return null;
+        return new ScraperEpisode() { Id = $"{epInfo.Id}", CommentId = $"{epInfo.CId}" };
     }
 
     public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)

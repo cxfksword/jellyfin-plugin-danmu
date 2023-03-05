@@ -126,14 +126,10 @@ public class BilibiliApi : AbstractApi
         }
 
 
-        var season = await GetEpisodeAsync(epId, cancellationToken).ConfigureAwait(false);
-        if (season != null && season.Episodes.Count > 0)
+        var episode = await GetEpisodeAsync(epId, cancellationToken).ConfigureAwait(false);
+        if (episode != null)
         {
-            var episode = season.Episodes.First(x => x.Id == epId);
-            if (episode != null)
-            {
-                return await GetDanmuContentByCidAsync(episode.CId, cancellationToken).ConfigureAwait(false);
-            }
+            return await GetDanmuContentByCidAsync(episode.CId, cancellationToken).ConfigureAwait(false);
         }
 
         throw new Exception($"Request fail. epId={epId}");
@@ -196,7 +192,7 @@ public class BilibiliApi : AbstractApi
         return null;
     }
 
-    public async Task<VideoSeason?> GetEpisodeAsync(long epId, CancellationToken cancellationToken)
+    public async Task<VideoEpisode?> GetEpisodeAsync(long epId, CancellationToken cancellationToken)
     {
         if (epId <= 0)
         {
@@ -204,11 +200,11 @@ public class BilibiliApi : AbstractApi
         }
 
         var cacheKey = $"episode_{epId}";
-        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-        VideoSeason? seasonData;
-        if (_memoryCache.TryGetValue<VideoSeason?>(cacheKey, out seasonData))
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
+        VideoEpisode? episodeData;
+        if (_memoryCache.TryGetValue<VideoEpisode?>(cacheKey, out episodeData))
         {
-            return seasonData;
+            return episodeData;
         }
 
         await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
@@ -217,13 +213,19 @@ public class BilibiliApi : AbstractApi
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ApiResult<VideoSeason>>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-        if (result != null && result.Code == 0 && result.Result != null)
+        if (result != null && result.Code == 0 && result.Result != null && result.Result.Episodes != null)
         {
-            _memoryCache.Set<VideoSeason?>(cacheKey, result.Result, expiredOption);
-            return result.Result;
+            // 缓存本季的所有episode数据，避免批量更新时重复请求
+            foreach (var episode in result.Result.Episodes)
+            {
+                cacheKey = $"episode_{episode.Id}";
+                _memoryCache.Set<VideoEpisode?>(cacheKey, episode, expiredOption);
+            }
+
+            return result.Result.Episodes.FirstOrDefault(x => x.Id == epId);
         }
 
-        _memoryCache.Set<VideoSeason?>(cacheKey, null, expiredOption);
+        _memoryCache.Set<VideoEpisode?>(cacheKey, null, expiredOption);
         return null;
     }
 

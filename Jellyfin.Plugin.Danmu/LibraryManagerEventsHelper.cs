@@ -537,6 +537,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
                 var queueUpdateMeta = new List<BaseItem>();
                 // GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
+                // TODO：可能出现未刮削完，就触发获取弹幕，导致GetEpisodes只能获取到部分剧集的情况
                 var episodes = season.GetEpisodes(null, new DtoOptions(true));
                 if (episodes == null)
                 {
