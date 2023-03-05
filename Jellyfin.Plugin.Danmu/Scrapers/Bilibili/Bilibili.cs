@@ -351,6 +351,7 @@ public class Bilibili : AbstractScraper
     {
         try
         {
+            var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
             var searchResult = await _api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
             if (searchResult != null && searchResult.Result != null)
             {
@@ -363,6 +364,16 @@ public class Bilibili : AbstractScraper
                             var seasonId = media.SeasonId;
                             var title = media.Title;
                             var pubYear = Jellyfin.Plugin.Danmu.Core.Utils.UnixTimeStampToDateTime(media.PublishTime).Year;
+
+                            if (isMovieItemType && media.SeasonTypeName != "电影")
+                            {
+                                continue;
+                            }
+
+                            if (!isMovieItemType && media.SeasonTypeName == "电影")
+                            {
+                                continue;
+                            }
 
                             // 检测标题是否相似（越大越相似）
                             var score = searchName.Distance(title);

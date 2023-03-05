@@ -73,7 +73,7 @@ namespace Jellyfin.Plugin.Danmu.Test
 
             var item = new Movie
             {
-                Name = "异邦人：无皇刃谭"
+                Name = "扬名立万"
             };
 
             var list = new List<LibraryEvent>();
@@ -162,5 +162,40 @@ namespace Jellyfin.Plugin.Danmu.Test
 
         }
 
+
+
+        [TestMethod]
+        public void TestAddSeason()
+        {
+            var scraperManager = new ScraperManager(loggerFactory);
+            scraperManager.register(new Bilibili(loggerFactory));
+
+            var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
+            var directoryServiceStub = new Mock<IDirectoryService>();
+            var libraryManagerStub = new Mock<ILibraryManager>();
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+
+            var item = new Season
+            {
+                Name = "逃避虽可耻但有用",
+                ProductionYear = 2016,
+            };
+
+            var list = new List<LibraryEvent>();
+            list.Add(new LibraryEvent { Item = item, EventType = EventType.Add });
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await libraryManagerEventsHelper.ProcessQueuedSeasonEvents(list, EventType.Add);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+
+        }
     }
 }
