@@ -13,5 +13,8 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
     {
         [JsonPropertyName("tvId")]
         public Int64 VideoId { get; set; }
+
+        [JsonPropertyName("itemLink")]
+        public string ItemLink { get; set; }
     }
 }

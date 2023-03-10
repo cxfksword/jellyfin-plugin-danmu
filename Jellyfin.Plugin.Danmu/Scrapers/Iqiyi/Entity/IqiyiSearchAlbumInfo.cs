@@ -11,7 +11,7 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
 {
     public class IqiyiSearchAlbumInfo
     {
-        private static readonly Regex regLinkId = new Regex(@"(v_|a_)(\w+?)\.html", RegexOptions.Compiled);
+        private static readonly Regex regLinkId = new Regex(@"v_(\w+?)\.html", RegexOptions.Compiled);
 
         [JsonPropertyName("albumId")]
         public Int64 AlbumId { get; set; }
@@ -66,14 +66,24 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
         [JsonPropertyName("videoinfos")]
         public List<IqiyiSearchVideoInfo> VideoInfos { get; set; }
 
-        public string LinkId
+        /// <summary>
+        /// 编码后的视频ID
+        /// </summary>
+        [JsonIgnore]
+        public string? LinkId
         {
             get
             {
-                var match = regLinkId.Match(Link);
-                if (match.Success && match.Groups.Count > 2)
+                var link = Link;
+                if (VideoInfos != null && VideoInfos.Count > 0)
                 {
-                    return match.Groups[2].Value.Trim();
+                    link = VideoInfos.First().ItemLink;
+                }
+
+                var match = regLinkId.Match(link);
+                if (match.Success && match.Groups.Count > 1)
+                {
+                    return match.Groups[1].Value.Trim();
                 }
                 else
                 {

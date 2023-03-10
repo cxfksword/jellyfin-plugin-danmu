@@ -47,10 +47,6 @@ public class Iqiyi : AbstractScraper
         var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var video in videos)
         {
-            var videoId = video.VideoId;
-            var title = video.Name;
-            var pubYear = video.Year;
-
             if (isMovieItemType && video.ChannelName != "电影")
             {
                 continue;
@@ -64,9 +60,9 @@ public class Iqiyi : AbstractScraper
             list.Add(new ScraperSearchInfo()
             {
                 Id = $"{video.LinkId}",
-                Name = title,
+                Name = video.Name,
                 Category = video.ChannelName,
-                Year = pubYear,
+                Year = video.Year,
                 EpisodeSize = video.ItemTotalNumber,
             });
         }
@@ -82,7 +78,6 @@ public class Iqiyi : AbstractScraper
         var videos = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
         foreach (var video in videos)
         {
-            var videoId = video.VideoId;
             var title = video.Name;
             var pubYear = video.Year;
 
@@ -126,15 +121,9 @@ public class Iqiyi : AbstractScraper
             return null;
         }
 
-        // id是编码后的，需要还原为真实id
+        // id是编码后的
         var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
-        var tvId = await _api.GetTvId(id, !isMovieItemType, CancellationToken.None);
-        if (string.IsNullOrEmpty(tvId))
-        {
-            return null;
-        }
-
-        var video = await _api.GetVideoAsync(tvId, CancellationToken.None).ConfigureAwait(false);
+        var video = await _api.GetVideoAsync(id, CancellationToken.None).ConfigureAwait(false);
         if (video == null)
         {
             log.LogInformation("[{0}]获取不到视频信息：id={1}", this.Name, id);
@@ -143,7 +132,7 @@ public class Iqiyi : AbstractScraper
 
 
         var media = new ScraperMedia();
-        media.Id = video.LinkId;  // 使用url编码后的id，movie使用vid，电视剧使用aid
+        media.Id = id;  // 使用url编码后的id
         if (isMovieItemType && video.Epsodelist != null && video.Epsodelist.Count > 0)
         {
             media.CommentId = $"{video.Epsodelist[0].TvId}";
@@ -167,14 +156,14 @@ public class Iqiyi : AbstractScraper
             return null;
         }
 
-        // id是编码后的，需要还原为真实id
-        var tvId = await _api.GetTvId(id, false, CancellationToken.None);
-        if (string.IsNullOrEmpty(tvId))
+        // id是编码后的
+        var video = await _api.GetVideoBaseAsync(id, CancellationToken.None).ConfigureAwait(false);
+        if (video == null)
         {
             return null;
         }
 
-        return new ScraperEpisode() { Id = id, CommentId = tvId };
+        return new ScraperEpisode() { Id = id, CommentId = $"{video.TvId}" };
     }
 
     public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)

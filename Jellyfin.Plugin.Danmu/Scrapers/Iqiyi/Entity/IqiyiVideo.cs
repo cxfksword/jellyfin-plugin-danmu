@@ -10,8 +10,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
 {
     public class IqiyiVideo
     {
-        private static readonly Regex regLinkId = new Regex(@"(v_|a_)(\w+?)\.html", RegexOptions.Compiled);
-
         [JsonPropertyName("albumId")]
         public Int64 AlbumId { get; set; }
         [JsonPropertyName("tvId")]
@@ -34,23 +32,5 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
         [JsonPropertyName("epsodelist")]
         public List<IqiyiEpisode> Epsodelist { get; set; }
 
-
-        public string LinkId
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(AlbumUrl)) return null;
-
-                var match = regLinkId.Match(AlbumUrl);
-                if (match.Success && match.Groups.Count > 2)
-                {
-                    return match.Groups[2].Value.Trim();
-                }
-                else
-                {
-                    return null;
-                }
-            }
-        }
     }
 }

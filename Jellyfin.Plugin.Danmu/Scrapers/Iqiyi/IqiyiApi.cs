@@ -25,7 +25,9 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 
 public class IqiyiApi : AbstractApi
 {
-    private static readonly Regex regTvId = new Regex(@"""tvid"":(\d+?),", RegexOptions.Compiled);
+    private new const string HTTP_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1 Edg/93.0.4577.63";
+    private static readonly Regex regVideoInfo = new Regex(@"""videoInfo"":(\{.+?\}),", RegexOptions.Compiled);
+    private static readonly Regex regAlbumInfo = new Regex(@"""albumInfo"":(\{.+?\}),", RegexOptions.Compiled);
 
 
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
@@ -42,6 +44,7 @@ public class IqiyiApi : AbstractApi
     public IqiyiApi(ILoggerFactory loggerFactory)
         : base(loggerFactory.CreateLogger<IqiyiApi>())
     {
+        httpClient.DefaultRequestHeaders.Add("user-agent", HTTP_USER_AGENT);
     }
 
 
@@ -70,7 +73,6 @@ public class IqiyiApi : AbstractApi
         var searchResult = await response.Content.ReadFromJsonAsync<IqiyiSearchResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (searchResult != null && searchResult.Data != null)
         {
-            // 综艺没找到接口获取准确的正片列表，忽略不处理
             result = searchResult.Data.DocInfos
                 .Where(x => x.Score > 0.7)
                 .Select(x => x.AlbumDocInfo)
@@ -82,7 +84,7 @@ public class IqiyiApi : AbstractApi
         return result;
     }
 
-    public async Task<IqiyiVideo?> GetVideoAsync(string id, CancellationToken cancellationToken)
+    public async Task<IqiyiHtmlVideoInfo?> GetVideoAsync(string id, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(id))
         {
@@ -91,42 +93,73 @@ public class IqiyiApi : AbstractApi
 
         var cacheKey = $"video_{id}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-        if (_memoryCache.TryGetValue<IqiyiVideo?>(cacheKey, out var video))
+        if (_memoryCache.TryGetValue<IqiyiHtmlVideoInfo?>(cacheKey, out var video))
         {
             return video;
         }
 
-        // 获取影片信息(vid)：https://pcw-api.iqiyi.com/video/video/baseinfo/429872
         // 获取电视剧信息(aid)：https://pcw-api.iqiyi.com/album/album/baseinfo/5328486914190101
-        // 获取电视剧剧集信息(综艺不适用)(aid)：https://pcw-api.iqiyi.com/albums/album/avlistinfo?aid=5328486914190101&page=1&size=100
+        // 获取电视剧剧集信息(综艺不适用)(aid)：https://pcw-api.iqiyi.com/albums/album/avlistinfo?aid=5328486914190101&page=1&size=10
         // 获取电视剧剧集信息(综艺不适用)(aid)：https://pub.m.iqiyi.com/h5/main/videoList/album/?albumId=5328486914190101&size=39&page=1&needPrevue=true&needVipPrevue=false
-        var url = $"https://pcw-api.iqiyi.com/video/video/baseinfo/{id}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.ReadFromJsonAsync<IqiyiVideoResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-        if (result != null && result.Data != null)
+        var videoInfo = await GetVideoBaseAsync(id, cancellationToken).ConfigureAwait(false);
+        if (videoInfo != null)
         {
-            if (result.Data.ChannelId == 6)
+            if (videoInfo.ChannelName == "综艺" && videoInfo.AlbumInfo != null)
             { // 综艺需要特殊处理
-                result.Data.Epsodelist = await this.GetZongyiEpisodesAsync($"{result.Data.AlbumId}", cancellationToken).ConfigureAwait(false);
+                videoInfo.Epsodelist = await this.GetZongyiEpisodesAsync($"{videoInfo.AlbumInfo.AlbumId}", cancellationToken).ConfigureAwait(false);
             }
-            else if (result.Data.ChannelId != 1)
+            else if (videoInfo.ChannelName != "电影" && videoInfo.AlbumInfo != null)
             { // 电视剧需要再获取剧集信息
-                result.Data.Epsodelist = await this.GetEpisodesAsync($"{result.Data.AlbumId}", result.Data.VideoCount, cancellationToken).ConfigureAwait(false);
+                videoInfo.Epsodelist = await this.GetEpisodesAsync($"{videoInfo.AlbumId}", videoInfo.AlbumInfo.VideoCount, cancellationToken).ConfigureAwait(false);
             }
-            else
+            else if (videoInfo.ChannelName == "电影")
             { // 电影
-                result.Data.Epsodelist = new List<IqiyiEpisode>() {
-                    new IqiyiEpisode() {TvId = result.Data.TvId, Order = 1, Name = result.Data.Name, Duration = result.Data.Duration, PlayUrl = result.Data.PlayUrl}
+                var duration = new TimeSpan(0, 0, videoInfo.Duration);
+                videoInfo.Epsodelist = new List<IqiyiEpisode>() {
+                    new IqiyiEpisode() {TvId = videoInfo.TvId, Order = 1, Name = videoInfo.VideoName, Duration = duration.ToString(@"hh\:mm\:ss"), PlayUrl = videoInfo.VideoUrl}
                 };
             }
 
-            _memoryCache.Set<IqiyiVideo?>(cacheKey, result.Data, expiredOption);
-            return result.Data;
+            _memoryCache.Set<IqiyiHtmlVideoInfo?>(cacheKey, videoInfo, expiredOption);
+            return videoInfo;
         }
 
-        _memoryCache.Set<IqiyiVideo?>(cacheKey, null, expiredOption);
+        _memoryCache.Set<IqiyiHtmlVideoInfo?>(cacheKey, null, expiredOption);
+        return null;
+    }
+
+    public async Task<IqiyiHtmlVideoInfo?> GetVideoBaseAsync(string id, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return null;
+        }
+
+        var cacheKey = $"video_base_{id}";
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+        if (_memoryCache.TryGetValue<IqiyiHtmlVideoInfo?>(cacheKey, out var video))
+        {
+            return video;
+        }
+
+        await this.LimitRequestFrequently();
+
+        var url = $"https://m.iqiyi.com/v_{id}.html";
+        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadAsStringAsync();
+        var videoJson = regVideoInfo.FirstMatchGroup(body);
+        var videoInfo = videoJson.FromJson<IqiyiHtmlVideoInfo>();
+        if (videoInfo != null)
+        {
+            var albumJson = regAlbumInfo.FirstMatchGroup(body);
+            videoInfo.AlbumInfo = albumJson.FromJson<IqiyiHtmlAlbumInfo>();
+            _memoryCache.Set<IqiyiHtmlVideoInfo?>(cacheKey, videoInfo, expiredOption);
+            return videoInfo;
+        }
+
+        _memoryCache.Set<IqiyiHtmlVideoInfo?>(cacheKey, null, expiredOption);
         return null;
     }
 
@@ -163,8 +196,6 @@ public class IqiyiApi : AbstractApi
             return new List<IqiyiEpisode>();
         }
 
-
-        // 获取电视剧剧集信息(综艺不适用)
         var url = $"https://pcw-api.iqiyi.com/album/album/baseinfo/{albumId}";
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
@@ -193,7 +224,7 @@ public class IqiyiApi : AbstractApi
                 var videoListResult = await response.Content.ReadFromJsonAsync<IqiyiVideoListResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
                 if (videoListResult != null && videoListResult.Data != null && videoListResult.Data.Videos != null && videoListResult.Data.Videos.Count > 0)
                 {
-                    list.AddRange(videoListResult.Data.Videos);
+                    list.AddRange(videoListResult.Data.Videos.Where(x => !x.ShortTitle.Contains("精编版") && !x.ShortTitle.Contains("会员版")));
                 }
                 else
                 {
@@ -215,25 +246,6 @@ public class IqiyiApi : AbstractApi
         return new List<IqiyiEpisode>();
     }
 
-    public async Task<string> GetTvId(string id, bool isAlbum, CancellationToken cancellationToken)
-    {
-        var cacheKey = $"tvid_{id}";
-        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-        if (_memoryCache.TryGetValue<string>(cacheKey, out var tvid))
-        {
-            return tvid;
-        }
-
-        var url = isAlbum ? $"https://m.iqiyi.com/a_{id}.html" : $"https://m.iqiyi.com/v_{id}.html";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        var body = await response.Content.ReadAsStringAsync();
-        tvid = regTvId.FirstMatchGroup(body);
-        _memoryCache.Set<string>(cacheKey, tvid, expiredOption);
-
-        return tvid;
-    }
 
     public async Task<List<IqiyiComment>> GetDanmuContentAsync(string tvId, CancellationToken cancellationToken)
     {

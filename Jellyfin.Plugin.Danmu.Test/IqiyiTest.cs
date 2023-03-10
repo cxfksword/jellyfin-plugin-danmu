@@ -42,7 +42,8 @@ namespace Jellyfin.Plugin.Danmu.Test
 
             var item = new Movie
             {
-                Name = "少年派的奇幻漂流"
+                Name = "无间道3：终极无间",
+                ProductionYear = 2003
             };
 
             var list = new List<LibraryEvent>();
@@ -134,6 +135,7 @@ namespace Jellyfin.Plugin.Danmu.Test
 
         }
 
+
         [TestMethod]
         public void TestGetMedia()
         {
@@ -143,7 +145,7 @@ namespace Jellyfin.Plugin.Danmu.Test
                 try
                 {
                     var api = new Iqiyi(loggerFactory);
-                    var media = await api.GetMedia(new Season(), "19rrhaen1h");
+                    var media = await api.GetMedia(new Season(), "19rrmacgqs");
                     Console.WriteLine(media);
                 }
                 catch (Exception ex)
@@ -163,7 +165,7 @@ namespace Jellyfin.Plugin.Danmu.Test
                 try
                 {
                     var api = new Iqiyi(loggerFactory);
-                    var media = await api.GetMedia(new Season(), "25apmxdhmmh");
+                    var media = await api.GetMedia(new Season(), "1m5gylxxqu0");
                     Console.WriteLine(media);
                 }
                 catch (Exception ex)

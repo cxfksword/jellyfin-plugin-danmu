@@ -51,9 +51,10 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var vid = "3493131456125200"; // 电视剧
-                    // var vid = "429872"; // 电影
-                    var result = await api.GetVideoAsync(vid, CancellationToken.None);
+                    // var id = "j5998jke4w"; // 综艺
+                    // var id = "xkt6z3z798"; // 电视剧
+                    var id = "1e54n0pt5ro"; // 电影
+                    var result = await api.GetVideoAsync(id, CancellationToken.None);
                     Console.WriteLine(result);
                 }
                 catch (Exception ex)
