@@ -214,11 +214,11 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     break;
                 case Episode when ev.EventType is EventType.Update:
-                    _logger.LogInformation("Episode update: {0}", ev.Item.Name);
+                    _logger.LogInformation("Episode update: {0}.{1}", ev.Item.IndexNumber, ev.Item.Name);
                     queuedEpisodeUpdates.Add(ev);
                     break;
                 case Episode when ev.EventType is EventType.Force:
-                    _logger.LogInformation("Episode force: {0}", ev.Item.Name);
+                    _logger.LogInformation("Episode force: {0}.{1}", ev.Item.IndexNumber, ev.Item.Name);
                     queuedEpisodeForces.Add(ev);
                     break;
             }
@@ -318,7 +318,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "[{0}]Exception handled processing queued movie events", scraper.Name);
+                        _logger.LogError(ex, "[{0}]Exception handled processing movie events", scraper.Name);
                     }
                 }
             }
@@ -501,6 +501,12 @@ public class LibraryManagerEventsHelper : IDisposable
                             _logger.LogInformation("[{0}]匹配失败：{1} ({2})", scraper.Name, season.Name, season.ProductionYear);
                             continue;
                         }
+                        var media = await scraper.GetMedia(season, mediaId);
+                        if (media == null)
+                        {
+                            _logger.LogInformation("[{0}]匹配成功，但获取不到视频信息. id: {1}", scraper.Name, mediaId);
+                            continue;
+                        }
 
 
                         // 更新seasonId元数据
@@ -516,7 +522,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Exception handled processing queued movie events");
+                        _logger.LogError(ex, "Exception handled processing season events");
                     }
                 }
             }
@@ -791,10 +797,10 @@ public class LibraryManagerEventsHelper : IDisposable
     public async Task DownloadDanmu(AbstractScraper scraper, BaseItem item, string commentId, bool ignoreCheck = false)
     {
         // 下载弹幕xml文件
+        var checkDownloadedKey = $"{item.Id}_{commentId}";
         try
         {
             // 弹幕5分钟内更新过，忽略处理（有时Update事件会重复执行）
-            var checkDownloadedKey = $"{item.Id}_{commentId}";
             if (!ignoreCheck && _memoryCache.TryGetValue(checkDownloadedKey, out var latestDownloaded))
             {
                 _logger.LogInformation("[{0}]最近5分钟已更新过弹幕xml，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
@@ -821,6 +827,7 @@ public class LibraryManagerEventsHelper : IDisposable
         }
         catch (Exception ex)
         {
+            _memoryCache.Remove(checkDownloadedKey);
             _logger.LogError(ex, "[{0}]Exception handled download danmu file. name={1}", scraper.Name, item.Name);
         }
     }

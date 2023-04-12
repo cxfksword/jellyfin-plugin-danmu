@@ -21,6 +21,7 @@ using System.Web;
 using Microsoft.Extensions.Caching.Memory;
 using Jellyfin.Plugin.Danmu.Scrapers.Dandan.Entity;
 using Jellyfin.Plugin.Danmu.Configuration;
+using Jellyfin.Plugin.Danmu.Core.Extensions;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan;
 
@@ -57,8 +58,7 @@ public class DandanApi : AbstractApi
 
         var cacheKey = $"search_{keyword}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
-        List<Anime> searchResult;
-        if (_memoryCache.TryGetValue<List<Anime>>(cacheKey, out searchResult))
+        if (_memoryCache.TryGetValue<List<Anime>>(cacheKey, out var searchResult))
         {
             return searchResult;
         }
@@ -89,8 +89,7 @@ public class DandanApi : AbstractApi
 
         var cacheKey = $"anime_{animeId}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-        Anime? anime;
-        if (_memoryCache.TryGetValue<Anime?>(cacheKey, out anime))
+        if (_memoryCache.TryGetValue<Anime?>(cacheKey, out var anime))
         {
             return anime;
         }
@@ -100,10 +99,16 @@ public class DandanApi : AbstractApi
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<AnimeResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-        if (result != null && result.Success)
+        if (result != null && result.Success && result.Bangumi != null)
         {
-            _memoryCache.Set<Anime?>(cacheKey, result.Bangumi, expiredOption);
-            return result.Bangumi;
+            // 过滤掉特典剧集，episodeNumber为S1/S2.。。
+            anime = result.Bangumi;
+            if (anime.Episodes != null)
+            {
+                anime.Episodes = anime.Episodes.Where(x => x.EpisodeNumber.ToInt() > 0).ToList();
+            }
+            _memoryCache.Set<Anime?>(cacheKey, anime, expiredOption);
+            return anime;
         }
 
         _memoryCache.Set<Anime?>(cacheKey, null, expiredOption);

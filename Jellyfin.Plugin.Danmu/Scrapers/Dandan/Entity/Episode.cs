@@ -11,6 +11,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan.Entity
         public string EpisodeTitle { get; set; }
 
         [JsonPropertyName("episodeNumber")]
-        public int EpisodeNumber { get; set; }
+        public string EpisodeNumber { get; set; }
     }
 }

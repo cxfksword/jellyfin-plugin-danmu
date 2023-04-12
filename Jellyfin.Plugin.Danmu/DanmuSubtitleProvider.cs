@@ -125,7 +125,7 @@ public class DanmuSubtitleProvider : ISubtitleProvider
                     {
                         title += $" ({searchInfo.Year})";
                     }
-                    if (searchInfo.EpisodeSize > 1)
+                    if (item is Episode && searchInfo.EpisodeSize > 0)
                     {
                         title += $"【共{searchInfo.EpisodeSize}集】";
                     }
