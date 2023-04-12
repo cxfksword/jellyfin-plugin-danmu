@@ -1,8 +1,8 @@
-name: Close inactive
+name: "🧹 Close Inactive"
 
 on:
   schedule:
-    - cron: "0 0 */7 * *"
+    - cron: "0 0 * * 1"
   workflow_dispatch:
 
 jobs:
@@ -16,6 +16,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           inactive-day: 30
           exclude-labels: "enhancement,bug"
-          close-reason: "inactive"
+          close-reason: "not_planned"
           body: |
-            This issue was closed due to inactive more than 30 days. You can reopen or recreate it if you think it should continue.
+            This issue was closed due to inactive more than 30 days. You can reopen it if you think it should continue.
