@@ -1,8 +1,8 @@
 # jellyfin-plugin-danmu
 
-[![Danmu](https://img.shields.io/github/v/release/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
-[![Danmu](https://img.shields.io/badge/jellyfin-10.8.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
-[![Danmu](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
+[![releases](https://img.shields.io/github/v/release/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
+[![jellyfin](https://img.shields.io/badge/jellyfin-10.8.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
+[![LICENSE](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
 
 jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play，优酷，爱奇艺，腾讯视频，芒果TV。
 
@@ -38,7 +38,7 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 6. 同时生成ass弹幕，需要在插件配置中打开，默认是关闭的
 7. 定时更新需要自己到计划任务中添加定时时间，默认手工执行更新
   
-> B站电影或季元数据也支持手动指定BV号，来匹配UP主上传的视频弹幕。多P视频和剧集是按顺序一一对应匹配的，所以保证jellyfin中剧集有正确的集号很重要
+> B站电影或季元数据也支持手动指定BV/AV号，来匹配UP主上传的视频弹幕。多P视频和剧集是按顺序一一对应匹配的，所以保证jellyfin中剧集有正确的集号很重要
 
 ## 支持的api接口
 
@@ -49,9 +49,11 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 ## 如何播放
 
 xml格式：
+
+* [弹弹play](https://www.dandanplay.com/) (Windows/Mac/Android)
 * [KikoPlay](https://github.com/KikoPlayProject/KikoPlay) (Windows/Mac)
 * [Fileball](https://fileball.app/) (iOS/iPadOS/AppleTV)
-* [弹弹play](https://www.dandanplay.com/) (Windows/Mac/Android)
+
 
 ass格式：
 
