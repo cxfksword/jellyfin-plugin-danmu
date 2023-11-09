@@ -21,7 +21,7 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 
 添加插件存储库：
 
-国内加速：https://ghproxy.com/https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest_cn.json
+国内加速：https://gh-proxy.com/https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest_cn.json
 
 国外访问：https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest.json
 
