@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using System.Web;
 using ComposableAsync;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
-using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using Jellyfin.Plugin.Danmu.Scrapers.Youku.Entity;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -22,7 +21,7 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Youku;
 public class YoukuApi : AbstractApi
 {
     private static readonly Regex yearReg = new Regex(@"[12][890][0-9][0-9]", RegexOptions.Compiled);
-    private static readonly Regex unusedReg = new Regex(@"\[.+?\]|\(.+?\)|【.+?】", RegexOptions.Compiled);
+    private static readonly Regex unusedWordsReg = new Regex(@"\[.+?\]|\(.+?\)|【.+?】", RegexOptions.Compiled);
 
 
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
@@ -51,7 +50,7 @@ public class YoukuApi : AbstractApi
 
         var cacheKey = $"search_{keyword}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
-        if (_memoryCache.TryGetValue<List<YoukuVideo>>(cacheKey, out var cacheValue))
+        if (this._memoryCache.TryGetValue<List<YoukuVideo>>(cacheKey, out var cacheValue))
         {
             return cacheValue;
         }
@@ -61,11 +60,11 @@ public class YoukuApi : AbstractApi
         keyword = HttpUtility.UrlEncode(keyword);
         var ua = HttpUtility.UrlEncode(AbstractApi.HTTP_USER_AGENT);
         var url = $"https://search.youku.com/api/search?keyword={keyword}&userAgent={ua}&site=1&categories=0&ftype=0&ob=0&pg=1";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var result = new List<YoukuVideo>();
-        var searchResult = await response.Content.ReadFromJsonAsync<YoukuSearchResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var searchResult = await response.Content.ReadFromJsonAsync<YoukuSearchResult>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (searchResult != null && searchResult.PageComponentList != null)
         {
             foreach (YoukuSearchComponent component in searchResult.PageComponentList)
@@ -89,16 +88,19 @@ public class YoukuApi : AbstractApi
                     ID = component.CommonData.ShowId,
                     Type = component.CommonData.Feature.Contains("电影") ? "movie" : "tv",
                     Year = year > 0 ? year : null,
-                    Title = unusedReg.Replace(component.CommonData.TitleDTO.DisplayName, ""),
+                    Title = unusedWordsReg.Replace(component.CommonData.TitleDTO.DisplayName, ""),
                     Total = component.CommonData.EpisodeTotal
                 });
             }
         }
 
-        _memoryCache.Set<List<YoukuVideo>>(cacheKey, result, expiredOption);
+        this._memoryCache.Set<List<YoukuVideo>>(cacheKey, result, expiredOption);
         return result;
     }
 
+    /// <summary>
+    /// 获取影片的详细信息
+    /// </summary>
     public async Task<YoukuVideo?> GetVideoAsync(string id, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(id))
@@ -106,31 +108,68 @@ public class YoukuApi : AbstractApi
             return null;
         }
 
-        var cacheKey = $"media_{id}";
+        await this.LimitRequestFrequently();
+
+        var pageSize = 20;
+        var video = await this.GetVideoEpisodesAsync(id, 1, pageSize, cancellationToken).ConfigureAwait(false);
+        if (video != null) {
+            var pageCount = (video.Total / pageSize) + (video.Total % pageSize > 0 ? 1 : 0);
+            for (int pn = 2; pn <= pageCount; pn++)
+            {
+                var pagerVideo = await this.GetVideoEpisodesAsync(id, pn, pageSize, cancellationToken).ConfigureAwait(false);
+                if (pagerVideo != null) {
+                    video.Videos.AddRange(pagerVideo.Videos);
+                }
+            }
+        }
+
+        return video;
+    }
+
+    /// <summary>
+    /// 获取影片剧集分页信息
+    /// </summary>
+    private async Task<YoukuVideo?> GetVideoEpisodesAsync(string id, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            return null;
+        }
+        if (page <= 0) {
+            page = 1;
+        }
+        if (pageSize <= 0) {
+            pageSize = 20;
+        }
+
+        var cacheKey = $"video_episodes_{id}_{page}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-        if (_memoryCache.TryGetValue<YoukuVideo?>(cacheKey, out var video))
+        if (this._memoryCache.TryGetValue<YoukuVideo?>(cacheKey, out var video))
         {
             return video;
         }
 
         // 获取影片信息：https://openapi.youku.com/v2/shows/show.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&show_id=0b39c5b6569311e5b2ad
-        // 获取影片剧集信息：https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id=XMTM1MTc4MDU3Ng==
-        var url = $"https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id={id}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        // 获取影片剧集信息：https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id=deea7e54c2594c489bfd
+        var url = $"https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id={id}&page={page}&count={pageSize}";
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var result = await response.Content.ReadFromJsonAsync<YoukuVideo>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var result = await response.Content.ReadFromJsonAsync<YoukuVideo>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null)
         {
-            _memoryCache.Set<YoukuVideo?>(cacheKey, result, expiredOption);
+            this._memoryCache.Set<YoukuVideo?>(cacheKey, result, expiredOption);
             return result;
         }
 
-        _memoryCache.Set<YoukuVideo?>(cacheKey, null, expiredOption);
+        this._memoryCache.Set<YoukuVideo?>(cacheKey, null, expiredOption);
         return null;
     }
 
 
+    /// <summary>
+    /// 获取单个剧集信息
+    /// </summary>
     public async Task<YoukuEpisode?> GetEpisodeAsync(string vid, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(vid))
@@ -140,24 +179,24 @@ public class YoukuApi : AbstractApi
 
         var cacheKey = $"episode_{vid}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-        if (_memoryCache.TryGetValue<YoukuEpisode?>(cacheKey, out var episode))
+        if (this._memoryCache.TryGetValue<YoukuEpisode?>(cacheKey, out var episode))
         {
             return episode;
         }
 
         // 文档：https://cloud.youku.com/docs?id=46
         var url = $"https://openapi.youku.com/v2/videos/show_basic.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&video_id={vid}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var result = await response.Content.ReadFromJsonAsync<YoukuEpisode>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var result = await response.Content.ReadFromJsonAsync<YoukuEpisode>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null)
         {
-            _memoryCache.Set<YoukuEpisode?>(cacheKey, result, expiredOption);
+            this._memoryCache.Set<YoukuEpisode?>(cacheKey, result, expiredOption);
             return result;
         }
 
-        _memoryCache.Set<YoukuEpisode?>(cacheKey, null, expiredOption);
+        this._memoryCache.Set<YoukuEpisode?>(cacheKey, null, expiredOption);
         return null;
     }
 
@@ -169,7 +208,7 @@ public class YoukuApi : AbstractApi
             return danmuList;
         }
 
-        await EnsureTokenCookie(cancellationToken);
+        await this.EnsureTokenCookie(cancellationToken);
 
 
         var episode = await this.GetEpisodeAsync(vid, cancellationToken);
@@ -185,7 +224,7 @@ public class YoukuApi : AbstractApi
             danmuList.AddRange(comments);
 
             // 等待一段时间避免api请求太快
-            await _delayExecuteConstraint;
+            await this._delayExecuteConstraint;
         }
 
         return danmuList;
@@ -199,7 +238,7 @@ public class YoukuApi : AbstractApi
             return new List<YoukuComment>();
         }
 
-        await EnsureTokenCookie(cancellationToken);
+        await this.EnsureTokenCookie(cancellationToken);
 
 
         var ctime = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
@@ -251,11 +290,11 @@ public class YoukuApi : AbstractApi
         {
             requestMessage.Headers.Add("Referer", "https://v.youku.com");
 
-            response = await httpClient.SendAsync(requestMessage);
+            response = await this.httpClient.SendAsync(requestMessage);
         }
         response.EnsureSuccessStatusCode();
 
-        var result = await response.Content.ReadFromJsonAsync<YoukuRpcResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var result = await response.Content.ReadFromJsonAsync<YoukuRpcResult>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && !string.IsNullOrEmpty(result.Data.Result))
         {
             var commentResult = JsonSerializer.Deserialize<YoukuCommentResult>(result.Data.Result);
@@ -276,46 +315,46 @@ public class YoukuApi : AbstractApi
 
     protected async Task EnsureTokenCookie(CancellationToken cancellationToken)
     {
-        var cookies = _cookieContainer.GetCookies(new Uri("https://mmstat.com", UriKind.Absolute));
+        var cookies = this._cookieContainer.GetCookies(new Uri("https://mmstat.com", UriKind.Absolute));
         var cookie = cookies.FirstOrDefault(x => x.Name == "cna");
         if (cookie == null)
         {
             var url = "https://log.mmstat.com/eg.js";
-            var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             // 重新读取最新
-            cookies = _cookieContainer.GetCookies(new Uri("https://mmstat.com", UriKind.Absolute));
+            cookies = this._cookieContainer.GetCookies(new Uri("https://mmstat.com", UriKind.Absolute));
             cookie = cookies.FirstOrDefault(x => x.Name == "cna");
         }
         if (cookie != null)
         {
-            _cna = cookie.Value;
+            this._cna = cookie.Value;
         }
 
 
-        cookies = _cookieContainer.GetCookies(new Uri("https://youku.com", UriKind.Absolute));
+        cookies = this._cookieContainer.GetCookies(new Uri("https://youku.com", UriKind.Absolute));
         var tokenCookie = cookies.FirstOrDefault(x => x.Name == "_m_h5_tk");
         var tokenEncCookie = cookies.FirstOrDefault(x => x.Name == "_m_h5_tk_enc");
         if (tokenCookie == null || tokenEncCookie == null)
         {
             var url = "https://acs.youku.com/h5/mtop.com.youku.aplatform.weakget/1.0/?jsv=2.5.1&appKey=24679788";
-            var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             // 重新读取最新
-            cookies = _cookieContainer.GetCookies(new Uri("https://youku.com", UriKind.Absolute));
+            cookies = this._cookieContainer.GetCookies(new Uri("https://youku.com", UriKind.Absolute));
             tokenCookie = cookies.FirstOrDefault(x => x.Name == "_m_h5_tk");
             tokenEncCookie = cookies.FirstOrDefault(x => x.Name == "_m_h5_tk_enc");
         }
 
         if (tokenCookie != null)
         {
-            _token = tokenCookie.Value;
+            this._token = tokenCookie.Value;
         }
         if (tokenEncCookie != null)
         {
-            _tokenEnc = tokenEncCookie.Value;
+            this._tokenEnc = tokenEncCookie.Value;
         }
     }
 
