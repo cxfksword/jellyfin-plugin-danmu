@@ -1,15 +1,15 @@
-using System.Linq;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Controller.Entities;
-using Microsoft.Extensions.Logging;
-using Jellyfin.Plugin.Danmu.Scrapers.Entity;
-using System.Collections.Generic;
 using System.Xml;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
+using Jellyfin.Plugin.Danmu.Scrapers.Entity;
+using MediaBrowser.Controller.Entities;
+using Microsoft.Extensions.Logging;
+
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
 
@@ -46,26 +46,25 @@ public class Bilibili : AbstractScraper
             var searchResult = await _api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
             if (searchResult != null && searchResult.Result != null)
             {
-                foreach (var result in searchResult.Result)
+                foreach (var media in searchResult.Result)
                 {
-                    if ((result.ResultType == "media_ft" || result.ResultType == "media_bangumi") && result.Data.Length > 0)
+                    if (media.Type != "media_ft" && media.Type != "media_bangumi")
                     {
-                        foreach (var media in result.Data)
-                        {
-                            var seasonId = media.SeasonId;
-                            var title = media.Title;
-                            var pubYear = Jellyfin.Plugin.Danmu.Core.Utils.UnixTimeStampToDateTime(media.PublishTime).Year;
-
-                            list.Add(new ScraperSearchInfo()
-                            {
-                                Id = $"{seasonId}",
-                                Name = title,
-                                Category = media.SeasonTypeName,
-                                Year = pubYear,
-                                EpisodeSize = media.EpisodeSize,
-                            });
-                        }
+                        continue;
                     }
+
+                    var seasonId = media.SeasonId;
+                    var title = media.Title;
+                    var pubYear = Jellyfin.Plugin.Danmu.Core.Utils.UnixTimeStampToDateTime(media.PublishTime).Year;
+
+                    list.Add(new ScraperSearchInfo()
+                    {
+                        Id = $"{seasonId}",
+                        Name = title,
+                        Category = media.SeasonTypeName,
+                        Year = pubYear,
+                        EpisodeSize = media.EpisodeSize,
+                    });
                 }
             }
         }
@@ -347,50 +346,58 @@ public class Bilibili : AbstractScraper
         try
         {
             var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+            var isSeasonItemType = item is MediaBrowser.Controller.Entities.TV.Season;
             var searchResult = await _api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
             if (searchResult != null && searchResult.Result != null)
             {
-                foreach (var result in searchResult.Result)
+                foreach (var media in searchResult.Result)
                 {
-                    if ((result.ResultType == "media_ft" || result.ResultType == "media_bangumi") && result.Data.Length > 0)
+                    if (media.Type != "media_ft" && media.Type != "media_bangumi")
                     {
-                        foreach (var media in result.Data)
-                        {
-                            var seasonId = media.SeasonId;
-                            var title = media.Title;
-                            var pubYear = Jellyfin.Plugin.Danmu.Core.Utils.UnixTimeStampToDateTime(media.PublishTime).Year;
-
-                            if (isMovieItemType && media.SeasonTypeName != "电影")
-                            {
-                                continue;
-                            }
-
-                            if (!isMovieItemType && media.SeasonTypeName == "电影")
-                            {
-                                continue;
-                            }
-
-                            // 检测标题是否相似（越大越相似）
-                            var score = searchName.Distance(title);
-                            if (score < 0.7)
-                            {
-                                log.LogDebug("[{0}] 标题差异太大，忽略处理. 搜索词：{1}, score:　{2}", title, searchName, score);
-                                continue;
-                            }
-
-                            // 检测年份是否一致
-                            var itemPubYear = item.ProductionYear ?? 0;
-                            if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
-                            {
-                                log.LogDebug("[{0}] 发行年份不一致，忽略处理. b站：{1} jellyfin: {2}", title, pubYear, itemPubYear);
-                                continue;
-                            }
-
-                            log.LogInformation("匹配成功. [{0}] seasonId: {1} score: {2}", title, seasonId, score);
-                            return seasonId;
-                        }
+                        continue;
                     }
+
+                    var seasonId = media.SeasonId;
+                    var title = media.Title;
+                    var pubYear = Jellyfin.Plugin.Danmu.Core.Utils.UnixTimeStampToDateTime(media.PublishTime).Year;
+
+                    if (isMovieItemType && media.SeasonTypeName != "电影")
+                    {
+                        continue;
+                    }
+
+                    if (!isMovieItemType && media.SeasonTypeName == "电影")
+                    {
+                        continue;
+                    }
+
+                    // 检测标题是否相似（越大越相似）
+                    var score = searchName.Distance(title);
+                    if (score < 0.7)
+                    {
+                        log.LogDebug("[{0}] 标题差异太大，忽略处理. 搜索词：{1}, score:　{2}", title, searchName, score);
+                        continue;
+                    }
+
+                    // 检测年份是否一致
+                    var itemPubYear = item.ProductionYear ?? 0;
+                    if (itemPubYear > 0 && pubYear > 0 && itemPubYear != pubYear)
+                    {
+                        log.LogDebug("[{0}] 发行年份不一致，忽略处理. b站：{1} jellyfin: {2}", title, pubYear, itemPubYear);
+                        continue;
+                    }
+
+                    // 季匹配处理，没有year但有season_number时，判断后缀是否有对应的第几季，如孤独的美食家
+                    if (isSeasonItemType && itemPubYear == 0 && item.IndexNumber != null && item.IndexNumber.Value > 1 && media.SeasonNumber != item.IndexNumber)
+                    {
+                        log.LogDebug("[{0}] 季号不一致，忽略处理. b站：{1} jellyfin: {2}", title, media.SeasonNumber, item.IndexNumber);
+                        continue;
+                    }
+
+                    log.LogInformation("匹配成功. [{0}] seasonId: {1} score: {2}", title, seasonId, score);
+                    return seasonId;
                 }
+
             }
         }
         catch (HttpRequestException ex)

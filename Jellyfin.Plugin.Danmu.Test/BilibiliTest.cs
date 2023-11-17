@@ -59,6 +59,39 @@ namespace Jellyfin.Plugin.Danmu.Test
 
         }
 
+        [TestMethod]
+        public void TestSearchMediaId()
+        {
+            var scraperManager = new ScraperManager(loggerFactory);
+            scraperManager.register(new Bilibili(loggerFactory));
+
+            var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
+            var directoryServiceStub = new Mock<IDirectoryService>();
+            var libraryManagerStub = new Mock<ILibraryManager>();
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+
+            var item = new Season
+            {
+                Name = "孤独的美食家",
+                IndexNumber = 2,
+            };
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var scraper = new Bilibili(loggerFactory);
+                    var result = await scraper.SearchMediaId(item);
+                    Console.WriteLine(result);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+
+        }
+
 
         [TestMethod]
         public void TestAddMovie()

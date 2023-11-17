@@ -11,7 +11,7 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity
     public class SearchResult
     {
         [JsonPropertyName("result")]
-        public SearchTypeResult[] Result { get; set; }
+        public List<Media> Result { get; set; }
     }
 
     public class SearchTypeResult
@@ -19,6 +19,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity
         [JsonPropertyName("result_type")]
         public string ResultType { get; set; }
         [JsonPropertyName("data")]
-        public Media[] Data { get; set; }
+        public List<Media> Data { get; set; }
     }
 }

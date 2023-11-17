@@ -1,31 +1,19 @@
-using System.Text.RegularExpressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
-using Jellyfin.Extensions.Json;
-using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller;
-using Microsoft.Extensions.Logging;
-using Jellyfin.Plugin.Danmu.Model;
-using System.Threading;
-using MediaBrowser.Controller.Entities.Movies;
-using MediaBrowser.Common.Net;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using System.Net;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Web;
-using Microsoft.Extensions.Caching.Memory;
-using Jellyfin.Plugin.Danmu.Core.Http;
-using Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity;
-using RateLimiter;
 using ComposableAsync;
-using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
+using Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity;
+using Jellyfin.Plugin.Danmu.Scrapers.Entity;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
+using RateLimiter;
+
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
 
@@ -56,28 +44,40 @@ public class BilibiliApi : AbstractApi
 
         var cacheKey = $"search_{keyword}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
-        SearchResult searchResult;
-        if (_memoryCache.TryGetValue<SearchResult>(cacheKey, out searchResult))
+        if (this._memoryCache.TryGetValue<SearchResult>(cacheKey, out var searchResult))
         {
             return searchResult;
         }
 
         await this.LimitRequestFrequently();
-        await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
+        await this.EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
         keyword = HttpUtility.UrlEncode(keyword);
-        var url = $"http://api.bilibili.com/x/web-interface/search/all/v2?keyword={keyword}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+
+        // 搜索影视
+        var result = new SearchResult();
+        var url = $"https://api.bilibili.com/x/web-interface/search/type?keyword={keyword}&search_type=media_ft";
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<ApiResult<SearchResult>>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-        if (result != null && result.Code == 0 && result.Data != null)
+        var ftResult = await response.Content.ReadFromJsonAsync<ApiResult<SearchResult>>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (ftResult != null && ftResult.Code == 0 && ftResult.Data != null)
         {
-            _memoryCache.Set<SearchResult>(cacheKey, result.Data, expiredOption);
-            return result.Data;
+            result = ftResult.Data;
         }
 
-        _memoryCache.Set<SearchResult>(cacheKey, new SearchResult(), expiredOption);
-        return new SearchResult();
+        // 搜索番剧
+        url = $"https://api.bilibili.com/x/web-interface/search/type?keyword={keyword}&search_type=media_bangumi";
+        response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        var bangumiResult = await response.Content.ReadFromJsonAsync<ApiResult<SearchResult>>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (bangumiResult != null && bangumiResult.Code == 0 && bangumiResult.Data != null && bangumiResult.Data.Result != null)
+        {
+            result.Result.AddRange(bangumiResult.Data.Result);
+        }
+
+
+        this._memoryCache.Set<SearchResult>(cacheKey, result, expiredOption);
+        return result;
     }
 
     /// <summary>
@@ -97,15 +97,15 @@ public class BilibiliApi : AbstractApi
         // https://api.bilibili.com/x/v1/dm/list.so?oid={cid}
         bvid = bvid.Trim();
         var pageUrl = $"http://api.bilibili.com/x/player/pagelist?bvid={bvid}";
-        var response = await httpClient.GetAsync(pageUrl, cancellationToken).ConfigureAwait(false);
+        var response = await this.httpClient.GetAsync(pageUrl, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<ApiResult<VideoPart[]>>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var result = await response.Content.ReadFromJsonAsync<ApiResult<VideoPart[]>>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Code == 0 && result.Data != null)
         {
             var part = result.Data.FirstOrDefault();
             if (part != null)
             {
-                return await GetDanmuContentByCidAsync(part.Cid, cancellationToken).ConfigureAwait(false);
+                return await this.GetDanmuContentByCidAsync(part.Cid, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -126,10 +126,10 @@ public class BilibiliApi : AbstractApi
         }
 
 
-        var episode = await GetEpisodeAsync(epId, cancellationToken).ConfigureAwait(false);
+        var episode = await this.GetEpisodeAsync(epId, cancellationToken).ConfigureAwait(false);
         if (episode != null)
         {
-            return await GetDanmuContentByCidAsync(episode.CId, cancellationToken).ConfigureAwait(false);
+            return await this.GetDanmuContentByCidAsync(episode.CId, cancellationToken).ConfigureAwait(false);
         }
 
         throw new Exception($"Request fail. epId={epId}");
@@ -143,7 +143,7 @@ public class BilibiliApi : AbstractApi
         }
 
         var url = $"https://api.bilibili.com/x/v1/dm/list.so?oid={cid}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
             throw new Exception($"Request fail. url={url} status_code={response.StatusCode}");
@@ -171,24 +171,24 @@ public class BilibiliApi : AbstractApi
         var cacheKey = $"season_{seasonId}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
         VideoSeason? seasonData;
-        if (_memoryCache.TryGetValue<VideoSeason?>(cacheKey, out seasonData))
+        if (this._memoryCache.TryGetValue<VideoSeason?>(cacheKey, out seasonData))
         {
             return seasonData;
         }
 
-        await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
+        await this.EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
         var url = $"http://api.bilibili.com/pgc/view/web/season?season_id={seasonId}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<ApiResult<VideoSeason>>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var result = await response.Content.ReadFromJsonAsync<ApiResult<VideoSeason>>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Code == 0 && result.Result != null)
         {
-            _memoryCache.Set<VideoSeason?>(cacheKey, result.Result, expiredOption);
+            this._memoryCache.Set<VideoSeason?>(cacheKey, result.Result, expiredOption);
             return result.Result;
         }
 
-        _memoryCache.Set<VideoSeason?>(cacheKey, null, expiredOption);
+        this._memoryCache.Set<VideoSeason?>(cacheKey, null, expiredOption);
         return null;
     }
 
@@ -202,30 +202,30 @@ public class BilibiliApi : AbstractApi
         var cacheKey = $"episode_{epId}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
         VideoEpisode? episodeData;
-        if (_memoryCache.TryGetValue<VideoEpisode?>(cacheKey, out episodeData))
+        if (this._memoryCache.TryGetValue<VideoEpisode?>(cacheKey, out episodeData))
         {
             return episodeData;
         }
 
-        await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
+        await this.EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
         var url = $"http://api.bilibili.com/pgc/view/web/season?ep_id={epId}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var result = await response.Content.ReadFromJsonAsync<ApiResult<VideoSeason>>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var result = await response.Content.ReadFromJsonAsync<ApiResult<VideoSeason>>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Code == 0 && result.Result != null && result.Result.Episodes != null)
         {
             // 缓存本季的所有episode数据，避免批量更新时重复请求
             foreach (var episode in result.Result.Episodes)
             {
                 cacheKey = $"episode_{episode.Id}";
-                _memoryCache.Set<VideoEpisode?>(cacheKey, episode, expiredOption);
+                this._memoryCache.Set<VideoEpisode?>(cacheKey, episode, expiredOption);
             }
 
             return result.Result.Episodes.FirstOrDefault(x => x.Id == epId);
         }
 
-        _memoryCache.Set<VideoEpisode?>(cacheKey, null, expiredOption);
+        this._memoryCache.Set<VideoEpisode?>(cacheKey, null, expiredOption);
         return null;
     }
 
@@ -239,25 +239,25 @@ public class BilibiliApi : AbstractApi
         var cacheKey = $"video_{bvid}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
         Video? videoData;
-        if (_memoryCache.TryGetValue<Video?>(cacheKey, out videoData))
+        if (this._memoryCache.TryGetValue<Video?>(cacheKey, out videoData))
         {
             return videoData;
         }
 
-        await EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
+        await this.EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
         var url = $"https://api.bilibili.com/x/web-interface/view?bvid={bvid}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
-        var result = await response.Content.ReadFromJsonAsync<ApiResult<Video>>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        var result = await response.Content.ReadFromJsonAsync<ApiResult<Video>>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Code == 0 && result.Data != null)
         {
-            _memoryCache.Set<Video?>(cacheKey, result.Data, expiredOption);
+            this._memoryCache.Set<Video?>(cacheKey, result.Data, expiredOption);
             return result.Data;
         }
 
-        _memoryCache.Set<Video?>(cacheKey, null, expiredOption);
+        this._memoryCache.Set<Video?>(cacheKey, null, expiredOption);
         return null;
     }
 
@@ -272,13 +272,13 @@ public class BilibiliApi : AbstractApi
         var cacheKey = $"video_{avid}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
         BiliplusVideo? videoData;
-        if (_memoryCache.TryGetValue<BiliplusVideo?>(cacheKey, out videoData))
+        if (this._memoryCache.TryGetValue<BiliplusVideo?>(cacheKey, out videoData))
         {
             return videoData;
         }
 
         var url = $"https://www.biliplus.com/video/{avid}/";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -286,12 +286,12 @@ public class BilibiliApi : AbstractApi
         if (!string.IsNullOrEmpty(videoJson))
         {
             var videoInfo = videoJson.FromJson<BiliplusVideo>();
-            _memoryCache.Set<BiliplusVideo?>(cacheKey, videoInfo, expiredOption);
+            this._memoryCache.Set<BiliplusVideo?>(cacheKey, videoInfo, expiredOption);
             return videoInfo;
         }
 
 
-        _memoryCache.Set<BiliplusVideo?>(cacheKey, null, expiredOption);
+        this._memoryCache.Set<BiliplusVideo?>(cacheKey, null, expiredOption);
         return null;
     }
 
@@ -315,7 +315,7 @@ public class BilibiliApi : AbstractApi
             {
                 var url = $"https://api.bilibili.com/x/v2/dm/web/seg.so?type=1&oid={cid}&pid={aid}&segment_index={segmentIndex}";
 
-                var bytes = await httpClient.GetByteArrayAsync(url, cancellationToken).ConfigureAwait(false);
+                var bytes = await this.httpClient.GetByteArrayAsync(url, cancellationToken).ConfigureAwait(false);
                 var danmuReply = Biliproto.Community.Service.Dm.V1.DmSegMobileReply.Parser.ParseFrom(bytes);
                 if (danmuReply == null || danmuReply.Elems == null || danmuReply.Elems.Count <= 0)
                 {
@@ -347,7 +347,7 @@ public class BilibiliApi : AbstractApi
                 segmentIndex += 1;
 
                 // 等待一段时间避免api请求太快
-                await _delayExecuteConstraint;
+                await this._delayExecuteConstraint;
             }
         }
         catch (Exception ex)
@@ -360,14 +360,14 @@ public class BilibiliApi : AbstractApi
     private async Task EnsureSessionCookie(CancellationToken cancellationToken)
     {
         var url = "https://www.bilibili.com";
-        var cookies = _cookieContainer.GetCookies(new Uri(url, UriKind.Absolute));
+        var cookies = this._cookieContainer.GetCookies(new Uri(url, UriKind.Absolute));
         var existCookie = cookies.FirstOrDefault(x => x.Name == "buvid3");
         if (existCookie != null)
         {
             return;
         }
 
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
     }
 
