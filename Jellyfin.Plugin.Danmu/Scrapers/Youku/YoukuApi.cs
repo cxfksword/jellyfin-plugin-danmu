@@ -110,8 +110,15 @@ public class YoukuApi : AbstractApi
 
         await this.LimitRequestFrequently();
 
+        var cacheKey = $"video_{id}";
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+        if (this._memoryCache.TryGetValue<YoukuVideo?>(cacheKey, out var video))
+        {
+            return video;
+        }
+
         var pageSize = 20;
-        var video = await this.GetVideoEpisodesAsync(id, 1, pageSize, cancellationToken).ConfigureAwait(false);
+        video = await this.GetVideoEpisodesAsync(id, 1, pageSize, cancellationToken).ConfigureAwait(false);
         if (video != null) {
             var pageCount = (video.Total / pageSize) + (video.Total % pageSize > 0 ? 1 : 0);
             for (int pn = 2; pn <= pageCount; pn++)
@@ -123,6 +130,7 @@ public class YoukuApi : AbstractApi
             }
         }
 
+        this._memoryCache.Set<YoukuVideo?>(cacheKey, video, expiredOption);
         return video;
     }
 
@@ -142,13 +150,6 @@ public class YoukuApi : AbstractApi
             pageSize = 20;
         }
 
-        var cacheKey = $"video_episodes_{id}_{page}";
-        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-        if (this._memoryCache.TryGetValue<YoukuVideo?>(cacheKey, out var video))
-        {
-            return video;
-        }
-
         // 获取影片信息：https://openapi.youku.com/v2/shows/show.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&show_id=0b39c5b6569311e5b2ad
         // 获取影片剧集信息：https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id=deea7e54c2594c489bfd
         var url = $"https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id={id}&page={page}&count={pageSize}";
@@ -158,11 +159,8 @@ public class YoukuApi : AbstractApi
         var result = await response.Content.ReadFromJsonAsync<YoukuVideo>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null)
         {
-            this._memoryCache.Set<YoukuVideo?>(cacheKey, result, expiredOption);
             return result;
         }
-
-        this._memoryCache.Set<YoukuVideo?>(cacheKey, null, expiredOption);
         return null;
     }
 

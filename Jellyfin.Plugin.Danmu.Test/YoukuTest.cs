@@ -111,8 +111,8 @@ namespace Jellyfin.Plugin.Danmu.Test
 
             var item = new Season
             {
-                Name = "布莱切利四人组",
-                ProductionYear = 2012,
+                Name = "为有暗香来",
+                ProductionYear = 2023,
             };
 
             var list = new List<LibraryEvent>();

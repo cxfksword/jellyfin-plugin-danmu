@@ -502,6 +502,8 @@ public class LibraryManagerEventsHelper : IDisposable
                             continue;
                         }
                         var media = await scraper.GetMedia(season, mediaId);
+                        var dd = media.Episodes.Count;
+                        Console.WriteLine(dd);
                         if (media == null)
                         {
                             _logger.LogInformation("[{0}]匹配成功，但获取不到视频信息. id: {1}", scraper.Name, mediaId);
@@ -569,6 +571,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         }
 
                         var media = await scraper.GetMedia(season, providerVal);
+                        var dd = media.Episodes.Count;
                         if (media == null)
                         {
                             _logger.LogInformation("[{0}]获取不到视频信息. ProviderId: {1}", scraper.Name, providerVal);
