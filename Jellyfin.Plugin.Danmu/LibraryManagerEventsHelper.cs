@@ -692,7 +692,7 @@ public class LibraryManagerEventsHelper : IDisposable
         }
 
 
-        // 强制刷新指定来源弹幕
+        // 强制刷新指定来源弹幕（手动搜索强刷忽略集数不一致处理）
         if (eventType == EventType.Force)
         {
             foreach (var queueItem in episodes)
