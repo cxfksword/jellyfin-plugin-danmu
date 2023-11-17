@@ -6,13 +6,13 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using RateLimiter;
 using ComposableAsync;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using RateLimiter;
 
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
@@ -72,7 +72,14 @@ public class BilibiliApi : AbstractApi
         var bangumiResult = await response.Content.ReadFromJsonAsync<ApiResult<SearchResult>>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (bangumiResult != null && bangumiResult.Code == 0 && bangumiResult.Data != null && bangumiResult.Data.Result != null)
         {
-            result.Result.AddRange(bangumiResult.Data.Result);
+            if (result.Result == null)
+            {
+                result = bangumiResult.Data;
+            }
+            else
+            {
+                result.Result.AddRange(bangumiResult.Data.Result);
+            }
         }
 
 
