@@ -30,12 +30,12 @@ jobs:
           VERSION="$VERSION.0"
           echo ::set-output name=VERSION::${VERSION}
           echo ::set-output name=APP_NAME::$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')
-      - name: Install dependencies
-        run: dotnet restore ${{ env.project }} --no-cache
       - name: Build
-        run: dotnet publish --nologo --no-restore --configuration=Release --framework=net6.0 --output=artifacts -p:Version=${{steps.vars.outputs.VERSION}} ${{ env.project }}
-      - name: Clean publish dll
-        run: cd artifacts && rm -rf MediaBrowser*.dll Microsoft*.dll Newtonsoft*.dll System*.dll Emby*.dll Jellyfin.Data*.dll Jellyfin.Extensions*.dll *.json *.pdb
+        run: |
+          dotnet restore ${{ env.project }} --no-cache
+          dotnet publish --nologo --no-restore --configuration=Release --framework=net6.0 -p:Version=${{steps.vars.outputs.VERSION}} ${{ env.project }}
+          mkdir -p artifacts
+          cp ./Jellyfin.Plugin.Danmu/bin/Release/net6.0/Jellyfin.Plugin.Danmu.dll ./artifacts/
       - name: Compress build files
         uses: thedoctor0/zip-release@main
         with:
