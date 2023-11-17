@@ -74,11 +74,7 @@ ass格式：
 
 ```sh
 dotnet restore 
-dotnet publish --output=artifacts  Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
-
-# remove unused dll
-cd artifacts
-rm -rf MediaBrowser*.dll Microsoft*.dll Newtonsoft*.dll System*.dll Emby*.dll Jellyfin.Data*.dll Jellyfin.Extensions*.dll *.json *.pdb
+dotnet publish Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
 ```
 
 
@@ -86,7 +82,7 @@ rm -rf MediaBrowser*.dll Microsoft*.dll Newtonsoft*.dll System*.dll Emby*.dll Je
 
 1. Build the plugin
 
-2. Create a folder, like `danmu` and copy  `artifacts/*.dll` into it
+2. Create a folder, like `danmu` and copy  `./Jellyfin.Plugin.Danmu/bin/Debug/net6.0/Jellyfin.Plugin.Danmu.dll` into it
 
 3. Move folder `danmu` to jellyfin `data/plugins` folder
 
