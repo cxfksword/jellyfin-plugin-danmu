@@ -33,7 +33,7 @@ public class Mgtv : AbstractScraper
 
     public override int DefaultOrder => 6;
 
-    public override bool DefaultEnable => false;
+    public override bool DefaultEnable => true;
 
     public override string Name => "芒果TV";
 

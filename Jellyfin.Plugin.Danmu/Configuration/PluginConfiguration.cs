@@ -1,10 +1,8 @@
-using System.Diagnostics;
 using System.Collections.Generic;
-using MediaBrowser.Model.Plugins;
 using System.Linq;
-using System.Xml.Serialization;
 using System.Reflection;
-using Jellyfin.Plugin.Danmu.Core.Extensions;
+using System.Xml.Serialization;
+using MediaBrowser.Model.Plugins;
 
 namespace Jellyfin.Plugin.Danmu.Configuration;
 

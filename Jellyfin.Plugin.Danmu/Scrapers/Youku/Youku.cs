@@ -32,7 +32,7 @@ public class Youku : AbstractScraper
 
     public override int DefaultOrder => 3;
 
-    public override bool DefaultEnable => false;
+    public override bool DefaultEnable => true;
 
     public override string Name => "优酷";
 

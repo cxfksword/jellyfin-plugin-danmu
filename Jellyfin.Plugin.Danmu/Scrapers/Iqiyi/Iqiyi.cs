@@ -31,7 +31,7 @@ public class Iqiyi : AbstractScraper
 
     public override int DefaultOrder => 4;
 
-    public override bool DefaultEnable => false;
+    public override bool DefaultEnable => true;
 
     public override string Name => "爱奇艺";
 
