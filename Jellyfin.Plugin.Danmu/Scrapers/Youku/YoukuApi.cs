@@ -119,15 +119,19 @@ public class YoukuApi : AbstractApi
 
         var pageSize = 20;
         video = await this.GetVideoEpisodesAsync(id, 1, pageSize, cancellationToken).ConfigureAwait(false);
-        if (video != null) {
+        if (video != null)
+        {
             var pageCount = (video.Total / pageSize) + (video.Total % pageSize > 0 ? 1 : 0);
             for (int pn = 2; pn <= pageCount; pn++)
             {
                 var pagerVideo = await this.GetVideoEpisodesAsync(id, pn, pageSize, cancellationToken).ConfigureAwait(false);
-                if (pagerVideo != null) {
+                if (pagerVideo != null)
+                {
                     video.Videos.AddRange(pagerVideo.Videos);
                 }
             }
+            // 可能过滤了彩蛋，更新总数
+            video.Total = video.Videos.Count;
         }
 
         this._memoryCache.Set<YoukuVideo?>(cacheKey, video, expiredOption);
@@ -143,13 +147,16 @@ public class YoukuApi : AbstractApi
         {
             return null;
         }
-        if (page <= 0) {
+        if (page <= 0)
+        {
             page = 1;
         }
-        if (pageSize <= 0) {
+        if (pageSize <= 0)
+        {
             pageSize = 20;
         }
 
+        // 接口文档：https://cloud.youku.com/docs?id=64
         // 获取影片信息：https://openapi.youku.com/v2/shows/show.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&show_id=0b39c5b6569311e5b2ad
         // 获取影片剧集信息：https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id=deea7e54c2594c489bfd
         var url = $"https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id={id}&page={page}&count={pageSize}";
@@ -159,6 +166,11 @@ public class YoukuApi : AbstractApi
         var result = await response.Content.ReadFromJsonAsync<YoukuVideo>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null)
         {
+            // 过滤掉彩蛋影片
+            if (result.Videos != null)
+            {
+                result.Videos = result.Videos.Where(v => !v.Title.Contains("彩蛋")).ToList();
+            }
             return result;
         }
         return null;
