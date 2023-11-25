@@ -19,11 +19,7 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 
 只支持最新的`jellyfin 10.8.x`版本
 
-添加插件存储库：
-
-国内加速：https://gh-proxy.com/https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest_cn.json
-
-国外访问：https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest.json
+添加插件存储库：https://jellyfin-plugin-release.pages.dev/danmu/manifest.json
 
 ## 如何使用
 

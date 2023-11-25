@@ -21,8 +21,16 @@ jobs:
         run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - name: Setup dotnet
         uses: actions/setup-dotnet@v3
+        id: dotnet
         with:
           dotnet-version: ${{ env.dotnet-version }}
+      - name: Change default dotnet version
+        run: |
+          echo '{"sdk":{"version": "${{ steps.dotnet.outputs.dotnet-version }}"}}' > ./global.json
+      - name: Setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.python-version }}
       - name: Initialize workflow variables
         id: vars
         run: |
@@ -35,34 +43,30 @@ jobs:
           dotnet restore ${{ env.project }} --no-cache
           dotnet publish --nologo --no-restore --configuration=Release --framework=net6.0 -p:Version=${{steps.vars.outputs.VERSION}} ${{ env.project }}
           mkdir -p artifacts
-          cp ./Jellyfin.Plugin.Danmu/bin/Release/net6.0/Jellyfin.Plugin.Danmu.dll ./artifacts/
-      - name: Compress build files
-        uses: thedoctor0/zip-release@main
+          zip -j ./artifacts/${{ env.artifact }}_${{steps.vars.outputs.VERSION}}.zip ./Jellyfin.Plugin.Danmu/bin/Release/net6.0/Jellyfin.Plugin.Danmu.dll
+          cp ./doc/logo.png ./artifacts/logo.png
+      - name: Generate manifest
+        run: cd artifacts && python3 ../generate_manifest.py ${{ env.artifact }}_${{steps.vars.outputs.VERSION}}.zip ${GITHUB_REF#refs/*/}
+      - name: Deploy to jellyfin release repo
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          type: "zip"
-          directory: "artifacts"
-          filename: "artifacts.zip"
-          exclusions: "*.json *.pdb"
-      - name: Setup python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ env.python-version }}
-      - name: Install JPRM
-        run: python -m pip install jprm
-      - name: Run JPRM
-        run: chmod +x ./build.sh && ./build.sh ${{ env.artifact }} ${{steps.vars.outputs.VERSION}} ${GITHUB_REF#refs/*/}
+          personal_token: ${{ secrets.PAT }}
+          external_repository: cxfksword/jellyfin-release
+          destination_dir: ${{ env.artifact }}
+          publish_branch: master
+          publish_dir: ./artifacts
       - name: Publish release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./${{ env.artifact }}/${{ env.artifact }}_*.zip
+          file: ./artifacts/${{ env.artifact }}_*.zip
           tag: ${{ github.ref }}
           file_glob: true
-      - name: Publish manifest
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./manifest*.json
-          tag: "manifest"
-          overwrite: true
-          file_glob: true
+      # - name: Publish manifest
+      #   uses: svenstaro/upload-release-action@v2
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: ./artifacts/manifest*.json
+      #     tag: "manifest"
+      #     overwrite: true
+      #     file_glob: true

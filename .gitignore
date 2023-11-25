@@ -4,3 +4,4 @@ obj/
 .idea/
 artifacts
 **/.DS_Store
+*.json

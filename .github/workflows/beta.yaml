@@ -20,8 +20,12 @@ jobs:
         run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - name: Setup dotnet
         uses: actions/setup-dotnet@v3
+        id: dotnet
         with:
           dotnet-version: ${{ env.dotnet-version }}
+      - name: Change default dotnet version
+        run: |
+          echo '{"sdk":{"version": "${{ steps.dotnet.outputs.dotnet-version }}"}}' > ./global.json
       - name: Initialize workflow variables
         id: vars
         run: |

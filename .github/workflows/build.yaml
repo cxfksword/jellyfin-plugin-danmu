@@ -12,11 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-dotnet@v3
+        id: dotnet
         with:
           dotnet-version: 6.0.x
+      - name: Change default dotnet version
+        run: |
+          echo '{"sdk":{"version": "${{ steps.dotnet.outputs.dotnet-version }}"}}' > ./global.json
       - name: Install dependencies
         run: dotnet restore
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --no-restore
       # - name: Test
       #   run: dotnet test --no-restore --verbosity normal
