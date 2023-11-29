@@ -25,7 +25,7 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 
 public class IqiyiApi : AbstractApi
 {
-    private new const string HTTP_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1 Edg/93.0.4577.63";
+    private new const string HTTP_USER_AGENT = "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36 Edg/115.0.0.0";
     private static readonly Regex regVideoInfo = new Regex(@"""videoInfo"":(\{.+?\}),", RegexOptions.Compiled);
     private static readonly Regex regAlbumInfo = new Regex(@"""albumInfo"":(\{.+?\}),", RegexOptions.Compiled);
 

@@ -30,7 +30,7 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var keyword = "回魂夜";
+                    var keyword = "青春环游记";
                     var result = await api.SearchAsync(keyword, CancellationToken.None);
                     Console.WriteLine(result);
                 }
@@ -51,9 +51,9 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    // var id = "j5998jke4w"; // 综艺
+                    var id = "25f5iplvm8s"; // 综艺
                     // var id = "xkt6z3z798"; // 电视剧
-                    var id = "1e54n0pt5ro"; // 电影
+                    // var id = "1e54n0pt5ro"; // 电影
                     var result = await api.GetVideoAsync(id, CancellationToken.None);
                     Console.WriteLine(result);
                 }
