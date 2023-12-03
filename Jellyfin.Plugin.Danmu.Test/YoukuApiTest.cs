@@ -24,7 +24,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         [TestMethod]
         public void TestSearch()
         {
-            var keyword = "西虹市首富";
+            var keyword = "剧好听的歌";
             var api = new YoukuApi(loggerFactory);
 
             Task.Run(async () =>
@@ -51,7 +51,7 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var vid = "deea7e54c2594c489bfd";
+                    var vid = "abbed2b5b2b24bcb9ad8";
                     var result = await api.GetVideoAsync(vid, CancellationToken.None);
                     Console.WriteLine(result);
                 }

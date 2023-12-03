@@ -166,10 +166,20 @@ public class YoukuApi : AbstractApi
         var result = await response.Content.ReadFromJsonAsync<YoukuVideo>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null)
         {
-            // 过滤掉彩蛋影片
-            if (result.Videos != null)
+            // 过滤掉彩蛋
+            if (result.Videos != null && result.Videos.Count > 0)
             {
-                result.Videos = result.Videos.Where(v => !v.Title.Contains("彩蛋")).ToList();
+                var filterList = result.Videos.Where(v => !v.Title.Contains("彩蛋"));
+
+                // 综艺会包含各种版本和花絮，这里过滤掉
+                if (result.Videos[0].Category == "综艺" || result.Videos[0].Category == "娱乐")
+                {
+                    var validPrefixs = new string[] {"上", "中", "下"};
+                    filterList = filterList.Where(v => !v.Title.Contains("：") || validPrefixs.Contains(v.Title.Split("：").First().Trim()))
+                                           .Where(v => v.Category != "娱乐");
+                }
+                result.Videos = filterList.ToList();
+
             }
             return result;
         }

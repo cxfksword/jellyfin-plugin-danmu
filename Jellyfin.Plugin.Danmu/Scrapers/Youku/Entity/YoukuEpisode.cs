@@ -22,8 +22,14 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Youku.Entity
         [JsonPropertyName("title")]
         public string Title { get; set; }
 
+        [JsonPropertyName("rc_title")]
+        public string RCTitle { get; set; }
+
         [JsonPropertyName("link")]
         public string Link { get; set; }
+
+        [JsonPropertyName("category")]
+        public string Category { get; set; }
 
 
         public int TotalMat
