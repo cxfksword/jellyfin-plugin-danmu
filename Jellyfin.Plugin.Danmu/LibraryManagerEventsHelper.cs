@@ -812,9 +812,9 @@ public class LibraryManagerEventsHelper : IDisposable
             if (danmaku != null)
             {
                 var bytes = danmaku.ToXml();
-                if (bytes.Length < 10 * 1024)
+                if (bytes.Length < 1024)
                 {
-                    _logger.LogInformation("[{0}]弹幕内容少于10KB，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                    _logger.LogInformation("[{0}]弹幕内容少于1KB，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                     return;
                 }
                 await this.SaveDanmu(item, bytes);

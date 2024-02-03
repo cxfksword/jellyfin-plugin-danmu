@@ -315,14 +315,33 @@ public class BilibiliApi : AbstractApi
         danmaku.ChatServer = "api.bilibili.com";
         danmaku.Items = new List<ScraperDanmakuText>();
 
+        await this.EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
+
         try
         {
             var segmentIndex = 1;  // 分包，每6分钟一包
             while (true)
             {
                 var url = $"https://api.bilibili.com/x/v2/dm/web/seg.so?type=1&oid={cid}&pid={aid}&segment_index={segmentIndex}";
+                var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+                if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
+                {
+                    // 已经到最后了
+                    break;
+                }
+                if (response.Headers.TryGetValues("bili-status-code", out var headers))
+                {
+                    var biliStatusCode = headers.FirstOrDefault();
+                    if (biliStatusCode == "-352")
+                    {
+                        this._logger.LogWarning($"下载部分弹幕失败. bili-status-code: {biliStatusCode} url: {url}");
+                        danmaku.Items = new List<ScraperDanmakuText>();
+                        return danmaku;
+                    }
+                }
 
-                var bytes = await this.httpClient.GetByteArrayAsync(url, cancellationToken).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+                var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
                 var danmuReply = Biliproto.Community.Service.Dm.V1.DmSegMobileReply.Parser.ParseFrom(bytes);
                 if (danmuReply == null || danmuReply.Elems == null || danmuReply.Elems.Count <= 0)
                 {
@@ -359,6 +378,7 @@ public class BilibiliApi : AbstractApi
         }
         catch (Exception ex)
         {
+            this._logger.LogError(ex, "下载弹幕出错");
         }
 
         return danmaku;
