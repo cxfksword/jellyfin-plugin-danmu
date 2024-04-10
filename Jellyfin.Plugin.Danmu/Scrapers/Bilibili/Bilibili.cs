@@ -415,4 +415,72 @@ public class Bilibili : AbstractScraper
 
         return 0;
     }
+
+
+    public override async Task<List<ScraperSearchInfo>> SearchForApi(string keyword)
+    {
+        var list = new List<ScraperSearchInfo>();
+        try
+        {
+            var searchResult = await _api.SearchAsync(keyword, CancellationToken.None).ConfigureAwait(false);
+            if (searchResult != null && searchResult.Result != null)
+            {
+                foreach (var media in searchResult.Result)
+                {
+                    if (media.Type != "media_ft" && media.Type != "media_bangumi")
+                    {
+                        continue;
+                    }
+
+                    var seasonId = media.SeasonId;
+                    var title = media.Title;
+                    var pubYear = Jellyfin.Plugin.Danmu.Core.Utils.UnixTimeStampToDateTime(media.PublishTime).Year;
+
+                    list.Add(new ScraperSearchInfo()
+                    {
+                        Id = $"{seasonId}",
+                        Name = title,
+                        Category = media.SeasonTypeName,
+                        Year = pubYear,
+                        EpisodeSize = media.EpisodeSize,
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Exception handled GetMatchSeasonId. {0}", keyword);
+        }
+
+        return list;
+    }
+
+    public override async Task<List<ScraperEpisode>> GetEpisodesForApi(string id)
+    {
+        var list = new List<ScraperEpisode>();
+        var seasonId = id.ToLong();
+        if (seasonId <= 0)
+        {
+            return null;
+        }
+
+        var season = await _api.GetSeasonAsync(seasonId, CancellationToken.None).ConfigureAwait(false);
+        if (season == null)
+        {
+            log.LogInformation("获取不到b站视频信息：seasonId={0}", seasonId);
+            return null;
+        }
+
+        foreach (var ep in season.Episodes)
+        {
+            list.Add(new ScraperEpisode() { Id = $"{ep.Id}", CommentId = $"{ep.CId}", Title = ep.Title });
+        }
+
+        return list;
+    }
+
+    public override async Task<ScraperDanmaku?> DownloadDanmuForApi(string commentId)
+    {
+        return await this.GetDanmuContent(null, commentId).ConfigureAwait(false);
+    }
 }

@@ -1,16 +1,11 @@
 using System.Web;
-using System.Linq;
 using System;
-using System.Net.Http;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using System.Collections.Generic;
-using System.Xml;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using System.Text.Json;
 using Jellyfin.Plugin.Danmu.Scrapers.Youku.Entity;
@@ -217,9 +212,57 @@ public class Youku : AbstractScraper
     }
 
 
-    private string NormalizeSearchName(string name)
+    public override async Task<List<ScraperSearchInfo>> SearchForApi(string keyword)
     {
-        // 去掉可能存在的季名称
-        return Regex.Replace(name, @"\s*第.季", "");
+        var list = new List<ScraperSearchInfo>();
+        var videos = await this._api.SearchAsync(keyword, CancellationToken.None).ConfigureAwait(false);
+        foreach (var video in videos)
+        {
+            var videoId = video.ID;
+            var title = video.Title;
+            var pubYear = video.Year;
+
+            var score = keyword.Distance(title);
+            if (score <= 0)
+            {
+                continue;
+            }
+
+            list.Add(new ScraperSearchInfo()
+            {
+                Id = $"{videoId}",
+                Name = title,
+                Category = video.Type == "movie" ? "电影" : "电视剧",
+                Year = pubYear,
+                EpisodeSize = video.Total,
+            });
+        }
+        return list;
     }
+
+    public override async Task<List<ScraperEpisode>> GetEpisodesForApi(string id)
+    {
+        var list = new List<ScraperEpisode>();
+        var video = await this._api.GetVideoAsync(id, CancellationToken.None).ConfigureAwait(false);
+        if (video == null)
+        {
+            return list;
+        }
+
+        if (video.Videos != null && video.Videos.Count > 0)
+        {
+            foreach (var ep in video.Videos)
+            {
+                list.Add(new ScraperEpisode() { Id = $"{ep.ID}", CommentId = $"{ep.ID}", Title = ep.Title });
+            }
+        }
+
+        return list;
+    }
+
+    public override async Task<ScraperDanmaku?> DownloadDanmuForApi(string commentId)
+    {
+        return await this.GetDanmuContent(null, commentId).ConfigureAwait(false);
+    }
+
 }

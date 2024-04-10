@@ -25,7 +25,7 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 
 public class IqiyiApi : AbstractApi
 {
-    private new const string HTTP_USER_AGENT = "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.91 Mobile Safari/537.36 Edg/115.0.0.0";
+    private new const string HTTP_USER_AGENT = "Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.162 Mobile Safari/537.36 Edg/115.0.0.0";
     private static readonly Regex regVideoInfo = new Regex(@"""videoInfo"":(\{.+?\}),", RegexOptions.Compiled);
     private static readonly Regex regAlbumInfo = new Regex(@"""albumInfo"":(\{.+?\}),", RegexOptions.Compiled);
 
@@ -76,7 +76,7 @@ public class IqiyiApi : AbstractApi
             result = searchResult.Data.DocInfos
                 .Where(x => x.Score > 0.7)
                 .Select(x => x.AlbumDocInfo)
-                .Where(x => !string.IsNullOrEmpty(x.Link) && x.Link.Contains("iqiyi.com") && x.SiteId == "iqiyi" && x.VideoDocType == 1 && !x.Channel.Contains("原创"))
+                .Where(x => !string.IsNullOrEmpty(x.Link) && x.Link.Contains("iqiyi.com") && x.SiteId == "iqiyi" && x.VideoDocType == 1 && !x.Channel.Contains("原创") && !x.Channel.Contains("教育"))
                 .ToList();
         }
 

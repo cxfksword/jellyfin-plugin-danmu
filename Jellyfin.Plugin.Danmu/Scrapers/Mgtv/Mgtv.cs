@@ -1,20 +1,11 @@
-using System.Web;
-using System.Linq;
-using System;
-using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using System.Collections.Generic;
-using System.Xml;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
-using System.Text.Json;
-using Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Entity;
-using MediaBrowser.Controller.Library;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Mgtv;
 
@@ -42,6 +33,7 @@ public class Mgtv : AbstractScraper
     public override string ProviderId => ScraperProviderId;
 
 
+    private static readonly Regex regTvEpisodeTitle = new Regex(@"^第.+?集$", RegexOptions.Compiled);
 
     public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
@@ -78,6 +70,7 @@ public class Mgtv : AbstractScraper
                 Name = title,
                 Category = video.TypeName,
                 Year = pubYear,
+                EpisodeSize = video.VideoCount,
             });
         }
 
@@ -229,9 +222,50 @@ public class Mgtv : AbstractScraper
     }
 
 
-    private string NormalizeSearchName(string name)
+    public override async Task<List<ScraperSearchInfo>> SearchForApi(string keyword)
     {
-        // 去掉可能存在的季名称
-        return Regex.Replace(name, @"\s*第.季", "");
+        var list = new List<ScraperSearchInfo>();
+        var videos = await this._api.SearchAsync(keyword, CancellationToken.None).ConfigureAwait(false);
+        foreach (var video in videos)
+        {
+            var videoId = video.Id;
+            var title = video.Title;
+            var pubYear = video.Year;
+            list.Add(new ScraperSearchInfo()
+            {
+                Id = $"{videoId}",
+                Name = title,
+                Category = video.TypeName,
+                Year = pubYear,
+                EpisodeSize = video.VideoCount,
+            });
+        }
+        return list;
+    }
+
+    public override async Task<List<ScraperEpisode>> GetEpisodesForApi(string id)
+    {
+        var list = new List<ScraperEpisode>();
+        var video = await this._api.GetVideoAsync(id, CancellationToken.None).ConfigureAwait(false);
+        if (video == null)
+        {
+            return list;
+        }
+
+        if (video.EpisodeList != null && video.EpisodeList.Count > 0)
+        {
+            foreach (var ep in video.EpisodeList)
+            {
+                var title = regTvEpisodeTitle.IsMatch(ep.Title2) ? ep.Title2 : ep.Title;
+                list.Add(new ScraperEpisode() { Id = $"{ep.VideoId}", CommentId = $"{id},{ep.VideoId}", Title = title });
+            }
+        }
+
+        return list;
+    }
+
+    public override async Task<ScraperDanmaku?> DownloadDanmuForApi(string commentId)
+    {
+        return await this.GetDanmuContent(null, commentId).ConfigureAwait(false);
     }
 }

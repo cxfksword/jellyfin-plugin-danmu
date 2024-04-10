@@ -68,6 +68,10 @@ public class TencentApi : AbstractApi
                 {
                     continue;
                 }
+                if (item.VideoInfo.Title.Distance(keyword) <= 0)
+                {
+                    continue;
+                }
 
                 var video = item.VideoInfo;
                 video.Id = item.Doc.Id;

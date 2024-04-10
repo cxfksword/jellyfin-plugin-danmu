@@ -44,8 +44,8 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 
 ## 支持的api接口
 
-* `/plugin/danmu/{id}`:  获取影片或剧集的xml弹幕链接，不存在时，url为空
-* `/plugin/danmu/raw/{id}`:  获取影片或剧集的xml弹幕文件内容
+* `/api/danmu/{id}`:  获取影片或剧集的xml弹幕链接，不存在时，url为空
+* `/api/danmu/{id}/raw`:  获取影片或剧集的xml弹幕文件内容
 
 
 ## 如何播放
@@ -70,13 +70,13 @@ ass格式：
 
 1. Clone or download this repository
 
-2. Ensure you have .NET Core SDK setup and installed
+2. Ensure you have .NET Core SDK 6.0 setup and installed
 
 3. Build plugin with following command.
 
 ```sh
 dotnet restore 
-dotnet publish Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
+dotnet publish --configuration=Release Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
 ```
 
 
@@ -84,7 +84,7 @@ dotnet publish Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Danmu.csproj
 
 1. Build the plugin
 
-2. Create a folder, like `danmu` and copy  `./Jellyfin.Plugin.Danmu/bin/Debug/net6.0/Jellyfin.Plugin.Danmu.dll` into it
+2. Create a folder, like `danmu` and copy  `./Jellyfin.Plugin.Danmu/bin/Release/net6.0/Jellyfin.Plugin.Danmu.dll` into it
 
 3. Move folder `danmu` to jellyfin `data/plugins` folder
 

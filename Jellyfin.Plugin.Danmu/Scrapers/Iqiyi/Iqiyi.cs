@@ -1,18 +1,11 @@
-using System.Linq;
 using System;
-using System.Net.Http;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using System.Collections.Generic;
-using System.Xml;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
-using System.Text.Json;
-using Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 
@@ -205,9 +198,47 @@ public class Iqiyi : AbstractScraper
     }
 
 
-    private string NormalizeSearchName(string name)
+    public override async Task<List<ScraperSearchInfo>> SearchForApi(string keyword)
     {
-        // 去掉可能存在的季名称
-        return Regex.Replace(name, @"\s*第.季", "");
+        var list = new List<ScraperSearchInfo>();
+        var videos = await this._api.SearchAsync(keyword, CancellationToken.None).ConfigureAwait(false);
+        foreach (var video in videos)
+        {
+            list.Add(new ScraperSearchInfo()
+            {
+                Id = $"{video.LinkId}",
+                Name = video.Name,
+                Category = video.ChannelName,
+                Year = video.Year,
+                EpisodeSize = video.ItemTotalNumber,
+            });
+        }
+        return list;
     }
+
+    public override async Task<List<ScraperEpisode>> GetEpisodesForApi(string id)
+    {
+        var list = new List<ScraperEpisode>();
+        var video = await this._api.GetVideoAsync(id, CancellationToken.None).ConfigureAwait(false);
+        if (video == null)
+        {
+            return list;
+        }
+
+        if (video.Epsodelist != null && video.Epsodelist.Count > 0)
+        {
+            foreach (var ep in video.Epsodelist)
+            {
+                list.Add(new ScraperEpisode() { Id = $"{ep.LinkId}", CommentId = $"{ep.TvId}", Title = ep.Name });
+            }
+        }
+
+        return list;
+    }
+
+    public override async Task<ScraperDanmaku?> DownloadDanmuForApi(string commentId)
+    {
+        return await this.GetDanmuContent(null, commentId).ConfigureAwait(false);
+    }
+
 }

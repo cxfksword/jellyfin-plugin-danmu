@@ -24,7 +24,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         [TestMethod]
         public void TestSearch()
         {
-            var keyword = "剧好听的歌";
+            var keyword = "与凤行";
             var api = new YoukuApi(loggerFactory);
 
             Task.Run(async () =>

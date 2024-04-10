@@ -43,6 +43,10 @@ public class MgtvSearchItem
     [JsonPropertyName("source")]
     public string Source { get; set; }
 
+
+    [JsonPropertyName("videoCount")]
+    public int VideoCount { get; set; }
+
     private string _title = string.Empty;
     [JsonPropertyName("title")]
     public string Title

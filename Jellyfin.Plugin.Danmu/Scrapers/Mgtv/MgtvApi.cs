@@ -68,7 +68,10 @@ public class MgtvApi : AbstractApi
                 }
                 foreach (var item in content.Data)
                 {
-
+                    if (string.IsNullOrEmpty(item.Id))
+                    {
+                        continue;
+                    }
 
                     result.Add(item);
                 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using MediaBrowser.Controller.Entities;
@@ -69,4 +70,39 @@ public abstract class AbstractScraper
     /// <param name="commentId">弹幕id</param>
     /// <returns>弹幕内容</returns>
     public abstract Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId);
+
+    /// <summary>
+    /// 搜索影片（用于api）
+    /// </summary>
+    /// <returns>影片列表</returns>
+    public virtual async Task<List<ScraperSearchInfo>> SearchForApi(string keyword)
+    {
+        return new List<ScraperSearchInfo>();
+    }
+
+    /// <summary>
+    /// 获取影片剧集数据（用于api）
+    /// </summary>
+    /// <returns>剧集列表</returns>
+    public virtual async Task<List<ScraperEpisode>> GetEpisodesForApi(string id)
+    {
+        return new List<ScraperEpisode>();
+    }
+
+    /// <summary>
+    /// 下载弹幕（用于api）
+    /// </summary>
+    /// <param name="commentId">弹幕id</param>
+    /// <returns>弹幕内容</returns>
+    public virtual async Task<ScraperDanmaku?> DownloadDanmuForApi(string commentId)
+    {
+        return null;
+    }
+
+
+    protected string NormalizeSearchName(string name)
+    {
+        // 去掉可能存在的季名称
+        return Regex.Replace(name, @"\s*第.季", "");
+    }
 }

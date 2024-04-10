@@ -20,7 +20,7 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var keyword = "大侦探";
+                    var keyword = "与凤行";
                     var api = new MgtvApi(loggerFactory);
                     var result = await api.SearchAsync(keyword, CancellationToken.None);
                     Console.WriteLine(result);
@@ -40,7 +40,8 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var id = "310102";
+                    // var id = "310102";  // 综艺
+                    var id = "626407";  // 电视剧
                     var api = new MgtvApi(loggerFactory);
                     var result = await api.GetVideoAsync(id, CancellationToken.None);
                     Console.WriteLine(result);

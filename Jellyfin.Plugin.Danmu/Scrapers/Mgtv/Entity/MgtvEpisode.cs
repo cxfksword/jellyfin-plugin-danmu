@@ -10,6 +10,8 @@ public class MgtvEpisode
     public string ClipId { get; set; }
     [JsonPropertyName("t1")]
     public string Title { get; set; }
+    [JsonPropertyName("t2")]
+    public string Title2 { get; set; } = string.Empty;
     [JsonPropertyName("time")]
     public string Time { get; set; }
     [JsonPropertyName("video_id")]

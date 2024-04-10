@@ -23,4 +23,5 @@ public class ScraperEpisode
     /// </summary>
     public string Id { get; set; }
     public string CommentId { get; set; }
+    public string Title { get; set; } = string.Empty;
 }

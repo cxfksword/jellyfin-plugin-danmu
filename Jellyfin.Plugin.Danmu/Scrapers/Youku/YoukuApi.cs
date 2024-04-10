@@ -77,7 +77,13 @@ public class YoukuApi : AbstractApi
                     continue;
                 }
 
-                if (component.CommonData.TitleDTO.DisplayName.Contains("中配版"))
+                if (component.CommonData.TitleDTO.DisplayName.Contains("中配版")
+                ||  component.CommonData.TitleDTO.DisplayName.Contains("抢先看")
+                || component.CommonData.TitleDTO.DisplayName.Contains("非正片")
+                || component.CommonData.TitleDTO.DisplayName.Contains("解读")
+                || component.CommonData.TitleDTO.DisplayName.Contains("揭秘")
+                || component.CommonData.TitleDTO.DisplayName.Contains("赏析")
+                || component.CommonData.TitleDTO.DisplayName.Contains("《"))
                 {
                     continue;
                 }

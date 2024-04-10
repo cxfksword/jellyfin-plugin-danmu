@@ -1,34 +1,32 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
 using System.IO;
 using System.Threading.Tasks;
 using MediaBrowser.Common.Extensions;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller;
-using MediaBrowser.Model.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using MediaBrowser.Model.IO;
-using MediaBrowser.Controller.Providers;
-using System.Runtime.InteropServices;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Dto;
+using System.Collections.Generic;
+using Jellyfin.Plugin.Danmu.Scrapers;
+using Microsoft.Extensions.Logging;
+using Jellyfin.Plugin.Danmu.Core.Extensions;
+using System.Text.RegularExpressions;
 
 namespace Jellyfin.Plugin.Danmu.Controllers
 {
     [ApiController]
     [AllowAnonymous]
-    [Route("/plugin/danmu")]
     public class DanmuController : ControllerBase
     {
         private readonly ILibraryManager _libraryManager;
         private readonly LibraryManagerEventsHelper _libraryManagerEventsHelper;
         private readonly IFileSystem _fileSystem;
+        private readonly ScraperManager _scraperManager;
+
+        private readonly ILogger<DanmuController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DanmuController"/> class.
@@ -37,19 +35,24 @@ namespace Jellyfin.Plugin.Danmu.Controllers
         /// <param name="libraryManager">Instance of the <see cref="ILibraryManager"/> interface.</param>
         public DanmuController(
             IFileSystem fileSystem,
+            ILoggerFactory loggerFactory,
             LibraryManagerEventsHelper libraryManagerEventsHelper,
-            ILibraryManager libraryManager)
+            ILibraryManager libraryManager,
+            ScraperManager scraperManager)
         {
             _fileSystem = fileSystem;
+            _logger = loggerFactory.CreateLogger<DanmuController>();
             _libraryManager = libraryManager;
             _libraryManagerEventsHelper = libraryManagerEventsHelper;
+            _scraperManager = scraperManager;
         }
 
         /// <summary>
         /// 获取弹幕文件内容.
         /// </summary>
         /// <returns>xml弹幕文件内容</returns>
-        [Route("{id}")]
+        [Route("/plugin/danmu/{id}")]
+        [Route("/api/danmu/{id}")]
         [HttpGet]
         public async Task<DanmuFileInfo> Get(string id)
         {
@@ -72,16 +75,17 @@ namespace Jellyfin.Plugin.Danmu.Controllers
             }
 
             var domain = Request.Scheme + System.Uri.SchemeDelimiter + Request.Host;
-            return new DanmuFileInfo() { Url = string.Format("{0}{1}{2}", domain, "/plugin/danmu/raw/", id) };
+            return new DanmuFileInfo() { Url = string.Format("{0}/api/danmu/{1}/raw", domain, id) };
         }
 
         /// <summary>
         /// 获取弹幕文件内容.
         /// </summary>
         /// <returns>xml弹幕文件内容</returns>
-        [Route("raw/{id}")]
+        [Route("/plugin/danmu/raw/{id}")]
+        [Route("/api/danmu/{id}/raw")]
         [HttpGet]
-        public async Task<ActionResult> GetFile(string id)
+        public async Task<ActionResult> Download(string id)
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -102,6 +106,176 @@ namespace Jellyfin.Plugin.Danmu.Controllers
             }
 
             return File(System.IO.File.ReadAllBytes(danmuPath), "text/xml");
+        }
+
+        /// <summary>
+        /// 查找弹幕
+        /// </summary>
+        [Route("/api/danmu/search")]
+        [HttpGet]
+        public async Task<IEnumerable<MediaInfo>> SearchDanmu(string keyword)
+        {
+            var list = new List<MediaInfo>();
+
+            if (string.IsNullOrEmpty(keyword))
+            {
+                return list;
+            }
+
+            
+            foreach (var scraper in _scraperManager.All())
+            {
+                try
+                {
+                    var scraperId = Regex.Replace(scraper.ProviderId, "ID$", string.Empty).ToLower();
+                    var result = await scraper.SearchForApi(keyword).ConfigureAwait(false);
+                    foreach (var searchInfo in result)
+                    {
+                        list.Add(new MediaInfo()
+                        {
+                            Id = searchInfo.Id,
+                            Name = searchInfo.Name,
+                            Category = searchInfo.Category,
+                            Year = searchInfo.Year == null ? string.Empty : searchInfo.Year.ToString(),
+                            EpisodeSize = searchInfo.EpisodeSize,
+                            Site = scraper.Name,
+                            SiteId = scraperId,
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[{0}]Exception handled processing search movie [{1}]", scraper.Name, keyword);
+                }
+            }
+
+            return list;
+        }
+
+        /// <summary>
+        /// 查找弹幕
+        /// </summary>
+        [Route("/api/{site}/danmu/search")]
+        [HttpGet]
+        public async Task<IEnumerable<MediaInfo>> SearchDanmuBySite(string site, string keyword)
+        {
+            var list = new List<MediaInfo>();
+
+            if (string.IsNullOrEmpty(keyword))
+            {
+                return list;
+            }
+
+            
+            foreach (var scraper in _scraperManager.All())
+            {
+                try
+                {
+                    var scraperId = Regex.Replace(scraper.ProviderId, "ID$", string.Empty).ToLower();
+                    if (scraperId != site)
+                    {
+                        continue;
+                    }
+
+                    var result = await scraper.SearchForApi(keyword).ConfigureAwait(false);
+                    foreach (var searchInfo in result)
+                    {
+                        list.Add(new MediaInfo()
+                        {
+                            Id = searchInfo.Id,
+                            Name = searchInfo.Name,
+                            Category = searchInfo.Category,
+                            Year = searchInfo.Year == null ? string.Empty : searchInfo.Year.ToString(),
+                            EpisodeSize = searchInfo.EpisodeSize,
+                            Site = scraper.Name,
+                            SiteId = scraperId,
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[{0}]Exception handled processing search movie [{1}]", scraper.Name, keyword);
+                }
+            }
+
+            return list;
+        }
+
+        /// <summary>
+        /// 查找弹幕
+        /// </summary>
+        [Route("/api/{site}/danmu/{id}/episodes")]
+        [HttpGet]
+        public async Task<IEnumerable<EpisodeInfo>> GetDanmuEpisodesBySite(string site, string id)
+        {
+            var list = new List<EpisodeInfo>();
+
+            if (string.IsNullOrEmpty(id))
+            {
+                return list;
+            }
+
+            
+            foreach (var scraper in _scraperManager.All())
+            {
+                try
+                {
+                    var scraperId = Regex.Replace(scraper.ProviderId, "ID$", string.Empty).ToLower();
+                    if (scraperId != site)
+                    {
+                        continue;
+                    }
+
+                    var result = await scraper.GetEpisodesForApi(id).ConfigureAwait(false);
+                    foreach (var (ep, idx) in result.WithIndex())
+                    {
+                        list.Add(new EpisodeInfo()
+                        {
+                            Id = ep.Id,
+                            CommentId = ep.CommentId,
+                            Number = idx + 1,
+                            Title = ep.Title,
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[{0}]Exception handled processing get episodes [{1}]", scraper.Name, id);
+                }
+            }
+
+            return list;
+        }
+
+
+
+        /// <summary>
+        /// 下载弹幕.
+        /// </summary>
+        [Route("/api/{site}/danmu/{cid}/download")]
+        [HttpGet]
+        public async Task<ActionResult> DownloadByCommentID(string site, string cid)
+        {
+            if (string.IsNullOrEmpty(cid))
+            {
+                throw new ResourceNotFoundException();
+            }
+
+            foreach (var scraper in this._scraperManager.All())
+            {
+                var scraperId = Regex.Replace(scraper.ProviderId, "ID$", string.Empty).ToLower();
+                if (scraperId == site)
+                {
+                    var danmaku = await scraper.DownloadDanmuForApi(cid).ConfigureAwait(false);
+                    if (danmaku != null)
+                    {
+                        var bytes = danmaku.ToXml();
+                        return File(bytes, "text/xml");
+                    }
+                }
+            }
+
+            throw new ResourceNotFoundException();
         }
 
         /// <summary>
