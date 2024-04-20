@@ -1,17 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using ComposableAsync;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
-using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Entity;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -137,43 +132,31 @@ public class MgtvApi : AbstractApi
             return danmuList;
         }
 
-        // 取视频总时间
-        var url = $"https://pcweb.api.mgtv.com/video/info?allowedRC=1&cid={cid}&vid={vid}&change=3&datatype=1&type=1&_support=10000000";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        var videoInfoResult = await response.Content.ReadFromJsonAsync<MgtvVideoInfoResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-        if (videoInfoResult == null || videoInfoResult.Data == null || videoInfoResult.Data.Info == null)
-        {
-            return danmuList;
-        }
 
-        url = $"https://galaxy.bz.mgtv.com/getctlbarrage?version=3.0.0&vid={vid}&abroad=0&pid=0&os&uuid&deviceid=00000000-0000-0000-0000-000000000000&cid={cid}&ticket&mac&platform=0&appVersion=3.0.0&reqtype=form-post&allowedRC=1";
-        response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        var result = await response.Content.ReadFromJsonAsync<MgtvCommentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-        if (result != null && result.Data != null)
+        var time = 0;
+        do
         {
-            var idx = 0;
-            var total = videoInfoResult.Data.Info.TotalMinutes;
-            do
+            var segmentUrl = $"https://galaxy.bz.mgtv.com/cdn/opbarrage?vid={vid}&pid=&cid={cid}&ticket=&time={time}&allowedRC=1";
+            var segmentResponse = await this.httpClient.GetAsync(segmentUrl, cancellationToken).ConfigureAwait(false);
+            segmentResponse.EnsureSuccessStatusCode();
+
+            var segmentResult = await segmentResponse.Content.ReadFromJsonAsync<MgtvCommentSegmentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+            if (segmentResult != null && segmentResult.Data != null && segmentResult.Data.Items != null)
             {
-                var segmentUrl = $"https://{result.Data.CdnHost}/{result.Data.CdnVersion}/{idx}.json";
-                var segmentResponse = await httpClient.GetAsync(segmentUrl, cancellationToken).ConfigureAwait(false);
-                segmentResponse.EnsureSuccessStatusCode();
+                // 60秒每segment，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
+                danmuList.AddRange(segmentResult.Data.Items.ExtractToNumber(200));
+            }
+            else
+            {
+                break;
+            }
 
-                var segmentResult = await segmentResponse.Content.ReadFromJsonAsync<MgtvCommentSegmentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-                if (segmentResult != null && segmentResult.Data != null && segmentResult.Data.Items != null)
-                {
-                    // 60秒每segment，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
-                    danmuList.AddRange(segmentResult.Data.Items.ExtractToNumber(200));
-                }
-
-                idx++;
-                // 等待一段时间避免api请求太快
-                await _delayExecuteConstraint;
-            } while (idx < total);
+            time = segmentResult?.Data?.Next ?? 0;
+            // 等待一段时间避免api请求太快
+            await _delayExecuteConstraint;
         }
+        while (time > 0);
+    
 
         return danmuList;
     }

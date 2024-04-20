@@ -62,8 +62,8 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var cid = "514446";
-                    var vid = "18053294";
+                    var cid = "641701";
+                    var vid = "20836173";
                     var api = new MgtvApi(loggerFactory);
                     var result = await api.GetDanmuContentAsync(cid, vid, CancellationToken.None);
                     Console.WriteLine(result);

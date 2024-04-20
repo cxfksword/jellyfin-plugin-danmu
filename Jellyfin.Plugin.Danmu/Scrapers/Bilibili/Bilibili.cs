@@ -332,14 +332,6 @@ public class Bilibili : AbstractScraper
         return biliDanmakus;
     }
 
-    private string NormalizeSearchName(string name)
-    {
-        // 去掉可能存在的季名称
-        return Regex.Replace(name, @"\s*第.季", "");
-    }
-
-
-
     // 根据名称搜索对应的seasonId
     private async Task<long> GetMatchBiliSeasonId(BaseItem item, string searchName)
     {
