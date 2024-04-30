@@ -175,5 +175,28 @@ namespace Jellyfin.Plugin.Danmu.Test
             }).GetAwaiter().GetResult();
 
         }
+
+
+        [TestMethod]
+        public void TestGetEpisodesForApi()
+        {
+            var api = new Iqiyi(loggerFactory);
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var id = "25f5iplvm8s"; // 综艺
+                    // var id = "19tfhh8axvc"; // 电视剧
+                    // var id = "1e54n0pt5ro"; // 电影
+                    var result = await api.GetEpisodesForApi(id);
+                    Console.WriteLine(result);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+        }
     }
 }

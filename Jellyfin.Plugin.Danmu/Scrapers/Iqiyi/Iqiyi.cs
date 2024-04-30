@@ -134,7 +134,7 @@ public class Iqiyi : AbstractScraper
         {
             foreach (var ep in video.Epsodelist)
             {
-                media.Episodes.Add(new ScraperEpisode() { Id = $"{ep.LinkId}", CommentId = $"{ep.TvId}" });
+                media.Episodes.Add(new ScraperEpisode() { Id = $"{ep.LinkId}", CommentId = $"{ep.TvId}", Title = ep.Name });
             }
         }
 
@@ -156,7 +156,7 @@ public class Iqiyi : AbstractScraper
             return null;
         }
 
-        return new ScraperEpisode() { Id = id, CommentId = $"{video.TvId}" };
+        return new ScraperEpisode() { Id = id, CommentId = $"{video.TvId}", Title = video.VideoName };
     }
 
     public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)
