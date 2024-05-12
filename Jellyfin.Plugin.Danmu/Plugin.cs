@@ -23,11 +23,12 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// </summary>
     /// <param name="applicationPaths">Instance of the <see cref="IApplicationPaths"/> interface.</param>
     /// <param name="xmlSerializer">Instance of the <see cref="IXmlSerializer"/> interface.</param>
-    public Plugin(IApplicationPaths applicationPaths, IApplicationHost applicationHost, IXmlSerializer xmlSerializer)
+    public Plugin(IApplicationPaths applicationPaths, IApplicationHost applicationHost, IXmlSerializer xmlSerializer, ScraperManager scraperManager)
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
         Scrapers = applicationHost.GetExports<AbstractScraper>(false).Where(o => o != null).OrderBy(x => x.DefaultOrder).ToList().AsReadOnly();
+        scraperManager.Register(Scrapers);
     }
 
     /// <inheritdoc />

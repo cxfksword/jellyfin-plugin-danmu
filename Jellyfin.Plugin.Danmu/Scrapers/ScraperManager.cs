@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using Jellyfin.Plugin.Danmu.Core.Extensions;
-using MediaBrowser.Common;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers;
@@ -15,15 +13,16 @@ public class ScraperManager
     public ScraperManager(ILoggerFactory logManager)
     {
         log = logManager.CreateLogger<ScraperManager>();
-        if (Plugin.Instance?.Scrapers != null)
-        {
-            this._scrapers.AddRange(Plugin.Instance.Scrapers);
-        }
     }
 
-    public void register(AbstractScraper scraper)
+    public void Register(AbstractScraper scraper)
     {
         this._scrapers.Add(scraper);
+    }
+
+    public void Register(IList<AbstractScraper> scrapers)
+    {
+        this._scrapers.AddRange(scrapers);
     }
 
     public ReadOnlyCollection<AbstractScraper> All()

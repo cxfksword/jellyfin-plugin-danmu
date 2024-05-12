@@ -26,7 +26,7 @@ def generate_version(filepath, version, changelog):
     return {
         'version': f"{version}.0",
         'changelog': changelog,
-        'targetAbi': '10.8.0.0',
+        'targetAbi': '10.9.0.0',
         'sourceUrl': f'https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/v{version}/danmu_{version}.0.zip',
         'checksum': md5sum(filepath),
         'timestamp': datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
