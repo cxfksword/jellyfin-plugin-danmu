@@ -24,7 +24,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         {
             var libraryManagerStub = new Mock<ILibraryManager>();
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -59,7 +59,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         {
             var libraryManagerStub = new Mock<ILibraryManager>();
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -96,7 +96,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         {
             var libraryManagerStub = new Mock<ILibraryManager>();
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Mgtv(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();

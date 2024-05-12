@@ -37,7 +37,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestAddMovie()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
 
@@ -71,7 +71,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestUpdateMovie()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             fileSystemStub.Setup(x => x.Exists(It.IsAny<string>())).Returns(true);
@@ -112,7 +112,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestAddSeason()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -145,7 +145,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestUpdateSeason()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -180,7 +180,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestAddMovieByDandan()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
 
@@ -215,7 +215,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestAddSeasonByDandan()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
 
@@ -250,8 +250,8 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestAddMovieByMultiScrapers()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
 
@@ -286,7 +286,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         {
             var dandanScraper = new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory);
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(dandanScraper);
+            scraperManager.Register(dandanScraper);
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             fileSystemStub.Setup(x => x.Exists(It.IsAny<string>())).Returns(true);
