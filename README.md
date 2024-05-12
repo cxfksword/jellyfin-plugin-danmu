@@ -1,7 +1,7 @@
 # jellyfin-plugin-danmu
 
 [![releases](https://img.shields.io/github/v/release/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
-[![jellyfin](https://img.shields.io/badge/jellyfin-10.8.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
+[![jellyfin](https://img.shields.io/badge/jellyfin-10.8.x|10.9.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
 [![LICENSE](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
 
 jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play，优酷，爱奇艺，腾讯视频，芒果TV。
@@ -16,8 +16,6 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 ![logo](doc/logo.png)
 
 ## 安装插件
-
-只支持最新的`jellyfin 10.8.x`版本
 
 添加插件存储库：
 
@@ -70,7 +68,7 @@ ass格式：
 
 1. Clone or download this repository
 
-2. Ensure you have .NET Core SDK 6.0 setup and installed
+2. Ensure you have .NET Core SDK 8.0 setup and installed
 
 3. Build plugin with following command.
 
@@ -84,7 +82,7 @@ dotnet publish --configuration=Release Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Dan
 
 1. Build the plugin
 
-2. Create a folder, like `danmu` and copy  `./Jellyfin.Plugin.Danmu/bin/Release/net6.0/Jellyfin.Plugin.Danmu.dll` into it
+2. Create a folder, like `danmu` and copy  `./Jellyfin.Plugin.Danmu/bin/Release/net8.0/Jellyfin.Plugin.Danmu.dll` into it
 
 3. Move folder `danmu` to jellyfin `data/plugins` folder
 

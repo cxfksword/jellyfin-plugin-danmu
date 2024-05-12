@@ -1,26 +1,20 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller;
-using MediaBrowser.Controller.Plugins;
-using MediaBrowser.Controller.Session;
 using Microsoft.Extensions.Logging;
-using MediaBrowser.Common.Net;
 using Jellyfin.Plugin.Danmu.Model;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.IO;
-using MediaBrowser.Controller.Providers;
-using Jellyfin.Plugin.Danmu.Core.Extensions;
+using Microsoft.Extensions.Hosting;
+using System.Threading;
 
 namespace Jellyfin.Plugin.Danmu
 {
-    public class PluginStartup : IServerEntryPoint, IDisposable
+    public class PluginStartup : IHostedService, IDisposable
     {
         private readonly ILibraryManager _libraryManager;
         private readonly LibraryManagerEventsHelper _libraryManagerEventsHelper;
@@ -47,7 +41,7 @@ namespace Jellyfin.Plugin.Danmu
             _libraryManagerEventsHelper = libraryManagerEventsHelper;
         }
 
-        public Task RunAsync()
+        public Task StartAsync(CancellationToken cancellationToken)
         {
             _libraryManager.ItemAdded += LibraryManagerItemAdded;
             _libraryManager.ItemUpdated += LibraryManagerItemUpdated;
@@ -127,5 +121,9 @@ namespace Jellyfin.Plugin.Danmu
             }
         }
 
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
