@@ -33,7 +33,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestAddMovie()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -67,7 +67,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestUpdateMovie()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
+            scraperManager.Register(new Jellyfin.Plugin.Danmu.Scrapers.Dandan.Dandan(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();

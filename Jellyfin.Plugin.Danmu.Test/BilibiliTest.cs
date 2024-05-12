@@ -31,7 +31,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestSearch()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Bilibili(loggerFactory));
+            scraperManager.Register(new Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -63,7 +63,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestSearchMediaId()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Bilibili(loggerFactory));
+            scraperManager.Register(new Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -97,7 +97,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestAddMovie()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Bilibili(loggerFactory));
+            scraperManager.Register(new Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -131,7 +131,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestUpdateMovie()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Bilibili(loggerFactory));
+            scraperManager.Register(new Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -165,7 +165,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestUpdateMovieWithAvid()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Bilibili(loggerFactory));
+            scraperManager.Register(new Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
@@ -201,7 +201,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         public void TestAddSeason()
         {
             var scraperManager = new ScraperManager(loggerFactory);
-            scraperManager.register(new Bilibili(loggerFactory));
+            scraperManager.Register(new Bilibili(loggerFactory));
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
