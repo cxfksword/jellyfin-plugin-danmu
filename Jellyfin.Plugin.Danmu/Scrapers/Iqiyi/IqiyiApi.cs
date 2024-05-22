@@ -204,7 +204,7 @@ public class IqiyiApi : AbstractApi
             }
 
             var list = new List<IqiyiVideoListInfo>();
-            for (var begin = startDate; begin <= endDate; begin = begin.AddMonths(1))
+            for (var begin = startDate; begin.Month <= endDate.Month; begin = begin.AddMonths(1))
             {
                 var year = begin.Year;
                 var month = begin.ToString("MM");
