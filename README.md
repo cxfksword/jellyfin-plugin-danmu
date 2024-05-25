@@ -50,6 +50,7 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 
 xml格式：
 
+* [switchfin](https://github.com/dragonflylee/switchfin) (Windows/Mac/Linux) 🌟
 * [弹弹play](https://www.dandanplay.com/) (Windows/Mac/Android)
 * [KikoPlay](https://github.com/KikoPlayProject/KikoPlay) (Windows/Mac)
 * [Fileball](https://fileball.app/) (iOS/iPadOS/AppleTV)
