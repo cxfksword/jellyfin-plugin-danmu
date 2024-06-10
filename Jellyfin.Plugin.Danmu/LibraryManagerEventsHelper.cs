@@ -534,7 +534,7 @@ public class LibraryManagerEventsHelper : IDisposable
                 var queueUpdateMeta = new List<BaseItem>();
                 // GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
                 // TODO：可能出现未刮削完，就触发获取弹幕，导致GetEpisodes只能获取到部分剧集的情况
-                var episodes = season.GetEpisodes(null, new DtoOptions(true));
+                var episodes = season.GetEpisodes();
                 if (episodes == null)
                 {
                     continue;
@@ -717,7 +717,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     await ForceSaveProviderId(season, scraper.ProviderId, media.Id);
 
                     // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
-                    var episodeList = season.GetEpisodes(null, new DtoOptions(true));
+                    var episodeList = season.GetEpisodes();
                     foreach (var (episode, idx) in episodeList.WithIndex())
                     {
                         var fileName = Path.GetFileName(episode.Path);
