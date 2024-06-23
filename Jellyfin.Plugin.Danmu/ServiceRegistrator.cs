@@ -14,6 +14,8 @@ namespace Jellyfin.Plugin.Danmu
         /// <inheritdoc />
         public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
         {
+            serviceCollection.AddHostedService<PluginStartup>();
+
             serviceCollection.AddSingleton<ISubtitleProvider, DanmuSubtitleProvider>();
             serviceCollection.AddSingleton<Jellyfin.Plugin.Danmu.Core.IFileSystem>((ctx) =>
             {
