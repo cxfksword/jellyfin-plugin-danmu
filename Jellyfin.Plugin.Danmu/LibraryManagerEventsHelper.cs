@@ -581,27 +581,26 @@ public class LibraryManagerEventsHelper : IDisposable
                                 continue;
                             }
 
-                            if (media.Episodes.Count == episodes.Count)
+                            if (this.Config.DownloadOption.EnableEpisodeCountSame && media.Episodes.Count != episodes.Count)
                             {
-                                var epId = media.Episodes[idx].Id;
-                                var commentId = media.Episodes[idx].CommentId;
-                                _logger.LogInformation("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, indexNumber, episode.Name, epId, commentId);
-
-                                // 更新eposide元数据
-                                var episodeProviderVal = episode.GetProviderId(scraper.ProviderId);
-                                if (!string.IsNullOrEmpty(epId) && episodeProviderVal != epId)
-                                {
-                                    episode.SetProviderId(scraper.ProviderId, epId);
-                                    queueUpdateMeta.Add(episode);
-                                }
-
-                                // 下载弹幕
-                                await this.DownloadDanmu(scraper, episode, commentId).ConfigureAwait(false);
+                                 _logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, episode.Name, media.Episodes.Count, episodes.Count);
+                                 continue;
                             }
-                            else
+
+                            var epId = media.Episodes[idx].Id;
+                            var commentId = media.Episodes[idx].CommentId;
+                            _logger.LogInformation("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, indexNumber, episode.Name, epId, commentId);
+
+                            // 更新eposide元数据
+                            var episodeProviderVal = episode.GetProviderId(scraper.ProviderId);
+                            if (!string.IsNullOrEmpty(epId) && episodeProviderVal != epId)
                             {
-                                _logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, episode.Name, media.Episodes.Count, episodes.Count);
+                                episode.SetProviderId(scraper.ProviderId, epId);
+                                queueUpdateMeta.Add(episode);
                             }
+
+                            // 下载弹幕
+                            await this.DownloadDanmu(scraper, episode, commentId).ConfigureAwait(false);
                         }
 
                         break;

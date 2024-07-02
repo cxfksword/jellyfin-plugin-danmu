@@ -33,6 +33,21 @@
 
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
                         <legend>
+                            <h3>弹幕匹配下载配置</h3>
+                        </legend>
+
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableEpisodeCountSame" name="EnableEpisodeCountSame" type="checkbox"
+                                    is="emby-checkbox" />
+                                <span>弹幕总数需和电视剧总集数一致</span>
+                            </label>
+                            <div class="fieldDescription">勾选后，假如匹配了错误的电视剧，可以避免自动下载错误的弹幕。</div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend>
                             <h3>弹弹play配置</h3>
                         </legend>
 
@@ -120,6 +135,8 @@
                         document.querySelector('#AssLineCount').value = config.AssLineCount;
                         document.querySelector('#AssSpeed').value = config.AssSpeed;
 
+                        document.querySelector('#EnableEpisodeCountSame').checked = config.DownloadOption.EnableEpisodeCountSame;
+
                         document.querySelector('#WithRelatedDanmu').checked = config.Dandan.WithRelatedDanmu;
                         document.querySelector('#ChConvert').value = config.Dandan.ChConvert;
 
@@ -164,6 +181,10 @@
                             scrapers.push(scraper);
                         });
                         config.Scrapers = scrapers;
+
+                        var download = new Object();
+                        download.EnableEpisodeCountSame = document.querySelector('#EnableEpisodeCountSame').checked;
+                        config.DownloadOption = download;
 
                         var dandan = new Object();
                         dandan.WithRelatedDanmu = document.querySelector('#WithRelatedDanmu').checked;

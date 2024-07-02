@@ -42,6 +42,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public string AssSpeed { get; set; } = string.Empty;
 
+
+    /// <summary>
+    /// 检测弹幕数和视频剧集数需要一致才自动下载弹幕.
+    /// </summary>
+    public DanmuDownloadOption DownloadOption { get; set; } = new DanmuDownloadOption();
+
     /// <summary>
     /// 透明度.
     /// </summary>
@@ -121,6 +127,15 @@ public class ScraperConfigItem
         this.Name = name;
         this.Enable = enable;
     }
+
+}
+
+public class DanmuDownloadOption
+{
+    /// <summary>
+    /// 检测弹幕数和视频剧集数需要一致才自动下载弹幕.
+    /// </summary>
+    public bool EnableEpisodeCountSame { get; set; } = true;
 
 }
 
