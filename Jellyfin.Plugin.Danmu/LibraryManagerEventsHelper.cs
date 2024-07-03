@@ -657,8 +657,63 @@ public class LibraryManagerEventsHelper : IDisposable
         // 判断epid，有的话刷新弹幕文件
         if (eventType == EventType.Update)
         {
+            var queueUpdateMeta = new List<BaseItem>();
             foreach (var item in episodes)
             {
+                // 如果 Episode 没有弹幕元数据，但 Season 有弹幕元数据，表示该集是刮削完成后再新增的，需要重新匹配获取
+                var scrapers = this._scraperManager.All();
+                var season = item.Season;
+                var allDanmuProviderIds = scrapers.Select(x => x.ProviderId).ToList();
+                var episodeFirstProviderId = allDanmuProviderIds.FirstOrDefault(x => !string.IsNullOrEmpty(item.GetProviderId(x)));
+                var seasonFirstProviderId = allDanmuProviderIds.FirstOrDefault(x => !string.IsNullOrEmpty(season.GetProviderId(x)));
+                if (string.IsNullOrEmpty(episodeFirstProviderId) && !string.IsNullOrEmpty(seasonFirstProviderId) && item.IndexNumber.HasValue)
+                {
+                    var scraper = scrapers.First(x => x.ProviderId == seasonFirstProviderId);
+                    var providerVal = season.GetProviderId(seasonFirstProviderId);
+                    var media = await scraper.GetMedia(season, providerVal);
+                    if (media != null)
+                    {
+                        var fileName = Path.GetFileName(item.Path);
+                        var indexNumber = item.IndexNumber ?? 0;
+                        if (indexNumber <= 0)
+                        {
+                            this._logger.LogInformation("[{0}]匹配失败，缺少集号. [{1}]{2}", scraper.Name, season.Name, fileName);
+                            continue;
+                        }
+
+                        if (indexNumber > media.Episodes.Count)
+                        {
+                            this._logger.LogInformation("[{0}]匹配失败，集号超过总集数，可能识别集号错误. [{1}]{2} indexNumber: {3}", scraper.Name, season.Name, fileName, indexNumber);
+                            continue;
+                        }
+
+                        if (this.Config.DownloadOption.EnableEpisodeCountSame && media.Episodes.Count != episodes.Count)
+                        {
+                            this._logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, item.Name, media.Episodes.Count, episodes.Count);
+                            continue;
+                        }
+
+                        var idx = indexNumber - 1;
+                        var epId = media.Episodes[idx].Id;
+                        var commentId = media.Episodes[idx].CommentId;
+                        this._logger.LogInformation("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, item.IndexNumber, item.Name, epId, commentId);
+
+                        // 更新 eposide 元数据
+                        var episodeProviderVal = item.GetProviderId(scraper.ProviderId);
+                        if (!string.IsNullOrEmpty(epId) && episodeProviderVal != epId)
+                        {
+                            item.SetProviderId(scraper.ProviderId, epId);
+                            queueUpdateMeta.Add(item);
+                        }
+
+                        // 下载弹幕
+                        await this.DownloadDanmu(scraper, item, commentId).ConfigureAwait(false);
+                        continue;
+                    }
+                }
+
+
+                // 刷新弹幕
                 foreach (var scraper in _scraperManager.All())
                 {
                     try
@@ -688,6 +743,8 @@ public class LibraryManagerEventsHelper : IDisposable
                 }
             }
 
+            // 保存元数据
+            await ProcessQueuedUpdateMeta(queueUpdateMeta).ConfigureAwait(false);
         }
 
 
@@ -786,7 +843,6 @@ public class LibraryManagerEventsHelper : IDisposable
                     item.ProviderIds[pair.Key] = pair.Value;
                 }
 
-                // Console.WriteLine(JsonSerializer.Serialize(item));
                 await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
             }
         }
