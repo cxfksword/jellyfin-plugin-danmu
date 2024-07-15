@@ -183,6 +183,7 @@ namespace Emby.Plugin.Danmu.Scraper.Youku
             var danmaku = new ScraperDanmaku();
             danmaku.ChatId = 1000;
             danmaku.ChatServer = "acs.youku.com";
+            danmaku.ProviderId = ProviderId;
             foreach (var comment in comments)
             {
                 try
