@@ -6,6 +6,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jellyfin.Plugin.Danmu", "Je
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jellyfin.Plugin.Danmu.Test", "Jellyfin.Plugin.Danmu.Test\Jellyfin.Plugin.Danmu.Test.csproj", "{80814353-4291-4230-8C4A-4C45CAD4D5D3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Emby.Plugin.Danmu", "Emby.Plugin.Danmu\Emby.Plugin.Danmu.csproj", "{CFA01CBE-4B01-453E-ACBF-1375E70C4036}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,6 +22,10 @@ Global
 		{80814353-4291-4230-8C4A-4C45CAD4D5D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{80814353-4291-4230-8C4A-4C45CAD4D5D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{80814353-4291-4230-8C4A-4C45CAD4D5D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CFA01CBE-4B01-453E-ACBF-1375E70C4036}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFA01CBE-4B01-453E-ACBF-1375E70C4036}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CFA01CBE-4B01-453E-ACBF-1375E70C4036}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFA01CBE-4B01-453E-ACBF-1375E70C4036}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
