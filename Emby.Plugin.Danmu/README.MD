@@ -24,6 +24,6 @@
 
 
 ## 下载链接
-[Emby.Plugin.Danmu.dll](./Doc/Emby.Plugin.Danmu.dll)
+[Emby.Plugin.Danmu.dll](./Doc/Emby.Plugin.Danmu.dll) <p/>
 [Emby.AndroidTV.2.1.14.弹幕.apk](./Doc/Emby.AndroidTV.2.1.14.弹幕.apk)
 
