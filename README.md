@@ -1,7 +1,7 @@
 # jellyfin-plugin-danmu
 
 [![releases](https://img.shields.io/github/v/release/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
-[![jellyfin](https://img.shields.io/badge/jellyfin-10.8.x|10.9.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
+[![jellyfin](https://img.shields.io/badge/jellyfin-10.9.x-lightgrey?logo=jellyfin)](https://github.com/cxfksword/jellyfin-plugin-danmu/releases)
 [![LICENSE](https://img.shields.io/github/license/cxfksword/jellyfin-plugin-danmu)](https://github.com/cxfksword/jellyfin-plugin-danmu/main/LICENSE) 
 
 jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play，优酷，爱奇艺，腾讯视频，芒果TV。
@@ -24,6 +24,8 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，弹弹play�
 国外访问：https://github.com/cxfksword/jellyfin-plugin-danmu/releases/download/manifest/manifest.json
 
 > 如果都无法访问，可以直接从 [Release](https://github.com/cxfksword/jellyfin-plugin-danmu/releases) 页面下载，并解压到 jellyfin 插件目录中使用
+
+> emby 请使用 fengymi 维护的：https://github.com/fengymi/emby-plugin-danmu
 
 ## 如何使用
 
