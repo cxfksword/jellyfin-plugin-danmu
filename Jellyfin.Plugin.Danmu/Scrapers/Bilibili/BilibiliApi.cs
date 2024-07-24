@@ -32,6 +32,7 @@ public class BilibiliApi : AbstractApi
     public BilibiliApi(ILoggerFactory loggerFactory)
         : base(loggerFactory.CreateLogger<BilibiliApi>())
     {
+        httpClient.DefaultRequestHeaders.Add("Referer", "https://www.bilibili.com/");
     }
 
 
@@ -185,12 +186,15 @@ public class BilibiliApi : AbstractApi
 
         await this.EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
-        var url = $"http://api.bilibili.com/pgc/view/web/season?season_id={seasonId}";
+        // var url = $"http://api.bilibili.com/pgc/view/web/season?season_id={seasonId}";
+        var url = $"https://api.bilibili.com/pgc/view/web/ep/list?season_id={seasonId}";  // 接口依赖 referer 过滤正片选集
         var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ApiResult<VideoSeason>>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Code == 0 && result.Result != null)
         {
+            // 过滤预告
+            result.Result.Episodes = result.Result.Episodes.Where(x => x.BadgeType != 1 ).ToList();
             this._memoryCache.Set<VideoSeason?>(cacheKey, result.Result, expiredOption);
             return result.Result;
         }
@@ -216,13 +220,13 @@ public class BilibiliApi : AbstractApi
 
         await this.EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
-        var url = $"http://api.bilibili.com/pgc/view/web/season?ep_id={epId}";
+        var url = $"https://api.bilibili.com/pgc/view/web/ep/list?ep_id={epId}";
         var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var result = await response.Content.ReadFromJsonAsync<ApiResult<VideoSeason>>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Code == 0 && result.Result != null && result.Result.Episodes != null)
         {
-            // 缓存本季的所有episode数据，避免批量更新时重复请求
+            // 缓存本季的所有 episode 数据，避免批量更新时重复请求
             foreach (var episode in result.Result.Episodes)
             {
                 cacheKey = $"episode_{episode.Id}";

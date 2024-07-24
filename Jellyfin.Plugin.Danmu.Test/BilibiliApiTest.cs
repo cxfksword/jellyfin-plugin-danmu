@@ -25,7 +25,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         [TestMethod]
         public void TestSearch()
         {
-            var keyword = "V字仇杀队";
+            var keyword = "凡人修仙传";
             var _bilibiliApi = new BilibiliApi(loggerFactory);
 
             Task.Run(async () =>
@@ -55,6 +55,26 @@ namespace Jellyfin.Plugin.Danmu.Test
                     var result = await _bilibiliApi.SearchAsync(keyword, CancellationToken.None);
                     keyword = "哆啦A梦";
                     result = await _bilibiliApi.SearchAsync(keyword, CancellationToken.None);
+                    Console.WriteLine(result);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+        }
+
+        [TestMethod]
+        public void TestGetSeasonAsync()
+        {
+            var seasonId = 28747;
+            var _bilibiliApi = new BilibiliApi(loggerFactory);
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var result = await _bilibiliApi.GetSeasonAsync(seasonId, CancellationToken.None);
                     Console.WriteLine(result);
                 }
                 catch (Exception ex)

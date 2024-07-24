@@ -23,5 +23,8 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity
 
         [JsonPropertyName("title")]
         public string Title { get; set; }
+
+        [JsonPropertyName("badge_type")]
+        public int BadgeType { get; set; }
     }
 }
