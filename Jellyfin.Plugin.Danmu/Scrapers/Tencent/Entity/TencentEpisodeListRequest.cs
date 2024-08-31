@@ -4,6 +4,8 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Tencent.Entity;
 
 public class TencentEpisodeListRequest
 {
+    [JsonPropertyName("has_cache")]
+    public int HasCache { get; set; } = 1;
     [JsonPropertyName("page_params")]
     public TencentPageParams PageParams { get; set; }
 }
@@ -25,5 +27,6 @@ public class TencentPageParams
     [JsonPropertyName("req_from")]
     public string ReqFrom { get; set; } = "web_mobile";
     [JsonPropertyName("page_context")]
-    public string PageContext { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string PageContext { get; set; }
 }

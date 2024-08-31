@@ -40,7 +40,7 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var vid = "mzc00200koowgko";
+                    var vid = "m441e3rjq9kwpsc";
                     var api = new TencentApi(loggerFactory);
                     var result = await api.GetVideoAsync(vid, CancellationToken.None);
                     Console.WriteLine(result);
