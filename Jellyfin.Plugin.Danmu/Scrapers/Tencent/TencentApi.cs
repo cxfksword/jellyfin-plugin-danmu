@@ -92,7 +92,7 @@ public class TencentApi : AbstractApi
 
         var cacheKey = $"media_{id}";
         var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-        if (_memoryCache.TryGetValue<TencentVideo?>(cacheKey, out var video))
+        if (this._memoryCache.TryGetValue<TencentVideo?>(cacheKey, out var video))
         {
             return video;
         }
@@ -102,6 +102,7 @@ public class TencentApi : AbstractApi
         var beginNum = 1;
         var endNum = pageSize;
         var nextPageContext = string.Empty;
+        var lastId = string.Empty;
         do
         {
             var postData = new TencentEpisodeListRequest() { PageParams = new TencentPageParams() { Cid = id, PageSize = $"{pageSize}", PageContext = nextPageContext } };
@@ -115,29 +116,36 @@ public class TencentApi : AbstractApi
                 && result.Data.ModuleListDatas.First().ModuleDatas != null
                 && result.Data.ModuleListDatas.First().ModuleDatas.First().ItemDataLists != null)
             {
-                episodeList.AddRange(result.Data.ModuleListDatas.First().ModuleDatas.First().ItemDataLists.ItemDatas.Select(x => x.ItemParams).Where(x => x.IsTrailer != "1").ToList());
+                var episodes = result.Data.ModuleListDatas.First().ModuleDatas.First().ItemDataLists.ItemDatas.Select(x => x.ItemParams).Where(x => x.IsTrailer != "1").ToList();
+                // 判断下数据是否相同，避免 api 更新导致死循环
+                if (episodes.Count > 0 && episodes.Last().Vid == lastId)
+                {
+                    break;
+                }
+
+                episodeList.AddRange(episodes);
                 if (result.Data.ModuleListDatas.First().ModuleDatas.First().ItemDataLists.ItemDatas.Count == pageSize)
                 {
                     beginNum += pageSize;
                     endNum += pageSize;
                     nextPageContext = $"episode_begin={beginNum}&episode_end={endNum}&episode_step={pageSize}";
-                    Console.WriteLine(nextPageContext);
+                    lastId = episodeList.Last().Vid;
+
+                    // 等待一段时间避免 api 请求太快
+                    await this._delayExecuteConstraint;
                 }
             }
-
-            // 等待一段时间避免api请求太快
-            await _delayExecuteConstraint;
         } while (!string.IsNullOrEmpty(nextPageContext));
-        
+
         if (episodeList.Count > 0) {
             var videoInfo = new TencentVideo();
             videoInfo.Id = id;
             videoInfo.EpisodeList = episodeList;
-            _memoryCache.Set<TencentVideo?>(cacheKey, videoInfo, expiredOption);
+            this._memoryCache.Set<TencentVideo?>(cacheKey, videoInfo, expiredOption);
             return videoInfo;
         }
 
-        _memoryCache.Set<TencentVideo?>(cacheKey, null, expiredOption);
+        this._memoryCache.Set<TencentVideo?>(cacheKey, null, expiredOption);
         return null;
     }
 
