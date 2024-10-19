@@ -75,7 +75,11 @@ namespace Danmaku2Ass
         {
             try
             {
-                File.WriteAllText(fileName, text);
+                // 文件保存并添加 BOM，解决 ass 的乱码问题
+                using (var writer = new StreamWriter(fileName, false, new UTF8Encoding(true)))
+                {
+                    writer.Write(text);
+                }
             }
             catch (Exception)
             { }
