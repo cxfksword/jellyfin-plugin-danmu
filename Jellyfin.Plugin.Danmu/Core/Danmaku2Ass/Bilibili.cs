@@ -15,7 +15,8 @@ namespace Danmaku2Ass
         {
             { "top_filter", false },
             { "bottom_filter", false },
-            { "scroll_filter", false }
+            { "scroll_filter", false },
+            { "custom_filter", false }
         };
 
         private readonly Dictionary<int, string> mapping = new Dictionary<int, string>
@@ -90,6 +91,17 @@ namespace Danmaku2Ass
         public Bilibili SetScrollFilter(bool isFilter)
         {
             config["scroll_filter"] = isFilter;
+            return this;
+        }
+
+        /// <summary>
+        /// 是否启用自定义过滤处理
+        /// </summary>
+        /// <param name="isFilter"></param>
+        /// <returns></returns>
+        public Bilibili SetCustomFilter(bool isFilter)
+        {
+            config["custom_filter"] = isFilter;
             return this;
         }
 

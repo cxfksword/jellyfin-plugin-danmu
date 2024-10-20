@@ -927,6 +927,10 @@ public class LibraryManagerEventsHelper : IDisposable
             {
                 assConfig.TuneDuration = this.Config.AssSpeed.Trim().ToInt() - 8;
             }
+            if (this.Config.AssRemoveEmoji)
+            {
+                Danmaku2Ass.Bilibili.GetInstance().SetCustomFilter(true);
+            }
 
             var assPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".danmu.ass");
             Danmaku2Ass.Bilibili.GetInstance().Create(bytes, assConfig, assPath);

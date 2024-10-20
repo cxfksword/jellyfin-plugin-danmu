@@ -42,6 +42,11 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public string AssSpeed { get; set; } = string.Empty;
 
+    /// <summary>
+    /// 删除 emoji 表情。
+    /// </summary>
+    public bool AssRemoveEmoji { get; set; } = true;
+
 
     /// <summary>
     /// 检测弹幕数和视频剧集数需要一致才自动下载弹幕.

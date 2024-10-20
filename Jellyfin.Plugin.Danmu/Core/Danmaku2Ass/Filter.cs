@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace Danmaku2Ass
 {
@@ -79,10 +80,21 @@ namespace Danmaku2Ass
     /// </summary>
     public class CustomFilter : Filter
     {
+        private Regex regEmoj = new Regex(@"(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])", RegexOptions.Compiled);
         public override List<Danmaku> DoFilter(List<Danmaku> danmakus)
-        {
-            // TODO
-            return base.DoFilter(danmakus);
+        {   
+            // 过滤 emoji 和非法字符
+            List<Danmaku> keep = new List<Danmaku>();
+            foreach (var danmaku in danmakus)
+            {
+                danmaku.Content = this.regEmoj.Replace(danmaku.Content, string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(danmaku.Content))
+                {
+                    continue;
+                }
+                keep.Add(danmaku);
+            }
+            return keep;
         }
     }
 }

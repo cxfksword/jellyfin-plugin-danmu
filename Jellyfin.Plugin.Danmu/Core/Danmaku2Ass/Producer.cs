@@ -39,10 +39,10 @@ namespace Danmaku2Ass
             {
                 Filters.Add("scroll_filter", new ScrollFilter());
             }
-            //if (Config["custom_filter"])
-            //{
-            //    Filters.Add("custom_filter", new CustomFilter());
-            //}
+            if (Config["custom_filter"])
+            {
+               Filters.Add("custom_filter", new CustomFilter());
+            }
 
         }
 
@@ -52,12 +52,11 @@ namespace Danmaku2Ass
                 { "top_filter", 0},
                 { "bottom_filter", 0},
                 { "scroll_filter", 0},
-                //{ "custom_filter",0}
+                { "custom_filter", 0}
             };
 
             List<Danmaku> danmakus = Danmakus;
-            //string[] orders = { "top_filter", "bottom_filter", "scroll_filter", "custom_filter" };
-            string[] orders = { "top_filter", "bottom_filter", "scroll_filter" };
+            string[] orders = { "top_filter", "bottom_filter", "scroll_filter", "custom_filter" };
             foreach (string name in orders)
             {
                 Filter filter;
