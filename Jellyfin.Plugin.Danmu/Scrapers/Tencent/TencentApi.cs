@@ -116,7 +116,10 @@ public class TencentApi : AbstractApi
                 && result.Data.ModuleListDatas.First().ModuleDatas != null
                 && result.Data.ModuleListDatas.First().ModuleDatas.First().ItemDataLists != null)
             {
-                var episodes = result.Data.ModuleListDatas.First().ModuleDatas.First().ItemDataLists.ItemDatas.Select(x => x.ItemParams).Where(x => x.IsTrailer != "1").ToList();
+                var episodes = result.Data.ModuleListDatas.First().ModuleDatas.First()
+                    .ItemDataLists.ItemDatas.Select(x => x.ItemParams)
+                    .Where(x => x.IsTrailer != "1" && !x.Title.Contains("直拍") && !x.Title.Contains("彩蛋") && !x.Title.Contains("直播回顾"))
+                    .ToList();
                 // 判断下数据是否相同，避免 api 更新导致死循环
                 if (episodes.Count > 0 && episodes.Last().Vid == lastId)
                 {
