@@ -47,7 +47,7 @@ jobs:
           mkdir -p artifacts
           cp ./Jellyfin.Plugin.Danmu/bin/Release/net8.0/Jellyfin.Plugin.Danmu.dll ./artifacts/
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{steps.vars.outputs.APP_NAME}}
           path: artifacts
