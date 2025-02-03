@@ -16,6 +16,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Inject DANDNA Api ID
+        env:
+          DANDAN_API_ID: ${{ secrets.DANDAN_API_ID }}
+          DANDAN_API_SECRET: ${{ secrets.DANDAN_API_SECRET }}
+        run: |
+          sed -i "s/API_ID = \"\"/API_ID = \"$DANDAN_API_ID\"/g" Jellyfin.Plugin.Danmu/Scrapers/Dandan/DandanApi.cs
+          sed -i "s/API_SECRET = \"\"/API_SECRET = \"$DANDAN_API_SECRET\"/g" Jellyfin.Plugin.Danmu/Scrapers/Dandan/DandanApi.cs
       - name: Get tags (For CHANGELOG)
         run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - name: Setup dotnet
