@@ -173,11 +173,16 @@ public class DandanApi : AbstractApi
     {
         var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
         var signature = GenerateSignature(url, timestamp);
-        
-        httpClient.DefaultRequestHeaders.Add("X-AppId", ApiID);
-        httpClient.DefaultRequestHeaders.Add("X-Signature", signature);
-        httpClient.DefaultRequestHeaders.Add("X-Timestamp", timestamp.ToString());
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+
+        HttpResponseMessage response;
+        using (var request = new HttpRequestMessage(HttpMethod.Get, url)) {
+            request.Headers.Add("X-AppId", ApiID);
+            request.Headers.Add("X-Signature", signature);
+            request.Headers.Add("X-Timestamp", timestamp.ToString());
+            response = await this.httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+        }
+
         response.EnsureSuccessStatusCode();
         return response;
     }
