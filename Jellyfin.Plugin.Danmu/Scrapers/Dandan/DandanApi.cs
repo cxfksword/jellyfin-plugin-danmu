@@ -31,6 +31,32 @@ public class DandanApi : AbstractApi
         }
     }
 
+    protected string ApiID {
+        get
+        {
+            var apiId = Environment.GetEnvironmentVariable("DANDAN_API_ID");
+            if (!string.IsNullOrEmpty(apiId))
+            {
+                return apiId;
+            }
+
+            return API_ID;
+        }
+    }
+
+    protected string ApiSecret {
+        get
+        {
+            var apiSecret = Environment.GetEnvironmentVariable("DANDAN_API_SECRET");
+            if (!string.IsNullOrEmpty(apiSecret))
+            {
+                return apiSecret;
+            }
+
+            return API_SECRET;
+        }
+    }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="DandanApi"/> class.
     /// </summary>
@@ -148,7 +174,7 @@ public class DandanApi : AbstractApi
         var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
         var signature = GenerateSignature(url, timestamp);
         
-        httpClient.DefaultRequestHeaders.Add("X-AppId", API_ID);
+        httpClient.DefaultRequestHeaders.Add("X-AppId", ApiID);
         httpClient.DefaultRequestHeaders.Add("X-Signature", signature);
         httpClient.DefaultRequestHeaders.Add("X-Timestamp", timestamp.ToString());
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
@@ -158,13 +184,13 @@ public class DandanApi : AbstractApi
 
     protected string GenerateSignature(string url, long timestamp)
     {
-        if (string.IsNullOrEmpty(API_ID) || string.IsNullOrEmpty(API_SECRET))
+        if (string.IsNullOrEmpty(ApiID) || string.IsNullOrEmpty(ApiSecret))
         {
             throw new Exception("弹弹接口缺少API_ID和API_SECRET");
         }
         var uri = new Uri(url);
         var path = uri.AbsolutePath;
-        var str = $"{API_ID}{timestamp}{path}{API_SECRET}";
+        var str = $"{ApiID}{timestamp}{path}{ApiSecret}";
         using (var sha256 = SHA256.Create())
         {
             var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(str));

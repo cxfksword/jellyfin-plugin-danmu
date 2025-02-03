@@ -11,16 +11,8 @@ namespace Jellyfin.Plugin.Danmu.Test
 {
 
     [TestClass]
-    public class DandanApiTest
+    public class DandanApiTest : BaseTest
     {
-        ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
-            builder.AddSimpleConsole(options =>
-            {
-                options.IncludeScopes = true;
-                options.SingleLine = true;
-                options.TimestampFormat = "hh:mm:ss ";
-            }));
-
         [TestMethod]
         public void TestSearch()
         {

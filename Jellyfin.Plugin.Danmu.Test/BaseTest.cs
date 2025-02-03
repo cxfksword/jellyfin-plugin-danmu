@@ -18,5 +18,18 @@ namespace Jellyfin.Plugin.Danmu.Test
                  options.SingleLine = true;
                  options.TimestampFormat = "hh:mm:ss ";
              }));
+
+        [TestInitialize]
+        public void SetUp()
+        {
+            DotNetEnv.Env.TraversePath().Load();
+        }
+
+        [TestCleanup]
+        public void TearDown()
+        {
+            // 清理代码
+            // 例如，释放资源或重置状态
+        }
     }
 }
