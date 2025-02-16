@@ -8,18 +8,50 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
     {
         private static readonly Regex regLinkId = new Regex(@"v_(\w+?)\.html", RegexOptions.Compiled);
 
-        [JsonPropertyName("albumId")]
+        [JsonPropertyName("albumQipuId")]
         public long AlbumId { get; set; }
-        [JsonPropertyName("tvId")]
+
+        [JsonPropertyName("tvid")]
         public long TvId { get; set; }
-        [JsonPropertyName("name")]
+
+        [JsonPropertyName("videoName")]
         public string VideoName { get; set; }
-        [JsonPropertyName("playUrl")]
-        public string VideoUrl { get; set; }
-        [JsonPropertyName("channelId")]
-        public int channelId { get; set; }
-        [JsonPropertyName("durationSec")]
+
+        private string _videoUrl;
+        [JsonPropertyName("videoUrl")]
+        public string VideoUrl
+        {
+            get
+            {
+                if (this._videoUrl == null)
+                {
+                    return string.Empty;
+                }
+                if (this._videoUrl.StartsWith("http://") || this._videoUrl.StartsWith("https://"))
+                {
+                    return this._videoUrl;
+                }
+                if (this._videoUrl.StartsWith("//"))
+                {
+                    return "https:" + this._videoUrl;
+                }
+                return this._videoUrl;
+            }
+            set
+            {
+                _videoUrl = value;
+            }
+        }
+
+        // [JsonPropertyName("channelId")]
+        // public int channelId { get; set; }
+
+        [JsonPropertyName("channelName")]
+        public string channelName { get; set; }
+
+        [JsonPropertyName("duration")]
         public int Duration { get; set; }
+        
         [JsonPropertyName("videoCount")]
         public int VideoCount { get; set; }
 
@@ -43,30 +75,30 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.Entity
             }
         }
 
-        [JsonIgnore]
-        public string ChannelName
-        {
-            get
-            {
-                switch (channelId)
-                {
-                    case 1:
-                        return "电影";
-                    case 2:
-                        return "电视剧";
-                    case 3:
-                        return "纪录片";
-                    case 4:
-                        return "动漫";
-                    case 6:
-                        return "综艺";
-                    case 15:
-                        return "儿童";
-                    default:
-                        return string.Empty;
-                }
-            }
-        }
+        // [JsonIgnore]
+        // public string ChannelName
+        // {
+        //     get
+        //     {
+        //         switch (channelId)
+        //         {
+        //             case 1:
+        //                 return "电影";
+        //             case 2:
+        //                 return "电视剧";
+        //             case 3:
+        //                 return "纪录片";
+        //             case 4:
+        //                 return "动漫";
+        //             case 6:
+        //                 return "综艺";
+        //             case 15:
+        //                 return "儿童";
+        //             default:
+        //                 return string.Empty;
+        //         }
+        //     }
+        // }
 
     }
 }

@@ -15,14 +15,16 @@ using Microsoft.Extensions.Logging;
 using RateLimiter;
 using ICSharpCode.SharpZipLib.Zip.Compression.Streams;
 using System.Xml.Serialization;
+using System.Net.Http;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 
 public class IqiyiApi : AbstractApi
 {
     private new const string HTTP_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.183";
-    private static readonly Regex regVideoInfo = new Regex(@"pageProps"":\{""videoInfo"":(\{.+?\}),""featureInfo", RegexOptions.Compiled);
-    private static readonly Regex regAlbumInfo = new Regex(@"""albumInfo"":(\{.+?\}),", RegexOptions.Compiled);
+    private new const string MOBILE_USER_AGENT = "Mozilla/5.0 (Linux; Android 13; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36 Edg/130.0.0.0";
+    private static readonly Regex regVideoInfo = new Regex(@"""videoInfo"":(\{.+?\}),""", RegexOptions.Compiled);
+    private static readonly Regex regAlbumInfo = new Regex(@"""albumInfo"":(\{.+?\}),""", RegexOptions.Compiled);
 
 
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
@@ -99,11 +101,11 @@ public class IqiyiApi : AbstractApi
         var videoInfo = await GetVideoBaseAsync(id, cancellationToken).ConfigureAwait(false);
         if (videoInfo != null)
         {
-            if (videoInfo.channelId == 6)
+            if (videoInfo.channelName == "综艺")
             { // 综艺需要特殊处理
                 videoInfo.Epsodelist = await this.GetZongyiEpisodesAsync($"{videoInfo.AlbumId}", cancellationToken).ConfigureAwait(false);
             }
-            else if (videoInfo.channelId == 1)
+            else if (videoInfo.channelName == "电影")
             { // 电影
                 var duration = new TimeSpan(0, 0, videoInfo.Duration);
                 videoInfo.Epsodelist = new List<IqiyiEpisode>() {
@@ -139,18 +141,29 @@ public class IqiyiApi : AbstractApi
 
         await this.LimitRequestFrequently();
 
-        var url = $"https://www.iqiyi.com/v_{id}.html";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        var body = await response.Content.ReadAsStringAsync();
-        var videoJson = regVideoInfo.FirstMatchGroup(body);
-        var videoInfo = videoJson.FromJson<IqiyiHtmlVideoInfo>();
-        if (videoInfo != null)
+        var url = $"https://m.iqiyi.com/v_{id}.html";
+        using (var request = new HttpRequestMessage(HttpMethod.Get, url))
         {
-            this._memoryCache.Set(cacheKey, videoInfo, expiredOption);
-            return videoInfo;
+            request.Headers.Add("user-agent", MOBILE_USER_AGENT);
+            var response = await this.httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            var albumJson = regAlbumInfo.FirstMatchGroup(body);
+            var albumInfo = albumJson.FromJson<IqiyiHtmlAlbumInfo>();
+            var videoJson = regVideoInfo.FirstMatchGroup(body);
+            var videoInfo = videoJson.FromJson<IqiyiHtmlVideoInfo>();
+            if (videoInfo != null)
+            {
+                if (albumInfo != null)
+                {
+                    videoInfo.VideoCount = albumInfo.VideoCount;
+                }
+                this._memoryCache.Set(cacheKey, videoInfo, expiredOption);
+                return videoInfo;
+            }
         }
+
         return null;
     }
 
