@@ -534,18 +534,10 @@ public class LibraryManagerEventsHelper : IDisposable
                 var queueUpdateMeta = new List<BaseItem>();
                 // GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
                 // TODO：可能出现未刮削完，就触发获取弹幕，导致GetEpisodes只能获取到部分剧集的情况
-                var episodes = season.GetEpisodes();
-                if (episodes == null)
+                var episodes = this.GetExistingEpisodes(season);
+                if (episodes.Count == 0)
                 {
                     continue;
-                }
-
-                // 不处理季文件夹下的特典和extras影片（动画经常会混在一起）
-                var episodesWithoutSP = episodes.Where(x => x.ParentIndexNumber != null && x.ParentIndexNumber > 0).ToList();
-                if (episodes.Count != episodesWithoutSP.Count)
-                {
-                    _logger.LogInformation("{0}季存在{1}个特典或extra片段，忽略处理.", season.Name, (episodes.Count - episodesWithoutSP.Count));
-                    episodes = episodesWithoutSP;
                 }
 
                 foreach (var scraper in _scraperManager.All())
@@ -583,8 +575,8 @@ public class LibraryManagerEventsHelper : IDisposable
 
                             if (this.Config.DownloadOption.EnableEpisodeCountSame && media.Episodes.Count != episodes.Count)
                             {
-                                 _logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, episode.Name, media.Episodes.Count, episodes.Count);
-                                 continue;
+                                _logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, episode.Name, media.Episodes.Count, episodes.Count);
+                                continue;
                             }
 
                             var epId = media.Episodes[idx].Id;
@@ -639,7 +631,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
         _logger.LogDebug("Processing {Count} episodes with event type {EventType}", events.Count, eventType);
 
-        var episodes = events.Select(lev => (Episode)lev.Item)
+        var items = events.Select(lev => (Episode)lev.Item)
             .Where(lev => !string.IsNullOrEmpty(lev.Name))
             .ToHashSet();
 
@@ -648,7 +640,7 @@ public class LibraryManagerEventsHelper : IDisposable
         if (eventType == EventType.Update)
         {
             var queueUpdateMeta = new List<BaseItem>();
-            foreach (var item in episodes)
+            foreach (var item in items)
             {
                 // 如果 Episode 没有弹幕元数据，但 Season 有弹幕元数据，表示该集是刮削完成后再新增的，需要重新匹配获取
                 var scrapers = this._scraperManager.All();
@@ -677,6 +669,7 @@ public class LibraryManagerEventsHelper : IDisposable
                             continue;
                         }
 
+                        var episodes = this.GetExistingEpisodes(season);
                         if (this.Config.DownloadOption.EnableEpisodeCountSame && media.Episodes.Count != episodes.Count)
                         {
                             this._logger.LogInformation("[{0}]刷新弹幕失败, 集数不一致。video: {1}.{2} 弹幕数：{3} 集数：{4}", scraper.Name, indexNumber, item.Name, media.Episodes.Count, episodes.Count);
@@ -741,7 +734,7 @@ public class LibraryManagerEventsHelper : IDisposable
         // 强制刷新指定来源弹幕（手动搜索强刷忽略集数不一致处理）
         if (eventType == EventType.Force)
         {
-            foreach (var queueItem in episodes)
+            foreach (var queueItem in items)
             {
                 // 找到选择的scraper
                 var scraper = _scraperManager.All().FirstOrDefault(x => queueItem.ProviderIds.ContainsKey(x.ProviderId));
@@ -807,6 +800,22 @@ public class LibraryManagerEventsHelper : IDisposable
         }
     }
 
+    private List<BaseItem> GetExistingEpisodes(Season season)
+    {
+        var episodes = season.GetEpisodes()
+            .Where(i => !i.IsVirtualItem)
+            .ToList();
+        // 不处理季文件夹下的特典和extras影片（动画经常会混在一起）
+        var episodesWithoutSP = episodes
+            .Where(x => x.ParentIndexNumber != null && x.ParentIndexNumber > 0)
+            .ToList();
+        if (episodes.Count != episodesWithoutSP.Count)
+        {
+            _logger.LogInformation("{0}季存在{1}个特典或extra片段，忽略处理.", season.Name, (episodes.Count - episodesWithoutSP.Count));
+            episodes = episodesWithoutSP;
+        }
+        return episodes;
+    }
 
     // 调用UpdateToRepositoryAsync后，但未完成时，会导致GetEpisodes返回缺少正在处理的集数，所以采用统一最后处理
     private async Task ProcessQueuedUpdateMeta(List<BaseItem> queue)
