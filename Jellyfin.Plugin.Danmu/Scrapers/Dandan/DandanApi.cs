@@ -188,11 +188,15 @@ public class DandanApi : AbstractApi
         var result = await response.Content.ReadFromJsonAsync<AnimeResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Success && result.Bangumi != null)
         {
-            // 过滤掉特典剧集，episodeNumber为S1/S2.。。
             anime = result.Bangumi;
             if (anime.Episodes != null)
             {
+                // 过滤掉特典剧集，episodeNumber为S1/S2.。。
                 anime.Episodes = anime.Episodes.Where(x => x.EpisodeNumber.ToInt() > 0).ToList();
+
+                // 本接口与 search 返回不完全一致，补全缺失字段
+                anime.EpisodeCount = anime.Episodes.Count;
+                anime.StartDate = anime.Episodes.FirstOrDefault()?.AirDate;
             }
             _memoryCache.Set<Anime?>(cacheKey, anime, expiredOption);
             return anime;

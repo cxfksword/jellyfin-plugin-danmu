@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using System.Collections.Generic;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
+using System.Linq;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan;
 
@@ -38,6 +39,21 @@ public class Dandan : AbstractScraper
         var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
         var searchName = this.NormalizeSearchName(item.Name);
         var animes = await this._api.SearchAsync(searchName, CancellationToken.None).ConfigureAwait(false);
+        var matches = await this._api.MatchAsync(item, CancellationToken.None).ConfigureAwait(false);
+
+        foreach (var match in matches)
+        {
+            var anime = await this._api.GetAnimeAsync(match.AnimeId, CancellationToken.None).ConfigureAwait(false);
+            if (anime == null)
+            {
+                continue;
+            }
+
+            animes.Add(anime);
+        }
+
+        animes = animes.DistinctBy(x => x.AnimeId).ToList();
+
         foreach (var anime in animes)
         {
             var animeId = anime.AnimeId;
