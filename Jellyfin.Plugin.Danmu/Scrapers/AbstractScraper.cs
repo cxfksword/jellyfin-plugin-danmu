@@ -48,6 +48,16 @@ public abstract class AbstractScraper
     public abstract Task<string?> SearchMediaId(BaseItem item);
 
     /// <summary>
+    /// 根据文件搜索匹配的影片id
+    /// </summary>
+    /// <param name="video">影片对象</param>
+    /// <returns>影片id</returns>
+    public virtual Task<string?> SearchMediaIdByFile(Video video)
+    {
+        return Task.FromResult<string?>(null);
+    }
+
+    /// <summary>
     /// 获取影片信息
     /// </summary>
     /// <param name="item">元数据item</param>

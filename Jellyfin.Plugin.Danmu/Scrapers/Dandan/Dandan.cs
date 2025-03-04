@@ -110,6 +110,28 @@ public class Dandan : AbstractScraper
         return null;
     }
 
+    public override async Task<string?> SearchMediaIdByFile(Video video)
+    {
+        var isMovieItemType = video is MediaBrowser.Controller.Entities.Movies.Movie;
+        var matches = await _api.MatchAsync(video, CancellationToken.None).ConfigureAwait(false);
+        foreach (var match in matches)
+        {
+            if (isMovieItemType && match.Type != "movie")
+            {
+                continue;
+            }
+
+            if (!isMovieItemType && match.Type == "movie")
+            {
+                continue;
+            }
+
+            log.LogInformation("通过文件特征匹配到动画: {Title}, AnimeId: {AnimeId}", match.AnimeTitle, match.AnimeId);
+            return $"{match.AnimeId}";
+        }
+
+        return null;
+    }
 
     public override async Task<ScraperMedia?> GetMedia(BaseItem item, string id)
     {
@@ -235,7 +257,7 @@ public class Dandan : AbstractScraper
         {
             return list;
         }
-        
+
         var anime = await this._api.GetAnimeAsync(animeId, CancellationToken.None).ConfigureAwait(false);
         if (anime == null)
         {

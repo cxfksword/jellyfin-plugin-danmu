@@ -642,16 +642,43 @@ public class LibraryManagerEventsHelper : IDisposable
             var queueUpdateMeta = new List<BaseItem>();
             foreach (var item in items)
             {
-                // 如果 Episode 没有弹幕元数据，但 Season 有弹幕元数据，表示该集是刮削完成后再新增的，需要重新匹配获取
+                // 如果 Episode 没有弹幕元数据，表示该集是刮削完成后再新增的，需要重新匹配获取
                 var scrapers = this._scraperManager.All();
                 var season = item.Season;
                 var allDanmuProviderIds = scrapers.Select(x => x.ProviderId).ToList();
                 var episodeFirstProviderId = allDanmuProviderIds.FirstOrDefault(x => !string.IsNullOrEmpty(item.GetProviderId(x)));
                 var seasonFirstProviderId = allDanmuProviderIds.FirstOrDefault(x => !string.IsNullOrEmpty(season.GetProviderId(x)));
-                if (string.IsNullOrEmpty(episodeFirstProviderId) && !string.IsNullOrEmpty(seasonFirstProviderId) && item.IndexNumber.HasValue)
+                if (string.IsNullOrEmpty(episodeFirstProviderId) && item.IndexNumber.HasValue)
                 {
-                    var scraper = scrapers.First(x => x.ProviderId == seasonFirstProviderId);
-                    var providerVal = season.GetProviderId(seasonFirstProviderId);
+                    AbstractScraper? scraper = null;
+                    string? providerVal = null;
+
+                    // 如果 Season 没有弹幕元数据，说明 Add 时使用元数据搜索失败了，此时使用文件信息再次匹配
+                    if (string.IsNullOrEmpty(seasonFirstProviderId))
+                    {
+                        foreach (var s in scrapers)
+                        {
+                            var mediaId = await s.SearchMediaIdByFile(item).ConfigureAwait(false);
+                            if (!string.IsNullOrEmpty(mediaId))
+                            {
+                                scraper = s;
+                                providerVal = mediaId;
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        scraper = scrapers.First(x => x.ProviderId == seasonFirstProviderId);
+                        providerVal = season.GetProviderId(seasonFirstProviderId);
+                    }
+
+                    if (scraper == null)
+                    {
+                        _logger.LogInformation("使用文件匹配失败：{0}", item.Path);
+                        continue;
+                    }
+
                     var media = await scraper.GetMedia(season, providerVal);
                     if (media != null)
                     {
