@@ -279,11 +279,17 @@ public class LibraryManagerEventsHelper : IDisposable
                         // 读取最新数据，要不然取不到年份信息
                         var currentItem = _libraryManager.GetItemById(item.Id) ?? item;
 
-                        var mediaId = await scraper.SearchMediaId(currentItem);
+                        var mediaId = await scraper.SearchMediaId(currentItem).ConfigureAwait(false);
                         if (string.IsNullOrEmpty(mediaId))
                         {
-                            _logger.LogInformation("[{0}]匹配失败：{1} ({2})", scraper.Name, item.Name, item.ProductionYear);
-                            continue;
+                            _logger.LogInformation("[{0}]元数据匹配失败：{1} ({2})，尝试文件匹配", scraper.Name, item.Name, item.ProductionYear);
+
+                            mediaId = await scraper.SearchMediaIdByFile((Movie)currentItem).ConfigureAwait(false);
+                            if (string.IsNullOrEmpty(mediaId))
+                            {
+                            _logger.LogInformation("[{0}]文件匹配失败：{1}", scraper.Name, currentItem.Path);
+                                continue;
+                            }
                         }
 
                         var media = await scraper.GetMedia(item, mediaId);
