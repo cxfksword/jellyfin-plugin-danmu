@@ -119,11 +119,17 @@ public class DandanApi : AbstractApi
         var matchRequest = new Dictionary<string, object>
         {
             ["fileName"] = Path.GetFileNameWithoutExtension(item.Path),
-            ["fileHash"] = await this.ComputeFileHashAsync(item.Path).ConfigureAwait(false),
+            ["fileHash"] = "00000000000000000000000000000000",
             ["fileSize"] = item.Size ?? 0,
             ["videoDuration"] = (item.RunTimeTicks ?? 0) / 10000000,
-            ["matchMode"] = "hashAndFileName",
+            ["matchMode"] = "fileNameOnly",
         };
+        if (this.Config.MatchByFileHash)
+        {
+            matchRequest["fileHash"] = await this.ComputeFileHashAsync(item.Path).ConfigureAwait(false);
+            matchRequest["matchMode"] = "hashAndFileName";
+        }
+
         var url = "https://api.dandanplay.net/api/v2/match";
         var response = await this.Request(url, HttpMethod.Post, matchRequest, cancellationToken).ConfigureAwait(false);
         var result = await response.Content.ReadFromJsonAsync<MatchResponseV2>(_jsonOptions, cancellationToken).ConfigureAwait(false);
