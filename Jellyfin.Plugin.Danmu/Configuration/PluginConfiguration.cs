@@ -158,4 +158,9 @@ public class DandanOption
     /// 中文简繁转换。0-不转换，1-转换为简体，2-转换为繁体
     /// </summary>
     public int ChConvert { get; set; } = 0;
+
+    /// <summary>
+    /// 使用文件哈希值进行匹配.
+    /// </summary>
+    public bool MatchByFileHash { get; set; } = true;
 }

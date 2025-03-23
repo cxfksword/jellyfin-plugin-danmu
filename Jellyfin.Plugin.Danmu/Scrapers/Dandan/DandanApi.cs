@@ -13,6 +13,8 @@ using Microsoft.Extensions.Caching.Memory;
 using Jellyfin.Plugin.Danmu.Scrapers.Dandan.Entity;
 using Jellyfin.Plugin.Danmu.Configuration;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
+using MediaBrowser.Controller.Entities;
+using System.IO;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan;
 
@@ -31,7 +33,8 @@ public class DandanApi : AbstractApi
         }
     }
 
-    protected string ApiID {
+    protected string ApiID
+    {
         get
         {
             var apiId = Environment.GetEnvironmentVariable("DANDAN_API_ID");
@@ -44,7 +47,8 @@ public class DandanApi : AbstractApi
         }
     }
 
-    protected string ApiSecret {
+    protected string ApiSecret
+    {
         get
         {
             var apiSecret = Environment.GetEnvironmentVariable("DANDAN_API_SECRET");
@@ -98,6 +102,78 @@ public class DandanApi : AbstractApi
         return new List<Anime>();
     }
 
+    public async Task<List<MatchResultV2>> MatchAsync(BaseItem item, CancellationToken cancellationToken)
+    {
+        if (item == null)
+        {
+            return new List<MatchResultV2>();
+        }
+
+        var cacheKey = $"match_{item.Id}";
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
+        if (_memoryCache.TryGetValue<List<MatchResultV2>>(cacheKey, out var matches))
+        {
+            return matches;
+        }
+
+        var matchRequest = new Dictionary<string, object>
+        {
+            ["fileName"] = Path.GetFileNameWithoutExtension(item.Path),
+            ["fileHash"] = "00000000000000000000000000000000",
+            ["fileSize"] = item.Size ?? 0,
+            ["videoDuration"] = (item.RunTimeTicks ?? 0) / 10000000,
+            ["matchMode"] = "fileNameOnly",
+        };
+        if (this.Config.MatchByFileHash)
+        {
+            matchRequest["fileHash"] = await this.ComputeFileHashAsync(item.Path).ConfigureAwait(false);
+            matchRequest["matchMode"] = "hashAndFileName";
+        }
+
+        var url = "https://api.dandanplay.net/api/v2/match";
+        var response = await this.Request(url, HttpMethod.Post, matchRequest, cancellationToken).ConfigureAwait(false);
+        var result = await response.Content.ReadFromJsonAsync<MatchResponseV2>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (result != null && result.Success && result.Matches != null)
+        {
+            _memoryCache.Set<List<MatchResultV2>>(cacheKey, result.Matches, expiredOption);
+            return result.Matches;
+        }
+
+        _memoryCache.Set<List<MatchResultV2>>(cacheKey, new List<MatchResultV2>(), expiredOption);
+        return new List<MatchResultV2>();
+    }
+
+    private async Task<string> ComputeFileHashAsync(string filePath)
+    {
+        try
+        {
+            using (var stream = File.OpenRead(filePath))
+            {
+                // 读取前16MB
+                var buffer = new byte[16 * 1024 * 1024];
+                var bytesRead = await stream.ReadAsync(buffer).ConfigureAwait(false);
+
+                if (bytesRead > 0)
+                {
+                    // 如果文件小于16MB，调整buffer大小
+                    if (bytesRead < buffer.Length)
+                    {
+                        Array.Resize(ref buffer, bytesRead);
+                    }
+
+                    var hash = MD5.HashData(buffer);
+                    return BitConverter.ToString(hash).Replace("-", string.Empty).ToLowerInvariant();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "计算文件哈希值时出错: {Path}", filePath);
+        }
+
+        return string.Empty;
+    }
+
     public async Task<Anime?> GetAnimeAsync(long animeId, CancellationToken cancellationToken)
     {
         if (animeId <= 0)
@@ -118,11 +194,15 @@ public class DandanApi : AbstractApi
         var result = await response.Content.ReadFromJsonAsync<AnimeResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Success && result.Bangumi != null)
         {
-            // 过滤掉特典剧集，episodeNumber为S1/S2.。。
             anime = result.Bangumi;
             if (anime.Episodes != null)
             {
+                // 过滤掉特典剧集，episodeNumber为S1/S2.。。
                 anime.Episodes = anime.Episodes.Where(x => x.EpisodeNumber.ToInt() > 0).ToList();
+
+                // 本接口与 search 返回不完全一致，补全缺失字段
+                anime.EpisodeCount = anime.Episodes.Count;
+                anime.StartDate = anime.Episodes.FirstOrDefault()?.AirDate;
             }
             _memoryCache.Set<Anime?>(cacheKey, anime, expiredOption);
             return anime;
@@ -171,19 +251,27 @@ public class DandanApi : AbstractApi
 
     protected async Task<HttpResponseMessage> Request(string url, CancellationToken cancellationToken)
     {
+        return await Request(url, HttpMethod.Get, null, cancellationToken).ConfigureAwait(false);
+    }
+
+    protected async Task<HttpResponseMessage> Request(string url, HttpMethod method, object? content = null, CancellationToken cancellationToken = default)
+    {
         var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
         var signature = GenerateSignature(url, timestamp);
 
         HttpResponseMessage response;
-        using (var request = new HttpRequestMessage(HttpMethod.Get, url)) {
+        using (var request = new HttpRequestMessage(method, url)) {
             request.Headers.Add("X-AppId", ApiID);
             request.Headers.Add("X-Signature", signature);
             request.Headers.Add("X-Timestamp", timestamp.ToString());
+            if (method == HttpMethod.Post && content != null)
+            {
+                request.Content = JsonContent.Create(content, null, _jsonOptions);
+            }
             response = await this.httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
         }
 
-        response.EnsureSuccessStatusCode();
         return response;
     }
 

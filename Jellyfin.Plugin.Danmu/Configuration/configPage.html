@@ -68,6 +68,14 @@
                                 <option value="2">转换为繁体</option>
                             </select>
                         </div>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="MatchByFileHash" name="MatchByFileHash" type="checkbox"
+                                    is="emby-checkbox" />
+                                <span>使用文件哈希值进行匹配</span>
+                            </label>
+                            <div class="fieldDescription">勾选后，搜索和匹配的成功率和精确度会更高，但会消耗额外的计算资源，当视频文件存储在远端时还会占用网络带宽。</div>
+                        </div>
                     </fieldset>
 
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
@@ -139,6 +147,7 @@
 
                         document.querySelector('#WithRelatedDanmu').checked = config.Dandan.WithRelatedDanmu;
                         document.querySelector('#ChConvert').value = config.Dandan.ChConvert;
+                        document.querySelector('#MatchByFileHash').checked = config.Dandan.MatchByFileHash;
 
 
                         var html = '';
@@ -189,6 +198,7 @@
                         var dandan = new Object();
                         dandan.WithRelatedDanmu = document.querySelector('#WithRelatedDanmu').checked;
                         dandan.ChConvert = document.querySelector('#ChConvert').value;
+                        dandan.MatchByFileHash = document.querySelector('#MatchByFileHash').checked;
                         config.Dandan = dandan;
 
                         ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {

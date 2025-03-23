@@ -12,5 +12,8 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan.Entity
 
         [JsonPropertyName("episodeNumber")]
         public string EpisodeNumber { get; set; }
+
+        [JsonPropertyName("airDate")]
+        public string? AirDate { get; set; }
     }
 }
