@@ -138,7 +138,7 @@ public class MgtvApi : AbstractApi
         ctlbarrageResponse.EnsureSuccessStatusCode();
 
         var ctlbarrageResult = await ctlbarrageResponse.Content.ReadFromJsonAsync<MgtvControlBarrageResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-        if (ctlbarrageResult != null && ctlbarrageResult.Data != null)
+        if (ctlbarrageResult != null && ctlbarrageResult.Data != null && ctlbarrageResult.Data.CdnVersion != null)
         {
             // https://pcweb.api.mgtv.com/video/info?allowedRC=1&cid=593455&vid=21920892&change=3&datatype=1&type=1&_support=10000000
             var videoInfoUrl = $"https://pcweb.api.mgtv.com/video/info?allowedRC=1&cid={cid}&vid={vid}&change=3&datatype=1&type=1&_support=10000000";
@@ -181,6 +181,47 @@ public class MgtvApi : AbstractApi
                 }
             }
         }
+        else
+        {
+            danmuList = await this.GetDanmuContentByCdnAsync(cid, vid, cancellationToken).ConfigureAwait(false);
+        }
+
+        return danmuList;
+    }
+
+    private async Task<List<MgtvComment>> GetDanmuContentByCdnAsync(string cid, string vid, CancellationToken cancellationToken)
+    {
+        var danmuList = new List<MgtvComment>();
+        if (string.IsNullOrEmpty(vid))
+        {
+            return danmuList;
+        }
+
+
+        var time = 0;
+        do
+        {
+            var segmentUrl = $"https://galaxy.bz.mgtv.com/cdn/opbarrage?vid={vid}&pid=&cid={cid}&ticket=&time={time}&allowedRC=1";
+            var segmentResponse = await this.httpClient.GetAsync(segmentUrl, cancellationToken).ConfigureAwait(false);
+            segmentResponse.EnsureSuccessStatusCode();
+
+            var segmentResult = await segmentResponse.Content.ReadFromJsonAsync<MgtvCommentSegmentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+            if (segmentResult != null && segmentResult.Data != null && segmentResult.Data.Items != null)
+            {
+                // 60秒每segment，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
+                danmuList.AddRange(segmentResult.Data.Items.ExtractToNumber(200));
+            }
+            else
+            {
+                break;
+            }
+
+            time = segmentResult?.Data?.Next ?? 0;
+            // 等待一段时间避免api请求太快
+            await _delayExecuteConstraint;
+        }
+        while (time > 0);
+    
 
         return danmuList;
     }
