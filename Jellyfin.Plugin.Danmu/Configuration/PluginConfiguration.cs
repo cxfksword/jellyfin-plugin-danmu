@@ -162,5 +162,5 @@ public class DandanOption
     /// <summary>
     /// 使用文件哈希值进行匹配.
     /// </summary>
-    public bool MatchByFileHash { get; set; } = true;
+    public bool MatchByFileHash { get; set; } = false;
 }
