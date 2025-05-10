@@ -80,7 +80,7 @@ public class DandanApi : AbstractApi
         }
 
         var cacheKey = $"search_{keyword}";
-        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
+        var expiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
         if (_memoryCache.TryGetValue<List<Anime>>(cacheKey, out var searchResult))
         {
             return searchResult;
@@ -218,6 +218,8 @@ public class DandanApi : AbstractApi
         {
             throw new ArgumentNullException(nameof(epId));
         }
+
+        this.LimitRequestFrequently();
 
         var withRelated = this.Config.WithRelatedDanmu ? "true" : "false";
         var chConvert = this.Config.ChConvert;
