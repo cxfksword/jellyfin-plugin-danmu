@@ -26,7 +26,7 @@ public class LibraryManagerEventsHelper : IDisposable
     private readonly List<LibraryEvent> _queuedEvents;
     private readonly IMemoryCache _memoryCache;
     private readonly MemoryCacheEntryOptions _pendingAddExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-    private readonly MemoryCacheEntryOptions _danmuUpdatedExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
+    private readonly MemoryCacheEntryOptions _danmuUpdatedExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(24*60) };
 
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<LibraryManagerEventsHelper> _logger;
@@ -887,10 +887,10 @@ public class LibraryManagerEventsHelper : IDisposable
         var checkDownloadedKey = $"{item.Id}_{commentId}";
         try
         {
-            // 弹幕5分钟内更新过，忽略处理（有时Update事件会重复执行）
+            // 弹幕24小时内更新过，忽略处理（有时Update事件会重复执行）
             if (!ignoreCheck && _memoryCache.TryGetValue(checkDownloadedKey, out var latestDownloaded))
             {
-                _logger.LogInformation("[{0}]最近5分钟已更新过弹幕xml，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                _logger.LogInformation("[{0}]最近24小时已更新过弹幕xml，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                 return;
             }
 
