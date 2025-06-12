@@ -21,8 +21,8 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 
 public class IqiyiApi : AbstractApi
 {
-    private new const string HTTP_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.183";
-    private new const string MOBILE_USER_AGENT = "Mozilla/5.0 (Linux; Android 13; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36 Edg/130.0.0.0";
+    private const string MOBILE_USER_AGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
+    private new const string HTTP_USER_AGENT = MOBILE_USER_AGENT;
     private static readonly Regex regVideoInfo = new Regex(@"""videoInfo"":(\{.+?\}),""", RegexOptions.Compiled);
     private static readonly Regex regAlbumInfo = new Regex(@"""albumInfo"":(\{.+?\}),""", RegexOptions.Compiled);
 
@@ -343,4 +343,3 @@ public class IqiyiApi : AbstractApi
     }
 
 }
-
