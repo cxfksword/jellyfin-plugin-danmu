@@ -32,6 +32,7 @@ public class Mgtv : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
+    public override AbstractApi api => _api;
 
     private static readonly Regex regTvEpisodeTitle = new Regex(@"^第.+?集$", RegexOptions.Compiled);
 

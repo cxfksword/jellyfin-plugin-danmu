@@ -29,6 +29,36 @@
                         </legend>
                         <div class="checkboxList paperList checkboxList-paperList" id="Scrapers" name="Scrapers">
                         </div>
+                            <!-- 新增选择弹幕源的下拉框 -->
+                            <div class="inputContainer" style="margin-top: 15px;">
+                                <label class="inputLabel" for="ScraperSelect">编辑弹幕源配置，重启服务器生效</label>
+                                <select id="ScraperSelect" name="ScraperSelect" class="emby-select-withcolor emby-select" data-prevIndex="">
+                                    <option value="">请选择一个弹幕源</option>
+                                    <!-- 选项由 JavaScript 动态填充 -->
+                                </select>
+                            </div>
+                            
+                            <!-- 选定弹幕源的详细配置 -->
+                            <div id="ScraperConfig" style="display: none; margin-top: 10px;">
+                                <h4 id="ScraperTitle">弹幕源设置</h4>
+                            
+                                <div class="inputContainer">
+                                    <label class="inputLabel" for="ScraperProxy">代理地址</label>
+                                    <input id="ScraperProxy" name="ScraperProxy" type="text" is="emby-input" placeholder="http://127.0.0.1:8080" />
+                                </div>
+                            
+                                <div class="inputContainer">
+                                    <label class="inputLabel" for="ScraperUserAgent">User-Agent</label>
+                                    <input id="ScraperUserAgent" name="ScraperUserAgent" type="text" is="emby-input"
+                                        placeholder="Mozilla/5.0 ..." />
+                                </div>
+                            
+                                <div class="inputContainer">
+                                    <label class="inputLabel" for="ScraperCookie">Cookie</label>
+                                    <input id="ScraperCookie" name="ScraperCookie" type="text" is="emby-input"
+                                        placeholder="SESSION_ID=xxx; other=cookie"/>
+                                </div>
+                            </div>
                     </fieldset>
 
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
@@ -127,7 +157,8 @@
         </div>
         <script type="text/javascript">
             var TemplateConfig = {
-                pluginUniqueId: '5B39DA44-5314-4940-8E26-54C821C17F86'
+                pluginUniqueId: '5B39DA44-5314-4940-8E26-54C821C17F86',
+                scrapers: []
             };
 
             document.querySelector('#TemplateConfigPage')
@@ -149,9 +180,10 @@
                         document.querySelector('#ChConvert').value = config.Dandan.ChConvert;
                         document.querySelector('#MatchByFileHash').checked = config.Dandan.MatchByFileHash;
 
-
+                        TemplateConfig.scrapers = config.Scrapers;
                         var html = '';
-                        config.Scrapers.forEach(function (e) {
+                        var selectHtml = '<option value="">请选择一个弹幕源</option>';
+                        config.Scrapers.forEach(function (e, index) {
                             html += '<div class="listItem listItem-border sortableOption sortItem" data-sort="' + e + '">';
                             html += '    <label class="listItemCheckboxContainer emby-checkbox-label">';
                             html += '        <input type="checkbox" is="emby-checkbox" class="chkEnableCodec emby-checkbox emby-checkbox-focusring" name="ScraperItem" ' + (e.Enable ? 'checked' : '') + ' value="' + e.Name + '" >';
@@ -162,15 +194,57 @@
                             html += '    <button type="button" is="paper-icon-button-light" title="下" class="btnSortable paper-icon-button-light btnSortableMoveDown btnViewItemDown" data-pluginindex="0"><span class="material-icons keyboard_arrow_down"></span></button>';
                             html += '</div>';
                             html += '\r\n';
+                            // 新增到下拉框
+                            selectHtml += '<option value="' + index + '">' + e.Name + '</option>';
                         });
 
                         $('#Scrapers').empty().append(html);
+                        document.querySelector("#ScraperSelect").innerHTML = selectHtml;
                         setButtons();
 
                         Dashboard.hideLoadingMsg();
                     });
                 });
 
+            // 监听下拉框变化，加载对应弹幕源的详细配置
+            document.querySelector("#ScraperSelect").addEventListener("change", function (e) {
+                var prevIndex = e.target.dataset.prevIndex;
+                var newIndex = e.target.value;
+
+                // 先保存上一个弹幕源的配置
+                if (prevIndex !== undefined && prevIndex !== "" && TemplateConfig.scrapers[prevIndex]) {
+                    saveScraperConfig(prevIndex);
+                }
+
+                e.target.dataset.prevIndex = newIndex;
+
+                // 加载新的弹幕源配置
+                if (newIndex !== "") {
+                    loadScraperConfig(newIndex);
+                } else {
+                    document.querySelector("#ScraperConfig").style.display = "none";
+                }
+            });
+
+                // 读取选定弹幕源的配置并显示
+            function loadScraperConfig(index) {
+                var scraper = TemplateConfig.scrapers[index];
+                document.querySelector("#ScraperTitle").textContent = scraper.Name + " 设置";
+                document.querySelector("#ScraperProxy").value = scraper.Proxy || "";
+                document.querySelector("#ScraperUserAgent").value = scraper.UserAgent || "";
+                document.querySelector("#ScraperCookie").value = scraper.Cookie || "";
+
+                document.querySelector("#ScraperConfig").style.display = "block"; // 显示配置框
+            }
+
+            function saveScraperConfig(index) {
+                    var scraper = TemplateConfig.scrapers[index];
+
+                    scraper.Proxy = document.querySelector("#ScraperProxy").value;
+                    scraper.UserAgent = document.querySelector("#ScraperUserAgent").value;
+                    scraper.Cookie = document.querySelector("#ScraperCookie").value;
+            }
+            
             document.querySelector('#TemplateConfigForm')
                 .addEventListener('submit', function (e) {
                     Dashboard.showLoadingMsg();
@@ -187,9 +261,27 @@
                             var scraper = new Object();
                             scraper.Name = $(this).prop('value');
                             scraper.Enable = $(this).prop('checked');
+                            
+                             // 读取该弹幕源的额外配置信息（Proxy, UserAgent, Cookie）
+                            var scraperIndex = TemplateConfig.scrapers.findIndex(s => s.Name === scraper.Name);
+                            if (scraperIndex !== -1) {
+                                scraper.Proxy = TemplateConfig.scrapers[scraperIndex].Proxy || "";
+                                scraper.UserAgent = TemplateConfig.scrapers[scraperIndex].UserAgent || "";
+                                scraper.Cookie = TemplateConfig.scrapers[scraperIndex].Cookie || "";
+                            }
+
                             scrapers.push(scraper);
+
                         });
                         config.Scrapers = scrapers;
+
+                        // 读取当前下拉选择框中的弹幕源详细配置（避免未切换弹幕源导致未更新）
+                        var selectedIndex = document.querySelector("#ScraperSelect").value;
+                        if (selectedIndex !== "") {
+                            config.Scrapers[selectedIndex].Proxy = document.querySelector("#ScraperProxy").value;
+                            config.Scrapers[selectedIndex].UserAgent = document.querySelector("#ScraperUserAgent").value;
+                            config.Scrapers[selectedIndex].Cookie = document.querySelector("#ScraperCookie").value;
+                        }
 
                         var download = new Object();
                         download.EnableEpisodeCountSame = document.querySelector('#EnableEpisodeCountSame').checked;

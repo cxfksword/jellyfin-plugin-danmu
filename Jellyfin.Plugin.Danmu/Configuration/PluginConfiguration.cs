@@ -116,24 +116,56 @@ public class PluginConfiguration : BasePluginConfiguration
 /// </summary>
 public class ScraperConfigItem
 {
-
+    /// <summary>
+    /// 是否启用该弹幕源
+    /// </summary>
     public bool Enable { get; set; }
 
+    /// <summary>
+    /// 弹幕源名称
+    /// </summary>
     public string Name { get; set; }
 
+    /// <summary>
+    /// 代理地址（可选）
+    /// </summary>
+    public string Proxy { get; set; }
+
+    /// <summary>
+    /// User-Agent 头（可选）
+    /// </summary>
+    public string UserAgent { get; set; }
+
+    /// <summary>
+    /// Cookie 信息（可选）
+    /// </summary>
+    public string Cookie { get; set; }
+
+    /// <summary>
+    /// 默认构造函数
+    /// </summary>
     public ScraperConfigItem()
     {
         this.Name = "";
         this.Enable = false;
+        this.Proxy = "";
+        this.UserAgent = "";
+        this.Cookie = "";
     }
 
-    public ScraperConfigItem(string name, bool enable)
+    /// <summary>
+    /// 构造函数（带参数）
+    /// </summary>
+    public ScraperConfigItem(string name, bool enable, string proxy = "", string userAgent = "", string cookie = "")
     {
         this.Name = name;
         this.Enable = enable;
+        this.Proxy = proxy;
+        this.UserAgent = userAgent;
+        this.Cookie = cookie;
     }
-
 }
+
 
 public class DanmuDownloadOption
 {

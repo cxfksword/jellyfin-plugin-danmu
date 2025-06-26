@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.Danmu.Configuration;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using MediaBrowser.Controller.Entities;
 using Microsoft.Extensions.Logging;
@@ -27,10 +28,22 @@ public abstract class AbstractScraper
     /// </summary>
     public abstract string ProviderId { get; }
 
+    /// <summary>
+    /// Gets the API instance related to this scraper.
+    /// </summary>
+    public abstract AbstractApi api { get; }
 
     public AbstractScraper(ILogger log)
     {
         this.log = log;
+    }
+
+    /// <summary>
+    /// 使用前端配置初始化scraper
+    /// </summary>
+    public virtual void InitializeWithConfig(ScraperConfigItem configItem)
+    {
+        api.Configure(new AbstractApi.HttpConfig(configItem.Proxy, configItem.UserAgent, configItem.Cookie));
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Jellyfin.Plugin.Danmu.Core.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers;
@@ -23,6 +24,26 @@ public class ScraperManager
     public void Register(IList<AbstractScraper> scrapers)
     {
         this._scrapers.AddRange(scrapers);
+    }
+
+    /// <summary>
+    /// 更新所有scraper配置
+    /// </summary>
+    public void UpdateConfiguration(Configuration.ScraperConfigItem[] configItems)
+    {
+        foreach (var config in configItems)
+        {
+            var scraper = this._scrapers.FirstOrDefault(s => s.Name == config.Name);
+            if (scraper != null)
+            {
+                scraper.InitializeWithConfig(config);
+                log.LogInformation("Updated configuration for scraper {ScraperName}: {ConfigItem}", scraper.Name, config.ToJson());
+            }
+            else
+            {
+                log.LogWarning("Scraper {ScraperName} not found for configuration update.", config.Name);
+            }
+        }
     }
 
     public ReadOnlyCollection<AbstractScraper> All()

@@ -44,6 +44,11 @@ public class IqiyiApi : AbstractApi
         httpClient.DefaultRequestHeaders.Add("user-agent", HTTP_USER_AGENT);
     }
 
+    public override void Configure(HttpConfig config)
+    {
+        base.Configure(config);
+        TryConfigureCookie(config, new Uri("https://www.iqiyi.com/"));
+    }
 
     public async Task<List<IqiyiSearchAlbumInfo>> SearchAsync(string keyword, CancellationToken cancellationToken)
     {

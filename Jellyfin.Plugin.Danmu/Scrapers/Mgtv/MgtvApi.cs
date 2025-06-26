@@ -29,6 +29,11 @@ public class MgtvApi : AbstractApi
         httpClient.DefaultRequestHeaders.Add("referer", "https://www.mgtv.com/");
     }
 
+    public override void Configure(HttpConfig config)
+    {
+        base.Configure(config);
+        TryConfigureCookie(config, new Uri("https://www.mgtv.com/"));
+    }
 
     public async Task<List<MgtvSearchItem>> SearchAsync(string keyword, CancellationToken cancellationToken)
     {
