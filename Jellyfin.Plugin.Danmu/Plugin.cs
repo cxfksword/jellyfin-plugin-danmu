@@ -29,6 +29,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         Instance = this;
         Scrapers = applicationHost.GetExports<AbstractScraper>(false).Where(o => o != null).OrderBy(x => x.DefaultOrder).ToList().AsReadOnly();
         scraperManager.Register(Scrapers);
+        scraperManager.UpdateConfiguration(Configuration.Scrapers);
     }
 
     /// <inheritdoc />

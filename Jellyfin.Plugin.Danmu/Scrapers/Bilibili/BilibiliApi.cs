@@ -35,6 +35,11 @@ public class BilibiliApi : AbstractApi
         httpClient.DefaultRequestHeaders.Add("Referer", "https://www.bilibili.com/");
     }
 
+    public override void Configure(HttpConfig config)
+    {
+        base.Configure(config);
+        TryConfigureCookie(config, new Uri("https://www.bilibili.com/"));
+    }
 
     public async Task<SearchResult> SearchAsync(string keyword, CancellationToken cancellationToken)
     {

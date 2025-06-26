@@ -36,6 +36,11 @@ public class TencentApi : AbstractApi
         this.AddCookies("pgv_pvid=40b67e3b06027f3d; video_platform=2; vversion_name=8.2.95; video_bucketid=4; video_omgid=0a1ff6bc9407c0b1cff86ee5d359614d", new Uri("https://v.qq.com"));
     }
 
+    public override void Configure(HttpConfig config)
+    {
+        base.Configure(config);
+        TryConfigureCookie(config, new Uri("https://v.qq.com/"));
+    }
 
     public async Task<List<TencentVideo>> SearchAsync(string keyword, CancellationToken cancellationToken)
     {

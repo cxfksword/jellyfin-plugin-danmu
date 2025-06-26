@@ -35,6 +35,8 @@ public class Youku : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
+    public override AbstractApi api => _api;
+
     public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
         var list = new List<ScraperSearchInfo>();
