@@ -103,12 +103,14 @@ public class DanmuSubtitleProvider : ISubtitleProvider
             item.Name = request.SeriesName;
         }
 
-        foreach (var scraper in _scraperManager.All())
+        // 并行执行所有scraper的搜索
+        var searchTasks = _scraperManager.All().Select(async scraper =>
         {
             try
             {
-
                 var result = await scraper.Search(item);
+                var subtitles = new List<RemoteSubtitleInfo>();
+                
                 foreach (var searchInfo in result)
                 {
                     var title = searchInfo.Name;
@@ -125,7 +127,7 @@ public class DanmuSubtitleProvider : ISubtitleProvider
                         title += $"【共{searchInfo.EpisodeSize}集】";
                     }
                     var idInfo = new SubtitleId() { ItemId = item.Id.ToString(), Id = searchInfo.Id.ToString(), ProviderId = scraper.ProviderId };
-                    list.Add(new RemoteSubtitleInfo()
+                    subtitles.Add(new RemoteSubtitleInfo()
                     {
                         Id = idInfo.ToJson().ToBase64(),  // Id不允许特殊字幕，做base64编码处理
                         Name = title,
@@ -134,13 +136,23 @@ public class DanmuSubtitleProvider : ISubtitleProvider
                         Comment = $"来源：{scraper.Name}",
                     });
                 }
+                
+                return subtitles;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[{0}]Exception handled processing queued movie events", scraper.Name);
+                return new List<RemoteSubtitleInfo>();
             }
-        }
+        });
 
+        var results = await Task.WhenAll(searchTasks);
+        
+        // 合并所有结果
+        foreach (var subtitles in results)
+        {
+            list.AddRange(subtitles);
+        }
 
         return list;
     }

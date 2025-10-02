@@ -14,6 +14,7 @@ using Jellyfin.Plugin.Danmu.Scrapers;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace Jellyfin.Plugin.Danmu.Controllers
 {
@@ -122,31 +123,36 @@ namespace Jellyfin.Plugin.Danmu.Controllers
                 return list;
             }
 
-            
-            foreach (var scraper in _scraperManager.All())
+            var scrapers = _scraperManager.All();
+            var searchTasks = scrapers.Select(async scraper =>
             {
                 try
                 {
                     var scraperId = Regex.Replace(scraper.ProviderId, "ID$", string.Empty).ToLower();
                     var result = await scraper.SearchForApi(keyword).ConfigureAwait(false);
-                    foreach (var searchInfo in result)
+                    return result.Select(searchInfo => new MediaInfo()
                     {
-                        list.Add(new MediaInfo()
-                        {
-                            Id = searchInfo.Id,
-                            Name = searchInfo.Name,
-                            Category = searchInfo.Category,
-                            Year = searchInfo.Year == null ? string.Empty : searchInfo.Year.ToString(),
-                            EpisodeSize = searchInfo.EpisodeSize,
-                            Site = scraper.Name,
-                            SiteId = scraperId,
-                        });
-                    }
+                        Id = searchInfo.Id,
+                        Name = searchInfo.Name,
+                        Category = searchInfo.Category,
+                        Year = searchInfo.Year == null ? string.Empty : searchInfo.Year.ToString(),
+                        EpisodeSize = searchInfo.EpisodeSize,
+                        Site = scraper.Name,
+                        SiteId = scraperId,
+                    });
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "[{0}]Exception handled processing search movie [{1}]", scraper.Name, keyword);
+                    return Enumerable.Empty<MediaInfo>();
                 }
+            });
+
+            var results = await Task.WhenAll(searchTasks).ConfigureAwait(false);
+            
+            foreach (var result in results)
+            {
+                list.AddRange(result);
             }
 
             return list;
