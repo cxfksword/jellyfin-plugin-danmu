@@ -21,8 +21,8 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 
 public class IqiyiApi : AbstractApi
 {
+    private const string HTTP_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.183";
     private const string MOBILE_USER_AGENT = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36";
-    private new const string HTTP_USER_AGENT = MOBILE_USER_AGENT;
     private static readonly Regex regVideoInfo = new Regex(@"""videoInfo"":(\{.+?\}),""", RegexOptions.Compiled);
     private static readonly Regex regAlbumInfo = new Regex(@"""albumInfo"":(\{.+?\}),""", RegexOptions.Compiled);
 
@@ -99,30 +99,31 @@ public class IqiyiApi : AbstractApi
         // 获取电视剧剧集信息(综艺不适用)(aid)：https://pcw-api.iqiyi.com/albums/album/avlistinfo?aid=5328486914190101&page=1&size=10
         // 获取电视剧剧集信息(综艺不适用)(aid)：https://pub.m.iqiyi.com/h5/main/videoList/album/?albumId=5328486914190101&size=39&page=1&needPrevue=true&needVipPrevue=false
         var videoInfo = await GetVideoBaseAsync(id, cancellationToken).ConfigureAwait(false);
-        if (videoInfo != null)
+        if (videoInfo == null)
         {
-            if (videoInfo.channelName == "综艺")
-            { // 综艺需要特殊处理
-                videoInfo.Epsodelist = await this.GetZongyiEpisodesAsync($"{videoInfo.AlbumId}", cancellationToken).ConfigureAwait(false);
-            }
-            else if (videoInfo.channelName == "电影")
-            { // 电影
-                var duration = new TimeSpan(0, 0, videoInfo.Duration);
-                videoInfo.Epsodelist = new List<IqiyiEpisode>() {
-                    new IqiyiEpisode() {TvId = videoInfo.TvId, Order = 1, Name = videoInfo.VideoName, Duration = duration.ToString(@"hh\:mm\:ss"), PlayUrl = videoInfo.VideoUrl}
-                };
-            }
-            else
-            { // 电视剧需要再获取剧集信息
-                videoInfo.Epsodelist = await this.GetEpisodesAsync($"{videoInfo.AlbumId}", videoInfo.VideoCount, cancellationToken).ConfigureAwait(false);
-            }
-
-            _memoryCache.Set<IqiyiHtmlVideoInfo?>(cacheKey, videoInfo, expiredOption);
-            return videoInfo;
+            _logger.LogInformation("获取不到视频信息：id={1}", id);
+            _memoryCache.Set<IqiyiHtmlVideoInfo?>(cacheKey, null, expiredOption);
+            return null;
         }
 
-        _memoryCache.Set<IqiyiHtmlVideoInfo?>(cacheKey, null, expiredOption);
-        return null;
+        if (videoInfo.channelName == "综艺")
+        { // 综艺需要特殊处理
+            videoInfo.Epsodelist = await this.GetZongyiEpisodesAsync($"{videoInfo.AlbumId}", cancellationToken).ConfigureAwait(false);
+        }
+        else if (videoInfo.channelName == "电影")
+        { // 电影
+            var duration = new TimeSpan(0, 0, videoInfo.Duration);
+            videoInfo.Epsodelist = new List<IqiyiEpisode>() {
+                new IqiyiEpisode() {TvId = videoInfo.TvId, Order = 1, Name = videoInfo.VideoName, Duration = duration.ToString(@"hh\:mm\:ss"), PlayUrl = videoInfo.VideoUrl}
+            };
+        }
+        else
+        { // 电视剧需要再获取剧集信息
+            videoInfo.Epsodelist = await this.GetEpisodesAsync($"{videoInfo.AlbumId}", videoInfo.VideoCount, cancellationToken).ConfigureAwait(false);
+        }
+
+        _memoryCache.Set<IqiyiHtmlVideoInfo?>(cacheKey, videoInfo, expiredOption);
+        return videoInfo;
     }
 
     public async Task<IqiyiHtmlVideoInfo?> GetVideoBaseAsync(string id, CancellationToken cancellationToken)
@@ -343,3 +344,4 @@ public class IqiyiApi : AbstractApi
     }
 
 }
+
