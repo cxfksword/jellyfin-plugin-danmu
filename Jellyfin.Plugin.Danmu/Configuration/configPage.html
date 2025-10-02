@@ -46,7 +46,7 @@
                         </div>
                     </fieldset>
 
-                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                    <fieldset id="dandanSection" class="verticalSection verticalSection-extrabottompadding" style="display: none;">
                         <legend>
                             <h3>弹弹play配置</h3>
                         </legend>
@@ -166,6 +166,7 @@
 
                         $('#Scrapers').empty().append(html);
                         setButtons();
+                        setDandan(config);
 
                         Dashboard.hideLoadingMsg();
                     });
@@ -222,6 +223,18 @@
                     $(this).attr("data-sort", i);
                     i++;
                 });
+            }
+
+            function setDandan(config) {
+                if (config.Scrapers) {
+                    for (var i = 0; i < config.Scrapers.length; i++) {
+                        if (config.Scrapers[i].Name === "弹弹play") {
+                            $('#dandanSection').show();
+                            return;
+                        }
+                    }
+                }
+                $('#dandanSection').hide();
             }
 
             $(document).ready(function () {

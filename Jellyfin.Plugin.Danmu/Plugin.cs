@@ -27,7 +27,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
-        Scrapers = applicationHost.GetExports<AbstractScraper>(false).Where(o => o != null).OrderBy(x => x.DefaultOrder).ToList().AsReadOnly();
+        Scrapers = applicationHost.GetExports<AbstractScraper>(false).Where(o => o != null && !o.IsDeprecated).OrderBy(x => x.DefaultOrder).ToList().AsReadOnly();
         scraperManager.Register(Scrapers);
     }
 

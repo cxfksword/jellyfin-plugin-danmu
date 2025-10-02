@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.Danmu.Configuration;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using MediaBrowser.Controller.Entities;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,20 @@ public abstract class AbstractScraper
     /// Gets the provider id.
     /// </summary>
     public abstract string ProviderId { get; }
+
+     /// <summary>
+     /// 是否已废弃
+     /// </summary>
+     /// <returns>是否已废弃</returns>
+    public virtual bool IsDeprecated => false;
+
+    public PluginConfiguration Config
+    {
+        get
+        {
+            return Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
+        }
+    }
 
 
     public AbstractScraper(ILogger log)

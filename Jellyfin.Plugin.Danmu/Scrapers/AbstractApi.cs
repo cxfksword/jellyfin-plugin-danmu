@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using Jellyfin.Extensions.Json;
+using Jellyfin.Plugin.Danmu.Configuration;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using Jellyfin.Plugin.Danmu.Core.Http;
 using Microsoft.Extensions.Caching.Memory;
@@ -20,6 +21,13 @@ public abstract class AbstractApi : IDisposable
     protected CookieContainer _cookieContainer;
     protected IMemoryCache _memoryCache;
 
+    public PluginConfiguration Config
+    {
+        get
+        {
+            return Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
+        }
+    }
 
     public AbstractApi(ILogger log)
     {

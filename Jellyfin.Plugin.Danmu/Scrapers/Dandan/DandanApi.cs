@@ -33,7 +33,7 @@ public class DandanApi : AbstractApi
         }
     }
 
-    protected string ApiID
+    public string ApiID
     {
         get
         {
@@ -47,7 +47,7 @@ public class DandanApi : AbstractApi
         }
     }
 
-    protected string ApiSecret
+    public string ApiSecret
     {
         get
         {
