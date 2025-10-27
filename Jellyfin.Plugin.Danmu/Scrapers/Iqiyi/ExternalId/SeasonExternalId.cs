@@ -24,9 +24,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Iqiyi.ExternalId
         public ExternalIdMediaType? Type => null;
 
         /// <inheritdoc />
-        public string UrlFormatString => "https://www.iqiyi.com/v_{0}.html";
-
-        /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Season;
     }
 

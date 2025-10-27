@@ -23,9 +23,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Tencent.ExternalId
         public ExternalIdMediaType? Type => null;
 
         /// <inheritdoc />
-        public string UrlFormatString => "https://v.qq.com/x/cover/{0}.html";
-
-        /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Movie;
     }
 }

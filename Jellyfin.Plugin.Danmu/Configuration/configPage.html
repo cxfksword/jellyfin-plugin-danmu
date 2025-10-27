@@ -25,16 +25,17 @@
 
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
                         <legend>
-                            <h3>弹幕源配置</h3>
+                            <h3>弹幕下载配置</h3>
                         </legend>
-                        <div class="checkboxList paperList checkboxList-paperList" id="Scrapers" name="Scrapers">
-                        </div>
-                    </fieldset>
 
-                    <fieldset class="verticalSection verticalSection-extrabottompadding">
-                        <legend>
-                            <h3>弹幕匹配下载配置</h3>
-                        </legend>
+                        <div class="checkboxContainer checkboxContainer-withDescription">
+                            <label class="emby-checkbox-label">
+                                <input id="EnableAutoDownload" name="EnableAutoDownload" type="checkbox"
+                                    is="emby-checkbox" />
+                                <span>弹幕自动匹配下载</span>
+                            </label>
+                            <div class="fieldDescription">勾选后，有新影片入库会自动匹配下载，不勾选需要自己搜索下载。</div>
+                        </div>
 
                         <div class="checkboxContainer checkboxContainer-withDescription">
                             <label class="emby-checkbox-label">
@@ -45,6 +46,15 @@
                             <div class="fieldDescription">勾选后，假如匹配了错误的电视剧，可以避免自动下载错误的弹幕。</div>
                         </div>
                     </fieldset>
+
+                    <fieldset class="verticalSection verticalSection-extrabottompadding">
+                        <legend>
+                            <h3>弹幕源配置</h3>
+                        </legend>
+                        <div class="checkboxList paperList checkboxList-paperList" id="Scrapers" name="Scrapers">
+                        </div>
+                    </fieldset>
+
 
                     <fieldset id="dandanSection" class="verticalSection verticalSection-extrabottompadding" style="display: none;">
                         <legend>
@@ -143,6 +153,7 @@
                         document.querySelector('#AssLineCount').value = config.AssLineCount;
                         document.querySelector('#AssSpeed').value = config.AssSpeed;
 
+                        document.querySelector('#EnableAutoDownload').checked = config.DownloadOption.EnableAutoDownload;
                         document.querySelector('#EnableEpisodeCountSame').checked = config.DownloadOption.EnableEpisodeCountSame;
 
                         document.querySelector('#WithRelatedDanmu').checked = config.Dandan.WithRelatedDanmu;
@@ -194,6 +205,7 @@
 
                         var download = new Object();
                         download.EnableEpisodeCountSame = document.querySelector('#EnableEpisodeCountSame').checked;
+                        download.EnableAutoDownload = document.querySelector('#EnableAutoDownload').checked;
                         config.DownloadOption = download;
 
                         var dandan = new Object();

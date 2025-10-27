@@ -138,6 +138,10 @@ public class ScraperConfigItem
 public class DanmuDownloadOption
 {
     /// <summary>
+    /// 弹幕自动匹配下载.
+    /// </summary>
+    public bool EnableAutoDownload { get; set; } = true;
+    /// <summary>
     /// 检测弹幕数和视频剧集数需要一致才自动下载弹幕.
     /// </summary>
     public bool EnableEpisodeCountSame { get; set; } = true;

@@ -69,7 +69,7 @@ ass格式：
 
 1. Clone or download this repository
 
-2. Ensure you have .NET Core SDK 8.0 setup and installed
+2. Ensure you have .NET Core SDK 9.0 setup and installed
 
 3. Build plugin with following command.
 
@@ -83,7 +83,7 @@ dotnet publish --configuration=Release Jellyfin.Plugin.Danmu/Jellyfin.Plugin.Dan
 
 1. Build the plugin
 
-2. Create a folder, like `danmu` and copy  `./Jellyfin.Plugin.Danmu/bin/Release/net8.0/Jellyfin.Plugin.Danmu.dll` into it
+2. Create a folder, like `danmu` and copy  `./Jellyfin.Plugin.Danmu/bin/Release/net9.0/Jellyfin.Plugin.Danmu.dll` into it
 
 3. Move folder `danmu` to jellyfin `data/plugins` folder
 
