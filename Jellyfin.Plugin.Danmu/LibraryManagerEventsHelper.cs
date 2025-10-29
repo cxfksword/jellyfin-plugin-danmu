@@ -11,6 +11,7 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Persistence;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.IO;
 using Microsoft.Extensions.Logging;
@@ -27,7 +28,7 @@ public class LibraryManagerEventsHelper : IDisposable
     private readonly IMemoryCache _memoryCache;
     private readonly MemoryCacheEntryOptions _pendingAddExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
     private readonly MemoryCacheEntryOptions _danmuUpdatedExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(24*60) };
-
+    private readonly IItemRepository _itemRepository;
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<LibraryManagerEventsHelper> _logger;
     private readonly Jellyfin.Plugin.Danmu.Core.IFileSystem _fileSystem;
@@ -50,11 +51,12 @@ public class LibraryManagerEventsHelper : IDisposable
     /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
     /// <param name="api">The <see cref="BilibiliApi"/>.</param>
     /// <param name="fileSystem">Instance of the <see cref="IFileSystem"/> interface.</param>
-    public LibraryManagerEventsHelper(ILibraryManager libraryManager, ILoggerFactory loggerFactory, Jellyfin.Plugin.Danmu.Core.IFileSystem fileSystem, ScraperManager scraperManager)
+    public LibraryManagerEventsHelper(IItemRepository itemRepository, ILibraryManager libraryManager, ILoggerFactory loggerFactory, Jellyfin.Plugin.Danmu.Core.IFileSystem fileSystem, ScraperManager scraperManager)
     {
         _queuedEvents = new List<LibraryEvent>();
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
+        _itemRepository = itemRepository;
         _libraryManager = libraryManager;
         _logger = loggerFactory.CreateLogger<LibraryManagerEventsHelper>();
         _fileSystem = fileSystem;
@@ -869,7 +871,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     item.ProviderIds[pair.Key] = pair.Value;
                 }
 
-                await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
+                _itemRepository.SaveItems(new[] { item }, CancellationToken.None);
             }
         }
         _logger.LogInformation("更新epid到元数据完成。item数：{0}", queue.Count);
@@ -983,7 +985,7 @@ public class LibraryManagerEventsHelper : IDisposable
         // 保存指定弹幕元数据
         item.ProviderIds[providerId] = providerVal;
 
-        await item.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
+        _itemRepository.SaveItems(new[] { item }, CancellationToken.None);
     }
 
 
