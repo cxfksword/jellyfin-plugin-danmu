@@ -24,9 +24,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan.ExternalId
         public ExternalIdMediaType? Type => null;
 
         /// <inheritdoc />
-        public string UrlFormatString => "https://api.dandanplay.net/api/v2/bangumi/{0}";
-
-        /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Season;
     }
 

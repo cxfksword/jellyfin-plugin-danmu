@@ -23,9 +23,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.ExternalId
         public ExternalIdMediaType? Type => ExternalIdMediaType.Episode;
 
         /// <inheritdoc />
-        public string UrlFormatString => "https://www.bilibili.com/bangumi/play/ep{0}";
-
-        /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Episode;
     }
 }

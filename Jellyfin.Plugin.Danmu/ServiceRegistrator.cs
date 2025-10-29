@@ -5,6 +5,7 @@ using Jellyfin.Plugin.Danmu.Scrapers;
 using MediaBrowser.Controller.Plugins;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Subtitles;
+using MediaBrowser.Controller.Persistence;
 
 namespace Jellyfin.Plugin.Danmu
 {
@@ -27,7 +28,7 @@ namespace Jellyfin.Plugin.Danmu
             });
             serviceCollection.AddSingleton((ctx) =>
             {
-                return new LibraryManagerEventsHelper(ctx.GetRequiredService<ILibraryManager>(), ctx.GetRequiredService<ILoggerFactory>(), ctx.GetRequiredService<Jellyfin.Plugin.Danmu.Core.IFileSystem>(), ctx.GetRequiredService<ScraperManager>());
+                return new LibraryManagerEventsHelper(ctx.GetRequiredService<IItemRepository>(), ctx.GetRequiredService<ILibraryManager>(), ctx.GetRequiredService<ILoggerFactory>(), ctx.GetRequiredService<Jellyfin.Plugin.Danmu.Core.IFileSystem>(), ctx.GetRequiredService<ScraperManager>());
             });
         }
     }

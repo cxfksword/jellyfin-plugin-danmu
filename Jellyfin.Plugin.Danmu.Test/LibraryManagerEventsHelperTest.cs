@@ -16,6 +16,7 @@ using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
+using MediaBrowser.Controller.Persistence;
 using MediaBrowser.Model.IO;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -42,8 +43,9 @@ namespace Jellyfin.Plugin.Danmu.Test
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
 
             var directoryServiceStub = new Mock<IDirectoryService>();
+            var itemRepositoryStub = new Mock<IItemRepository>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(itemRepositoryStub.Object, libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
 
             var item = new Movie
             {
@@ -81,7 +83,8 @@ namespace Jellyfin.Plugin.Danmu.Test
             mediaSourceManagerStub.Setup(x => x.GetPathProtocol(It.IsAny<string>())).Returns(MediaBrowser.Model.MediaInfo.MediaProtocol.File);
             var directoryServiceStub = new Mock<IDirectoryService>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+            var itemRepositoryStub = new Mock<IItemRepository>();
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(itemRepositoryStub.Object, libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
 
             var item = new Movie
             {
@@ -116,8 +119,9 @@ namespace Jellyfin.Plugin.Danmu.Test
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
+            var itemRepositoryStub = new Mock<IItemRepository>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(itemRepositoryStub.Object, libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
 
             var item = new Season
             {
@@ -149,8 +153,9 @@ namespace Jellyfin.Plugin.Danmu.Test
 
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
             var directoryServiceStub = new Mock<IDirectoryService>();
+            var itemRepositoryStub = new Mock<IItemRepository>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(itemRepositoryStub.Object, libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
 
             var item = new Season
             {
@@ -185,8 +190,9 @@ namespace Jellyfin.Plugin.Danmu.Test
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
 
             var directoryServiceStub = new Mock<IDirectoryService>();
+            var itemRepositoryStub = new Mock<IItemRepository>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(itemRepositoryStub.Object, libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
 
             var item = new Movie
             {
@@ -220,8 +226,9 @@ namespace Jellyfin.Plugin.Danmu.Test
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
 
             var directoryServiceStub = new Mock<IDirectoryService>();
+            var itemRepositoryStub = new Mock<IItemRepository>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(itemRepositoryStub.Object, libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
 
             var item = new Season
             {
@@ -256,8 +263,9 @@ namespace Jellyfin.Plugin.Danmu.Test
             var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
 
             var directoryServiceStub = new Mock<IDirectoryService>();
+            var itemRepositoryStub = new Mock<IItemRepository>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(itemRepositoryStub.Object, libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
 
             var item = new Movie
             {
@@ -295,8 +303,9 @@ namespace Jellyfin.Plugin.Danmu.Test
             var mediaSourceManagerStub = new Mock<IMediaSourceManager>();
             mediaSourceManagerStub.Setup(x => x.GetPathProtocol(It.IsAny<string>())).Returns(MediaBrowser.Model.MediaInfo.MediaProtocol.File);
             var directoryServiceStub = new Mock<IDirectoryService>();
+            var itemRepositoryStub = new Mock<IItemRepository>();
             var libraryManagerStub = new Mock<ILibraryManager>();
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
+            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(itemRepositoryStub.Object, libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
 
             var item = new Movie
             {

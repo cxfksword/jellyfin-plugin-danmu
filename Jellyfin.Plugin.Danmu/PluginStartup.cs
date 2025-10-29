@@ -5,6 +5,7 @@ using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller;
 using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.Danmu.Model;
+using Jellyfin.Plugin.Danmu.Configuration;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -19,6 +20,14 @@ namespace Jellyfin.Plugin.Danmu
         private readonly ILibraryManager _libraryManager;
         private readonly LibraryManagerEventsHelper _libraryManagerEventsHelper;
         private readonly ILogger<PluginStartup> _logger;
+
+        public PluginConfiguration Config
+        {
+            get
+            {
+                return Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PluginStartup"/> class.
@@ -60,6 +69,11 @@ namespace Jellyfin.Plugin.Danmu
         /// <param name="itemChangeEventArgs">The <see cref="ItemChangeEventArgs"/>.</param>
         private void LibraryManagerItemAdded(object sender, ItemChangeEventArgs itemChangeEventArgs)
         {
+            if (!Config.DownloadOption.EnableAutoDownload)
+            {
+                return;
+            }
+
             // Don't do anything if it's not a supported media type
             if (itemChangeEventArgs.Item is not Movie and not Episode and not Series and not Season)
             {
@@ -83,6 +97,11 @@ namespace Jellyfin.Plugin.Danmu
         /// <param name="itemChangeEventArgs">The <see cref="ItemChangeEventArgs"/>.</param>
         private void LibraryManagerItemUpdated(object sender, ItemChangeEventArgs itemChangeEventArgs)
         {
+            if (!Config.DownloadOption.EnableAutoDownload)
+            {
+                return;
+            }
+            
             // Don't do anything if it's not a supported media type
             if (itemChangeEventArgs.Item is not Movie and not Episode and not Series and not Season)
             {

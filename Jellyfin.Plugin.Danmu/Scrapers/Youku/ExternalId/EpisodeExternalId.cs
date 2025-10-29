@@ -21,10 +21,7 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Youku.ExternalId
 
         /// <inheritdoc />
         public ExternalIdMediaType? Type => ExternalIdMediaType.Episode;
-
-        /// <inheritdoc />
-        public string UrlFormatString => "https://v.youku.com/v_show/id_{0}.html";
-
+        
         /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Episode;
     }

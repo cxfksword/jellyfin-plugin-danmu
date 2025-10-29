@@ -24,9 +24,6 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.ExternalId
         public ExternalIdMediaType? Type => ExternalIdMediaType.Season;
 
         /// <inheritdoc />
-        public string UrlFormatString => "https://www.bilibili.com/bangumi/play/ss{0}";
-
-        /// <inheritdoc />
         public bool Supports(IHasProviderIds item) => item is Season;
     }
 
