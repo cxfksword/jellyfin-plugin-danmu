@@ -43,12 +43,12 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹pla
 
 ## 支持的api接口
 
-* `/api/danmu/{id}`:  获取影片或剧集的xml弹幕链接，不存在时，url为空
-* `/api/danmu/{id}/raw`:  获取影片或剧集的xml弹幕文件内容
+* `/api/danmu/{id}`:  获取jellyfin电影或剧集的xml弹幕链接，不存在时，url为空
+* `/api/danmu/{id}/raw`:  获取jellyfin电影或剧集的xml弹幕文件内容
 * `/api/v2/search/anime?keyword=xxx`: 根据关键字搜索影视
-* `/api/v2/search/episodes?anime=xxx`: 根据关键字搜索的剧集信息
-* `/api/v2/bangumi/{id}`: 获取影视详细信息
-* `/api/v2/comment/{id}?format=xml`: 获取弹幕内容，默认json格式
+* `/api/v2/search/episodes?anime=xxx`: 根据关键字搜索影视的剧集信息
+* `/api/v2/bangumi/{bangumiId}`: 获取影视详细信息
+* `/api/v2/comment/{episodeId}?format=xml`: 获取弹幕内容，默认json格式
 
 ## 如何播放
 
