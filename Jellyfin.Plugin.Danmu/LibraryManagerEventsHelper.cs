@@ -559,7 +559,7 @@ public class LibraryManagerEventsHelper : IDisposable
                             break;
                         }
 
-                        foreach (var (episode, idx) in episodes.WithIndex())
+                        foreach (var (episode, idx) in episodes.AsEnumerable().Reverse().WithIndex())
                         {
                             var fileName = Path.GetFileName(episode.Path);
                             var indexNumber = episode.IndexNumber ?? 0;
@@ -581,8 +581,8 @@ public class LibraryManagerEventsHelper : IDisposable
                                 continue;
                             }
 
-                            var epId = media.Episodes[idx].Id;
-                            var commentId = media.Episodes[idx].CommentId;
+                            var epId = media.Episodes[indexNumber - 1].Id;
+                            var commentId = media.Episodes[indexNumber - 1].CommentId;
                             _logger.LogInformation("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, indexNumber, episode.Name, epId, commentId);
 
                             // 更新eposide元数据
@@ -650,34 +650,14 @@ public class LibraryManagerEventsHelper : IDisposable
                 var allDanmuProviderIds = scrapers.Select(x => x.ProviderId).ToList();
                 var episodeFirstProviderId = allDanmuProviderIds.FirstOrDefault(x => !string.IsNullOrEmpty(item.GetProviderId(x)));
                 var seasonFirstProviderId = allDanmuProviderIds.FirstOrDefault(x => !string.IsNullOrEmpty(season.GetProviderId(x)));
-                if (string.IsNullOrEmpty(episodeFirstProviderId) && item.IndexNumber.HasValue)
+                if (string.IsNullOrEmpty(episodeFirstProviderId) && !string.IsNullOrEmpty(seasonFirstProviderId) && item.IndexNumber.HasValue)
                 {
-                    AbstractScraper? scraper = null;
-                    string? providerVal = null;
-
-                    // 如果 Season 没有弹幕元数据，说明 Add 时使用元数据搜索失败了，此时使用文件信息再次匹配
-                    if (string.IsNullOrEmpty(seasonFirstProviderId))
-                    {
-                        foreach (var s in scrapers)
-                        {
-                            var mediaId = await s.SearchMediaIdByFile(item).ConfigureAwait(false);
-                            if (!string.IsNullOrEmpty(mediaId))
-                            {
-                                scraper = s;
-                                providerVal = mediaId;
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        scraper = scrapers.First(x => x.ProviderId == seasonFirstProviderId);
-                        providerVal = season.GetProviderId(seasonFirstProviderId);
-                    }
+                    var scraper = scrapers.First(x => x.ProviderId == seasonFirstProviderId);
+                    var providerVal = season.GetProviderId(seasonFirstProviderId);
 
                     if (scraper == null)
                     {
-                        _logger.LogInformation("使用文件匹配失败：{0}", item.Path);
+                        _logger.LogInformation("找不到对应的弹幕来源. ProviderId: {0}", seasonFirstProviderId);
                         continue;
                     }
 
@@ -796,7 +776,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
                     // 更新所有剧集元数据，GetEpisodes一定要取所有fields，要不然更新会导致重建虚拟season季信息
                     var episodeList = season.GetEpisodes();
-                    foreach (var (episode, idx) in episodeList.WithIndex())
+                    foreach (var (episode, idx) in episodeList.AsEnumerable().Reverse().WithIndex())
                     {
                         var fileName = Path.GetFileName(episode.Path);
 

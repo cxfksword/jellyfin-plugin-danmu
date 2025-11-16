@@ -26,6 +26,10 @@ public class YoukuApi : AbstractApi
 
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
     private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
+    private TimeLimiter _delayShortExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(10));
+
+    // 并行请求配置
+    private const int DefaultParallelCount = 3;
 
     protected string _cna = string.Empty;
     protected string _token = string.Empty;
@@ -226,7 +230,12 @@ public class YoukuApi : AbstractApi
         return null;
     }
 
-    public async Task<List<YoukuComment>> GetDanmuContentAsync(string vid, CancellationToken cancellationToken)
+    public async Task<List<YoukuComment>> GetDanmuContentAsync(string vid, CancellationToken cancellationToken, bool isParallel = false)
+    {
+        return await this.GetDanmuContentAsync(vid, isParallel, DefaultParallelCount, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<List<YoukuComment>> GetDanmuContentAsync(string vid, bool isParallel, int parallelCount, CancellationToken cancellationToken)
     {
         var danmuList = new List<YoukuComment>();
         if (string.IsNullOrEmpty(vid))
@@ -234,8 +243,12 @@ public class YoukuApi : AbstractApi
             return danmuList;
         }
 
-        await this.EnsureTokenCookie(cancellationToken);
+        if (parallelCount <= 0)
+        {
+            parallelCount = DefaultParallelCount;
+        }
 
+        await this.EnsureTokenCookie(cancellationToken);
 
         var episode = await this.GetEpisodeAsync(vid, cancellationToken);
         if (episode == null)
@@ -244,13 +257,51 @@ public class YoukuApi : AbstractApi
         }
 
         var totalMat = episode.TotalMat;
-        for (int mat = 0; mat < totalMat; mat++)
-        {
-            var comments = await this.GetDanmuContentByMatAsync(vid, mat, cancellationToken);
-            danmuList.AddRange(comments);
 
-            // 等待一段时间避免api请求太快
-            await this._delayExecuteConstraint;
+        if (isParallel)
+        {
+            // 并行执行
+            var tasks = new List<Task<List<YoukuComment>>>();
+            var semaphore = new SemaphoreSlim(parallelCount, parallelCount);
+
+            for (int mat = 0; mat < totalMat; mat++)
+            {
+                var currentMat = mat;
+                await semaphore.WaitAsync(cancellationToken);
+
+                var task = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await this._delayShortExecuteConstraint;
+                        return await this.GetDanmuContentByMatAsync(vid, currentMat, cancellationToken).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                }, cancellationToken);
+
+                tasks.Add(task);
+            }
+
+            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+            foreach (var comments in results)
+            {
+                danmuList.AddRange(comments);
+            }
+        }
+        else
+        {
+            // 串行执行
+            for (int mat = 0; mat < totalMat; mat++)
+            {
+                var comments = await this.GetDanmuContentByMatAsync(vid, mat, cancellationToken);
+                danmuList.AddRange(comments);
+
+                // 等待一段时间避免api请求太快
+                await this._delayShortExecuteConstraint;
+            }
         }
 
         return danmuList;

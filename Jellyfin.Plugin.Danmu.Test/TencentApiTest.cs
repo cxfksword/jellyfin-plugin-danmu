@@ -64,7 +64,7 @@ namespace Jellyfin.Plugin.Danmu.Test
                     var vid = "a00149qxvfz";
                     var api = new TencentApi(loggerFactory);
                     var result = await api.GetDanmuContentAsync(vid, CancellationToken.None);
-                    Console.WriteLine(result);
+                    Console.WriteLine(result.Count);
                 }
                 catch (Exception ex)
                 {

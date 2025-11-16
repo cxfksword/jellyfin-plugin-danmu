@@ -33,6 +33,8 @@ public class Tencent : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
+    public override uint HashPrefix => 14;
+
     public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
         var list = new List<ScraperSearchInfo>();
@@ -174,58 +176,7 @@ public class Tencent : AbstractScraper
 
     public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)
     {
-        if (string.IsNullOrEmpty(commentId))
-        {
-            return null;
-        }
-
-        var comments = await _api.GetDanmuContentAsync(commentId, CancellationToken.None).ConfigureAwait(false);
-        var danmaku = new ScraperDanmaku();
-        danmaku.ChatId = 1000;
-        danmaku.ChatServer = "dm.video.qq.com";
-        foreach (var comment in comments)
-        {
-            try
-            {
-                var midHash = string.IsNullOrEmpty(comment.Nick) ? "anonymous".ToBase64() : comment.Nick.ToBase64();
-                var danmakuText = new ScraperDanmakuText();
-                danmakuText.Progress = comment.TimeOffset.ToInt();
-                danmakuText.Mode = 1;
-                danmakuText.MidHash = $"[tencent]{midHash}";
-                danmakuText.Id = comment.Id.ToLong();
-                danmakuText.Content = comment.Content.Replace("VIP :", "");
-                if (!string.IsNullOrEmpty(comment.ContentStyle))
-                {
-                    var style = comment.ContentStyle.FromJson<TencentCommentContentStyle>();
-                    if (style != null && uint.TryParse(style.Color, System.Globalization.NumberStyles.HexNumber, null, out var color))
-                    {
-                        danmakuText.Color = color;
-                    }
-
-                    if (style != null && style.Position > 0)
-                    {
-                        switch (style.Position)
-                        {
-                            case 2:// top
-                                danmakuText.Mode = 5;
-                                break;
-                            case 3:// bottom
-                                danmakuText.Mode = 4;
-                                break;
-                        }
-                    }
-                }
-
-                danmaku.Items.Add(danmakuText);
-            }
-            catch (Exception ex)
-            {
-
-            }
-
-        }
-
-        return danmaku;
+        return await this.GetDanmuContentInternal(commentId).ConfigureAwait(false);
     }
 
     public override async Task<List<ScraperSearchInfo>> SearchForApi(string keyword)
@@ -272,7 +223,63 @@ public class Tencent : AbstractScraper
 
     public override async Task<ScraperDanmaku?> DownloadDanmuForApi(string commentId)
     {
-        return await this.GetDanmuContent(null, commentId).ConfigureAwait(false);
+        return await this.GetDanmuContentInternal(commentId, true).ConfigureAwait(false);
+    }
+
+    private async Task<ScraperDanmaku?> GetDanmuContentInternal(string commentId, bool isParallel = false)
+    {
+        if (string.IsNullOrEmpty(commentId))
+        {
+            return null;
+        }
+
+        var comments = await _api.GetDanmuContentAsync(commentId, CancellationToken.None, isParallel).ConfigureAwait(false);
+        var danmaku = new ScraperDanmaku();
+        danmaku.ChatId = 1000;
+        danmaku.ChatServer = "dm.video.qq.com";
+        foreach (var comment in comments)
+        {
+            try
+            {
+                var midHash = string.IsNullOrEmpty(comment.Nick) ? "anonymous".ToBase64() : comment.Nick.ToBase64();
+                var danmakuText = new ScraperDanmakuText();
+                danmakuText.Progress = comment.TimeOffset.ToInt();
+                danmakuText.Mode = 1;
+                danmakuText.MidHash = $"[tencent]{midHash}";
+                danmakuText.Id = comment.Id.ToLong();
+                danmakuText.Content = comment.Content.Replace("VIP :", "");
+                if (!string.IsNullOrEmpty(comment.ContentStyle))
+                {
+                    var style = comment.ContentStyle.FromJson<TencentCommentContentStyle>();
+                    if (style != null && uint.TryParse(style.Color, System.Globalization.NumberStyles.HexNumber, null, out var color))
+                    {
+                        danmakuText.Color = color;
+                    }
+
+                    if (style != null && style.Position > 0)
+                    {
+                        switch (style.Position)
+                        {
+                            case 2:// top
+                                danmakuText.Mode = 5;
+                                break;
+                            case 3:// bottom
+                                danmakuText.Mode = 4;
+                                break;
+                        }
+                    }
+                }
+
+                danmaku.Items.Add(danmakuText);
+            }
+            catch (Exception ex)
+            {
+
+            }
+
+        }
+
+        return danmaku;
     }
 
 }

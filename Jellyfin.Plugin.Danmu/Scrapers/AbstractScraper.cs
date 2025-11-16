@@ -27,6 +27,11 @@ public abstract class AbstractScraper
     /// Gets the provider id.
     /// </summary>
     public abstract string ProviderId { get; }
+    
+    /// <summary>
+    /// 用于区分不同源的animeId前缀
+    /// </summary>
+    public abstract uint HashPrefix { get; }
 
      /// <summary>
      /// 是否已废弃
