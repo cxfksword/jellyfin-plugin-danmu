@@ -32,6 +32,8 @@ public class Mgtv : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
+    public override uint HashPrefix => 15;
+
 
     private static readonly Regex regTvEpisodeTitle = new Regex(@"^第.+?集$", RegexOptions.Compiled);
 

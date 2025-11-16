@@ -23,6 +23,10 @@ public class TencentApi : AbstractApi
 {
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
     private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
+    private TimeLimiter _delayShortExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(10));
+
+    // 并行请求配置
+    private const int DefaultParallelCount = 3;
 
 
     /// <summary>
@@ -152,10 +156,12 @@ public class TencentApi : AbstractApi
         return null;
     }
 
+    public async Task<List<TencentComment>> GetDanmuContentAsync(string vid, CancellationToken cancellationToken, bool isParallel = false)
+    {
+        return await this.GetDanmuContentAsync(vid, isParallel, DefaultParallelCount, cancellationToken).ConfigureAwait(false);
+    }
 
-
-
-    public async Task<List<TencentComment>> GetDanmuContentAsync(string vid, CancellationToken cancellationToken)
+    public async Task<List<TencentComment>> GetDanmuContentAsync(string vid, bool isParallel, int parallelCount, CancellationToken cancellationToken)
     {
         var danmuList = new List<TencentComment>();
         if (string.IsNullOrEmpty(vid))
@@ -163,6 +169,10 @@ public class TencentApi : AbstractApi
             return danmuList;
         }
 
+        if (parallelCount <= 0)
+        {
+            parallelCount = DefaultParallelCount;
+        }
 
         var url = $"https://dm.video.qq.com/barrage/base/{vid}";
         var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
@@ -173,27 +183,77 @@ public class TencentApi : AbstractApi
         {
             var start = result.SegmentStart.ToLong();
             var size = result.SegmentSpan.ToLong();
+            var segmentKeys = new List<long>();
+            
+            // 收集所有需要下载的分段键
             for (long i = start; result.SegmentIndex.ContainsKey(i) && size > 0; i += size)
             {
+                segmentKeys.Add(i);
+            }
 
-                var segment = result.SegmentIndex[i];
-                var segmentUrl = $"https://dm.video.qq.com/barrage/segment/{vid}/{segment.SegmentName}";
-                var segmentResponse = await httpClient.GetAsync(segmentUrl, cancellationToken).ConfigureAwait(false);
-                segmentResponse.EnsureSuccessStatusCode();
+            if (isParallel)
+            {
+                // 并行执行
+                var tasks = new List<Task<List<TencentComment>>>();
+                var semaphore = new SemaphoreSlim(parallelCount, parallelCount);
 
-                var segmentResult = await segmentResponse.Content.ReadFromJsonAsync<TencentCommentSegmentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-                if (segmentResult != null && segmentResult.BarrageList != null)
+                foreach (var key in segmentKeys)
                 {
-                    // 30秒每segment，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
-                    danmuList.AddRange(segmentResult.BarrageList.ExtractToNumber(100));
+                    await semaphore.WaitAsync(cancellationToken);
+
+                    var task = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _delayShortExecuteConstraint;
+                            return await this.GetSegmentDanmuAsync(vid, result.SegmentIndex[key].SegmentName, cancellationToken).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    }, cancellationToken);
+
+                    tasks.Add(task);
                 }
 
-                // 等待一段时间避免api请求太快
-                await _delayExecuteConstraint;
+                var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+                foreach (var comments in results)
+                {
+                    danmuList.AddRange(comments);
+                }
+            }
+            else
+            {
+                // 串行执行
+                foreach (var key in segmentKeys)
+                {
+                    var comments = await this.GetSegmentDanmuAsync(vid, result.SegmentIndex[key].SegmentName, cancellationToken).ConfigureAwait(false);
+                    danmuList.AddRange(comments);
+
+                    // 等待一段时间避免api请求太快
+                    await _delayShortExecuteConstraint;
+                }
             }
         }
 
         return danmuList;
+    }
+
+    private async Task<List<TencentComment>> GetSegmentDanmuAsync(string vid, string segmentName, CancellationToken cancellationToken)
+    {
+        var segmentUrl = $"https://dm.video.qq.com/barrage/segment/{vid}/{segmentName}";
+        var segmentResponse = await httpClient.GetAsync(segmentUrl, cancellationToken).ConfigureAwait(false);
+        segmentResponse.EnsureSuccessStatusCode();
+
+        var segmentResult = await segmentResponse.Content.ReadFromJsonAsync<TencentCommentSegmentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+        if (segmentResult != null && segmentResult.BarrageList != null)
+        {
+            // 30秒每segment，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
+            return segmentResult.BarrageList.ExtractToNumber(100).ToList();
+        }
+
+        return new List<TencentComment>();
     }
 
     protected async Task LimitRequestFrequently()

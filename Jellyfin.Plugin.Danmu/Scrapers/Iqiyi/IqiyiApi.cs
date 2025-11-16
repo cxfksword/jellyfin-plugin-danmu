@@ -29,6 +29,7 @@ public class IqiyiApi : AbstractApi
 
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
     private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
+    private TimeLimiter _delayShortExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(10));
 
     protected string _cna = string.Empty;
     protected string _token = string.Empty;
@@ -278,7 +279,7 @@ public class IqiyiApi : AbstractApi
             mat++;
 
             // 等待一段时间避免api请求太快
-            await _delayExecuteConstraint;
+            await _delayShortExecuteConstraint;
         } while (mat < 1000);
 
         return danmuList;

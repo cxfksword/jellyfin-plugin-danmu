@@ -18,6 +18,7 @@ public class MgtvApi : AbstractApi
 {
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
     private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
+    private TimeLimiter _delayShortExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(10));
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MgtvApi"/> class.
@@ -171,7 +172,7 @@ public class MgtvApi : AbstractApi
 
                         time++;
                         // 等待一段时间避免api请求太快
-                        await _delayExecuteConstraint;
+                        await _delayShortExecuteConstraint;
                     }
                     catch (Exception ex)
                     {
@@ -218,7 +219,7 @@ public class MgtvApi : AbstractApi
 
             time = segmentResult?.Data?.Next ?? 0;
             // 等待一段时间避免api请求太快
-            await _delayExecuteConstraint;
+            await _delayShortExecuteConstraint;
         }
         while (time > 0);
     

@@ -36,6 +36,8 @@ public class Bilibili : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
+    public override uint HashPrefix => 10;
+
     public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
         var list = new List<ScraperSearchInfo>();

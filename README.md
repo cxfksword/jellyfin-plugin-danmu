@@ -11,6 +11,7 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹pla
 * 自动下载xml格式弹幕
 * 生成ass格式弹幕
 * 支持api访问弹幕
+* 兼容弹弹play接口规范访问
 
 ![logo](doc/logo.png)
 
@@ -44,16 +45,19 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹pla
 
 * `/api/danmu/{id}`:  获取影片或剧集的xml弹幕链接，不存在时，url为空
 * `/api/danmu/{id}/raw`:  获取影片或剧集的xml弹幕文件内容
-
+* `/api/v2/search/anime?keyword=xxx`: 根据关键字搜索影视
+* `/api/v2/search/episodes?anime=xxx`: 根据关键字搜索的剧集信息
+* `/api/v2/bangumi/{id}`: 获取影视详细信息
+* `/api/v2/comment/{id}?format=xml`: 获取弹幕内容，默认json格式
 
 ## 如何播放
 
 xml格式：
 
 * [switchfin](https://github.com/dragonflylee/switchfin) (Windows/Mac/Linux) 🌟
+* [Senplayer](https://apps.apple.com/us/app/senplayer-video-media-player/id6443975850) (iOS/iPadOS/AppleTV) 🌟
 * [弹弹play](https://www.dandanplay.com/) (Windows/Mac/Android)
 * [KikoPlay](https://github.com/KikoPlayProject/KikoPlay) (Windows/Mac)
-* [Fileball](https://fileball.app/) (iOS/iPadOS/AppleTV)
 
 
 ass格式：
@@ -61,8 +65,6 @@ ass格式：
 * PotPlayer (Windows)
 * IINA (Mac)
 * Infuse (Mac/iOS/iPadOS/AppleTV)
-
-
 
 
 ## How to build

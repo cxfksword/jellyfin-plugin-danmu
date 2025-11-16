@@ -13,6 +13,9 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan.Entity
         [JsonPropertyName("animeId")]
         public long AnimeId { get; set; }
 
+        [JsonPropertyName("bangumiId")]
+        public string BangumiId { get; set; }
+
         [JsonPropertyName("animeTitle")]
         public string AnimeTitle { get; set; }
 
@@ -34,6 +37,13 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan.Entity
         [JsonPropertyName("episodes")]
         public List<Episode>? Episodes { get; set; }
 
+        [JsonPropertyName("rating")]
+        public int Rating { get; set; } = 0;
+
+        [JsonPropertyName("isFavorited")]
+        public bool IsFavorited { get; set; } = false;
+
+        [JsonIgnore]
         public int? Year
         {
             get

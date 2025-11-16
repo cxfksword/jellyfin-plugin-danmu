@@ -32,6 +32,8 @@ public class Iqiyi : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
+    public override uint HashPrefix => 13;
+
     public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
         var list = new List<ScraperSearchInfo>();

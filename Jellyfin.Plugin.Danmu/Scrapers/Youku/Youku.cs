@@ -35,6 +35,8 @@ public class Youku : AbstractScraper
 
     public override string ProviderId => ScraperProviderId;
 
+    public override uint HashPrefix => 12;
+
     public override async Task<List<ScraperSearchInfo>> Search(BaseItem item)
     {
         var list = new List<ScraperSearchInfo>();
@@ -173,25 +175,40 @@ public class Youku : AbstractScraper
 
     public override async Task<ScraperDanmaku?> GetDanmuContent(BaseItem item, string commentId)
     {
+        return await this.GetDanmuContentInternal(commentId, false).ConfigureAwait(false);
+    }
+
+    public override async Task<ScraperDanmaku?> DownloadDanmuForApi(string commentId)
+    {
+        return await this.GetDanmuContentInternal(commentId, true).ConfigureAwait(false);
+    }
+
+    private async Task<ScraperDanmaku?> GetDanmuContentInternal(string commentId, bool isParallel)
+    {
         if (string.IsNullOrEmpty(commentId))
         {
             return null;
         }
 
-        var comments = await _api.GetDanmuContentAsync(commentId, CancellationToken.None).ConfigureAwait(false);
-        var danmaku = new ScraperDanmaku();
-        danmaku.ChatId = 1000;
-        danmaku.ChatServer = "acs.youku.com";
+        var comments = await _api.GetDanmuContentAsync(commentId, isParallel, 3, CancellationToken.None).ConfigureAwait(false);
+        var danmaku = new ScraperDanmaku
+        {
+            ChatId = 1000,
+            ChatServer = "acs.youku.com"
+        };
+
         foreach (var comment in comments)
         {
             try
             {
-                var danmakuText = new ScraperDanmakuText();
-                danmakuText.Progress = (int)comment.Playat;
-                danmakuText.Mode = 1;
-                danmakuText.MidHash = $"[youku]{comment.Uid}";
-                danmakuText.Id = comment.ID;
-                danmakuText.Content = comment.Content;
+                var danmakuText = new ScraperDanmakuText
+                {
+                    Progress = (int)comment.Playat,
+                    Mode = 1,
+                    MidHash = $"[youku]{comment.Uid}",
+                    Id = comment.ID,
+                    Content = comment.Content
+                };
 
                 var property = JsonSerializer.Deserialize<YoukuCommentProperty>(comment.Propertis);
                 if (property != null)
@@ -203,66 +220,11 @@ public class Youku : AbstractScraper
             }
             catch (Exception ex)
             {
-
+                log.LogWarning(ex, "Failed to parse comment: {CommentId}", comment.ID);
             }
-
         }
 
         return danmaku;
-    }
-
-
-    public override async Task<List<ScraperSearchInfo>> SearchForApi(string keyword)
-    {
-        var list = new List<ScraperSearchInfo>();
-        var videos = await this._api.SearchAsync(keyword, CancellationToken.None).ConfigureAwait(false);
-        foreach (var video in videos)
-        {
-            var videoId = video.ID;
-            var title = video.Title;
-            var pubYear = video.Year;
-
-            var score = keyword.Distance(title);
-            if (score <= 0)
-            {
-                continue;
-            }
-
-            list.Add(new ScraperSearchInfo()
-            {
-                Id = $"{videoId}",
-                Name = title,
-                Category = video.Type == "movie" ? "电影" : "电视剧",
-                Year = pubYear,
-                EpisodeSize = video.Total,
-            });
-        }
-        return list;
-    }
-
-    public override async Task<List<ScraperEpisode>> GetEpisodesForApi(string id)
-    {
-        var list = new List<ScraperEpisode>();
-        var video = await this._api.GetVideoAsync(id, CancellationToken.None).ConfigureAwait(false);
-        if (video == null)
-        {
-            return list;
-        }
-
-        if (video.Videos != null && video.Videos.Count > 0)
-        {
-            foreach (var ep in video.Videos)
-            {
-                list.Add(new ScraperEpisode() { Id = $"{ep.ID}", CommentId = $"{ep.ID}", Title = ep.Title });
-            }
-        }
-
-        return list;
-    }
-
-    public override async Task<ScraperDanmaku?> DownloadDanmuForApi(string commentId)
-    {
-        return await this.GetDanmuContent(null, commentId).ConfigureAwait(false);
     }
 
 }

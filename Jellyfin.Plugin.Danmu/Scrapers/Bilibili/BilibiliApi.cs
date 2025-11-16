@@ -22,6 +22,7 @@ public class BilibiliApi : AbstractApi
     private static readonly object _lock = new object();
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
     private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
+    private TimeLimiter _delayShortExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(10));
 
     private static readonly Regex regBiliplusVideoInfo = new Regex(@"view\((.+?)\);", RegexOptions.Compiled);
 
@@ -377,7 +378,7 @@ public class BilibiliApi : AbstractApi
                 segmentIndex += 1;
 
                 // 等待一段时间避免api请求太快
-                await this._delayExecuteConstraint;
+                await this._delayShortExecuteConstraint;
             }
         }
         catch (Exception ex)
