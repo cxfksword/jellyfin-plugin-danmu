@@ -37,6 +37,7 @@ public abstract class AbstractApi : IDisposable
         _cookieContainer = handler.CookieContainer;
         httpClient = new HttpClient(handler, true);
         httpClient.DefaultRequestHeaders.Add("user-agent", HTTP_USER_AGENT);
+        httpClient.Timeout = TimeSpan.FromSeconds(30);
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
     }
 

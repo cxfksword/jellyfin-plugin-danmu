@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Globalization;
 using System.Threading.Tasks;
 using MediaBrowser.Common.Extensions;
 using MediaBrowser.Controller.Library;
@@ -26,11 +27,8 @@ namespace Jellyfin.Plugin.Danmu.Controllers
     [AllowAnonymous]
     public class ApiController : ControllerBase
     {
-        private readonly ILibraryManager _libraryManager;
-        private readonly LibraryManagerEventsHelper _libraryManagerEventsHelper;
-        private readonly MediaBrowser.Model.IO.IFileSystem _fileSystem;
         private readonly ScraperManager _scraperManager;
-        private static TimeSpan _cacheExpiration = TimeSpan.FromDays(31);
+        private static TimeSpan _cacheExpiration = TimeSpan.FromDays(1);
         private static readonly IMemoryCache _animeIdCache = new MemoryCache(new MemoryCacheOptions
             {
                 // 设置缓存大小限制（可选）
@@ -42,65 +40,26 @@ namespace Jellyfin.Plugin.Danmu.Controllers
                 SizeLimit = 10000
             });
 
+        private readonly FileCache<AnimeCacheItem> _animeFileCache;
+
         private readonly ILogger<ApiController> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ApiController"/> class.
         /// </summary>
-        /// <param name="fileSystem">Instance of the <see cref="MediaBrowser.Model.IO.IFileSystem"/> interface.</param>
         /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
-        /// <param name="libraryManagerEventsHelper">Instance of the <see cref="LibraryManagerEventsHelper"/> class.</param>
-        /// <param name="libraryManager">Instance of the <see cref="ILibraryManager"/> interface.</param>
         /// <param name="scraperManager">Instance of the <see cref="ScraperManager"/> class.</param>
+        /// <param name="animeFileCache">File-backed cache injected via dependency injection.</param>
         public ApiController(
-            MediaBrowser.Model.IO.IFileSystem fileSystem,
             ILoggerFactory loggerFactory,
-            LibraryManagerEventsHelper libraryManagerEventsHelper,
-            ILibraryManager libraryManager,
-            ScraperManager scraperManager)
+            ScraperManager scraperManager,
+            FileCache<AnimeCacheItem> animeFileCache)
         {
-            _fileSystem = fileSystem;
             _logger = loggerFactory.CreateLogger<ApiController>();
-            _libraryManager = libraryManager;
-            _libraryManagerEventsHelper = libraryManagerEventsHelper;
             _scraperManager = scraperManager;
+            _animeFileCache = animeFileCache ?? throw new ArgumentNullException(nameof(animeFileCache));
         }
 
-        /// <summary>
-        /// 将 scraper ID 转换为带有 HashPrefix 的 11 位 long 类型 AnimeId
-        /// 格式：前 2 位是 HashPrefix，后 9 位是 ID 的哈希值
-        /// 例如：HashPrefix=10, Id="abc123" => 10xxxxxxxxx (后9位是哈希值)
-        /// </summary>
-        /// <param name="scraper">弹幕源</param>
-        /// <param name="id">原始 ID 字符串（可以是任意字母数字组合）</param>
-        /// <param name="animeData">完整的 Anime 数据（可选）</param>
-        /// <returns>11 位 long 类型的 AnimeId，失败时返回 0</returns>
-        private long ConvertToHashId(AbstractScraper scraper, string id)
-        {
-            if (string.IsNullOrEmpty(id))
-            {
-                return 0;
-            }
-
-            long animeId;
-
-            // 如果是纯数字且不超过 9 位，直接使用
-            if (long.TryParse(id, out var numericId) && numericId <= 999999999)
-            {
-                animeId = ((long)scraper.HashPrefix * 1000000000) + numericId;
-            }
-            else
-            {
-                // 对于非纯数字或超长的 ID，使用哈希算法转换为 9 位数字
-                // 使用 GetHashCode 并取绝对值，然后模 999999999 确保在 9 位范围内
-                var hashCode = id.GetHashCode();
-                var hashValue = Math.Abs(hashCode) % 1000000000; // 确保在 0-999999999 范围内
-                
-                animeId = ((long)scraper.HashPrefix * 1000000000) + hashValue;
-            }
-
-            return animeId;
-        }
 
         /// <summary>
         /// 查找弹幕
@@ -282,13 +241,29 @@ namespace Jellyfin.Plugin.Danmu.Controllers
             // 从缓存中获取Anime数据
             if (!_animeIdCache.TryGetValue(animeId, out AnimeCacheItem? animeCacheItem) || animeCacheItem == null)
             {
-                return new ApiResult<Anime>()
+                if (this._animeFileCache.TryGetValue(animeId.ToString(CultureInfo.InvariantCulture), out animeCacheItem) && animeCacheItem != null)
                 {
-                    ErrorCode = 404,
-                    Success = false,
-                    ErrorMessage = "Anime not found",
-                };
+                    // 将数据重新放入内存缓存
+                    var cacheOptions = new MemoryCacheEntryOptions
+                    {
+                        Size = 1,
+                        AbsoluteExpirationRelativeToNow = _cacheExpiration,
+                    };
+                    _animeIdCache.Set(animeId, animeCacheItem, cacheOptions);
+                }
+                else
+                {
+                    return new ApiResult<Anime>()
+                    {
+                        ErrorCode = 404,
+                        Success = false,
+                        ErrorMessage = "Anime not found",
+                    };
+                }
             }
+
+            // 延长文件缓存时间或写入文件缓存
+            this._animeFileCache.Set(animeId.ToString(CultureInfo.InvariantCulture), animeCacheItem);
 
             var animeData = animeCacheItem.AnimeData;
             if (animeData == null)
@@ -396,6 +371,14 @@ namespace Jellyfin.Plugin.Danmu.Controllers
             {
                 throw new ResourceNotFoundException();
             }
+
+            // 延长缓存时间
+            var cacheOptions = new MemoryCacheEntryOptions
+            {
+                Size = 1,
+                AbsoluteExpirationRelativeToNow = _cacheExpiration,
+            };
+            _episodeIdCache.Set(episodeId, commentCacheItem, cacheOptions);
             
             var scraper = this._scraperManager.All().FirstOrDefault(s => s.ProviderId == commentCacheItem.ScraperProviderId);
             if (scraper == null)
@@ -422,7 +405,6 @@ namespace Jellyfin.Plugin.Danmu.Controllers
                             Cid = item.Id,
                             P = $"{item.Progress / 1000.0:F2},{item.Mode},{item.Color},{item.MidHash}",
                             Text = item.Content,
-                            Time = (uint)(item.Progress / 1000),
                         }).ToList()
                     };
 
@@ -432,6 +414,43 @@ namespace Jellyfin.Plugin.Danmu.Controllers
             }
 
             throw new ResourceNotFoundException();
+        }
+
+
+        /// <summary>
+        /// 将 scraper ID 转换为带有 HashPrefix 的 11 位 long 类型 AnimeId
+        /// 格式：前 2 位是 HashPrefix，后 9 位是 ID 的哈希值
+        /// 例如：HashPrefix=10, Id="abc123" => 10xxxxxxxxx (后9位是哈希值)
+        /// </summary>
+        /// <param name="scraper">弹幕源</param>
+        /// <param name="id">原始 ID 字符串（可以是任意字母数字组合）</param>
+        /// <param name="animeData">完整的 Anime 数据（可选）</param>
+        /// <returns>11 位 long 类型的 AnimeId，失败时返回 0</returns>
+        private long ConvertToHashId(AbstractScraper scraper, string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                return 0;
+            }
+
+            long animeId;
+
+            // 如果是纯数字且不超过 9 位，直接使用
+            if (long.TryParse(id, out var numericId) && numericId <= 999999999)
+            {
+                animeId = ((long)scraper.HashPrefix * 1000000000) + numericId;
+            }
+            else
+            {
+                // 对于非纯数字或超长的 ID，使用哈希算法转换为 9 位数字
+                // 使用 GetHashCode 并取绝对值，然后模 999999999 确保在 9 位范围内
+                var hashCode = id.GetHashCode();
+                var hashValue = Math.Abs(hashCode) % 1000000000; // 确保在 0-999999999 范围内
+                
+                animeId = ((long)scraper.HashPrefix * 1000000000) + hashValue;
+            }
+
+            return animeId;
         }
     }
 }

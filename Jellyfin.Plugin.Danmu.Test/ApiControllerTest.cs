@@ -5,6 +5,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Danmu.Controllers;
+using Jellyfin.Plugin.Danmu.Controllers.Entity;
+using Jellyfin.Plugin.Danmu.Core;
 using Jellyfin.Plugin.Danmu.Scrapers;
 using Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
 using Jellyfin.Plugin.Danmu.Scrapers.Dandan;
@@ -12,10 +14,10 @@ using Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 using Jellyfin.Plugin.Danmu.Scrapers.Tencent;
 using Jellyfin.Plugin.Danmu.Scrapers.Mgtv;
 using Jellyfin.Plugin.Danmu.Scrapers.Youku;
-using MediaBrowser.Controller.Library;
-using MediaBrowser.Model.IO;
+using MediaBrowser.Common.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.IO;
 
 namespace Jellyfin.Plugin.Danmu.Test
 {
@@ -39,26 +41,19 @@ namespace Jellyfin.Plugin.Danmu.Test
             // _scraperManager.Register(new Tencent(loggerFactory));
             // _scraperManager.Register(new Mgtv(loggerFactory));
 
-            // Mock 依赖
-            var fileSystemMock = new Mock<IFileSystem>();
-            var libraryManagerMock = new Mock<ILibraryManager>();
-            var itemRepositoryMock = new Mock<MediaBrowser.Controller.Persistence.IItemRepository>();
-            var fileSystemStub = new Mock<Jellyfin.Plugin.Danmu.Core.IFileSystem>();
-            
-            var libraryManagerEventsHelper = new LibraryManagerEventsHelper(
-                itemRepositoryMock.Object,
-                libraryManagerMock.Object,
-                loggerFactory,
-                fileSystemStub.Object,
-                _scraperManager);
+            // 配置插件存储路径，确保文件缓存可用
+            var pluginConfigPath = Path.Combine(Path.GetTempPath(), "danmu-plugin-tests");
+            Directory.CreateDirectory(pluginConfigPath);
+            var applicationPathsMock = new Mock<IApplicationPaths>();
+            applicationPathsMock.SetupGet(p => p.PluginConfigurationsPath).Returns(pluginConfigPath);
+
+            var fileCache = new FileCache<AnimeCacheItem>(applicationPathsMock.Object, loggerFactory, TimeSpan.FromDays(31), TimeSpan.FromSeconds(60));
 
             // 创建 ApiController 实例
             _apiController = new ApiController(
-                fileSystemMock.Object,
                 loggerFactory,
-                libraryManagerEventsHelper,
-                libraryManagerMock.Object,
-                _scraperManager);
+                _scraperManager,
+                fileCache);
         }
 
         [TestMethod]

@@ -69,6 +69,7 @@ public class DandanApi : AbstractApi
         : base(loggerFactory.CreateLogger<DandanApi>())
     {
         httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+        httpClient.Timeout = TimeSpan.FromSeconds(10);
     }
 
 
@@ -90,7 +91,7 @@ public class DandanApi : AbstractApi
 
         keyword = HttpUtility.UrlEncode(keyword);
         var url = $"https://api.dandanplay.net/api/v2/search/anime?keyword={keyword}";
-        var response = await this.Request(url, cancellationToken).ConfigureAwait(false);
+        using var response = await this.Request(url, cancellationToken).ConfigureAwait(false);
         var result = await response.Content.ReadFromJsonAsync<SearchResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Success)
         {
@@ -131,7 +132,7 @@ public class DandanApi : AbstractApi
         }
 
         var url = "https://api.dandanplay.net/api/v2/match";
-        var response = await this.Request(url, HttpMethod.Post, matchRequest, cancellationToken).ConfigureAwait(false);
+        using var response = await this.Request(url, HttpMethod.Post, matchRequest, cancellationToken).ConfigureAwait(false);
         var result = await response.Content.ReadFromJsonAsync<MatchResponseV2>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Success && result.Matches != null)
         {
@@ -189,7 +190,7 @@ public class DandanApi : AbstractApi
         }
 
         var url = $"https://api.dandanplay.net/api/v2/bangumi/{animeId}";
-        var response = await this.Request(url, cancellationToken).ConfigureAwait(false);
+        using var response = await this.Request(url, cancellationToken).ConfigureAwait(false);
 
         var result = await response.Content.ReadFromJsonAsync<AnimeResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null && result.Success && result.Bangumi != null)
@@ -224,7 +225,7 @@ public class DandanApi : AbstractApi
         var withRelated = this.Config.WithRelatedDanmu ? "true" : "false";
         var chConvert = this.Config.ChConvert;
         var url = $"https://api.dandanplay.net/api/v2/comment/{epId}?withRelated={withRelated}&chConvert={chConvert}";
-        var response = await this.Request(url, cancellationToken).ConfigureAwait(false);
+        using var response = await this.Request(url, cancellationToken).ConfigureAwait(false);
         var result = await response.Content.ReadFromJsonAsync<CommentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
         if (result != null)
         {

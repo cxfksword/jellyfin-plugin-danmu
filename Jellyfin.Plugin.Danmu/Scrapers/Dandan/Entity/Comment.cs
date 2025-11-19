@@ -18,8 +18,5 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan.Entity
 
         [JsonPropertyName("m")]
         public string Text { get; set; }
-
-        [JsonPropertyName("t")]
-        public uint Time { get; set; }
     }
 }

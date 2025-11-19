@@ -38,7 +38,7 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan.Entity
         public List<Episode>? Episodes { get; set; }
 
         [JsonPropertyName("rating")]
-        public int Rating { get; set; } = 0;
+        public float Rating { get; set; } = 0;
 
         [JsonPropertyName("isFavorited")]
         public bool IsFavorited { get; set; } = false;

@@ -64,7 +64,7 @@ public class YoukuApi : AbstractApi
         keyword = HttpUtility.UrlEncode(keyword);
         var ua = HttpUtility.UrlEncode(AbstractApi.HTTP_USER_AGENT);
         var url = $"https://search.youku.com/api/search?keyword={keyword}&userAgent={ua}&site=1&categories=0&ftype=0&ob=0&pg=1";
-        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var result = new List<YoukuVideo>();
@@ -170,7 +170,7 @@ public class YoukuApi : AbstractApi
         // 获取影片信息：https://openapi.youku.com/v2/shows/show.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&show_id=0b39c5b6569311e5b2ad
         // 获取影片剧集信息：https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id=deea7e54c2594c489bfd
         var url = $"https://openapi.youku.com/v2/shows/videos.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&ext=show&show_id={id}&page={page}&count={pageSize}";
-        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<YoukuVideo>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
@@ -216,7 +216,7 @@ public class YoukuApi : AbstractApi
 
         // 文档：https://cloud.youku.com/docs?id=46
         var url = $"https://openapi.youku.com/v2/videos/show_basic.json?client_id=53e6cc67237fc59a&package=com.huawei.hwvplayer.youku&video_id={vid}";
-        var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<YoukuEpisode>(this._jsonOptions, cancellationToken).ConfigureAwait(false);
@@ -397,7 +397,7 @@ public class YoukuApi : AbstractApi
         if (cookie == null)
         {
             var url = "https://log.mmstat.com/eg.js";
-            var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            using var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             // 重新读取最新
@@ -416,7 +416,7 @@ public class YoukuApi : AbstractApi
         if (tokenCookie == null || tokenEncCookie == null)
         {
             var url = "https://acs.youku.com/h5/mtop.com.youku.aplatform.weakget/1.0/?jsv=2.5.1&appKey=24679788";
-            var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            using var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             // 重新读取最新

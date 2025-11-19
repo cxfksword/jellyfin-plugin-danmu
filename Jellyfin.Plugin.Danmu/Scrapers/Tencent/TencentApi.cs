@@ -59,7 +59,7 @@ public class TencentApi : AbstractApi
 
         var postData = new TencentSearchRequest() { Query = keyword };
         var url = $"https://pbaccess.video.qq.com/trpc.videosearch.mobile_search.HttpMobileRecall/MbSearchHttp";
-        var response = await httpClient.PostAsJsonAsync<TencentSearchRequest>(url, postData, cancellationToken).ConfigureAwait(false);
+        using var response = await httpClient.PostAsJsonAsync<TencentSearchRequest>(url, postData, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var result = new List<TencentVideo>();
@@ -111,7 +111,7 @@ public class TencentApi : AbstractApi
         {
             var postData = new TencentEpisodeListRequest() { PageParams = new TencentPageParams() { Cid = id, PageSize = $"{pageSize}", PageContext = nextPageContext } };
             var url = "https://pbaccess.video.qq.com/trpc.universal_backend_service.page_server_rpc.PageServer/GetPageData?video_appid=3000010&vplatform=2";
-            var response = await this.httpClient.PostAsJsonAsync<TencentEpisodeListRequest>(url, postData, cancellationToken).ConfigureAwait(false);
+            using var response = await this.httpClient.PostAsJsonAsync<TencentEpisodeListRequest>(url, postData, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             nextPageContext = string.Empty;
@@ -175,7 +175,7 @@ public class TencentApi : AbstractApi
         }
 
         var url = $"https://dm.video.qq.com/barrage/base/{vid}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<TencentCommentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
@@ -243,7 +243,7 @@ public class TencentApi : AbstractApi
     private async Task<List<TencentComment>> GetSegmentDanmuAsync(string vid, string segmentName, CancellationToken cancellationToken)
     {
         var segmentUrl = $"https://dm.video.qq.com/barrage/segment/{vid}/{segmentName}";
-        var segmentResponse = await httpClient.GetAsync(segmentUrl, cancellationToken).ConfigureAwait(false);
+        using var segmentResponse = await httpClient.GetAsync(segmentUrl, cancellationToken).ConfigureAwait(false);
         segmentResponse.EnsureSuccessStatusCode();
 
         var segmentResult = await segmentResponse.Content.ReadFromJsonAsync<TencentCommentSegmentResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
