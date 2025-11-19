@@ -1,9 +1,11 @@
-using System.IO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Json;
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -64,7 +66,7 @@ public class IqiyiApi : AbstractApi
 
         keyword = HttpUtility.UrlEncode(keyword);
         var url = $"https://search.video.iqiyi.com/o?if=html5&key={keyword}&pageNum=1&pageSize=20";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var result = new List<IqiyiSearchAlbumInfo>();
@@ -147,7 +149,7 @@ public class IqiyiApi : AbstractApi
         using (var request = new HttpRequestMessage(HttpMethod.Get, url))
         {
             request.Headers.Add("user-agent", MOBILE_USER_AGENT);
-            var response = await this.httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await this.httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -180,7 +182,7 @@ public class IqiyiApi : AbstractApi
         }
 
         var url = $"https://pcw-api.iqiyi.com/albums/album/avlistinfo?aid={albumId}&page=1&size={size}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var albumResult = await response.Content.ReadFromJsonAsync<IqiyiVideoResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
@@ -203,7 +205,7 @@ public class IqiyiApi : AbstractApi
         }
 
         var url = $"https://pcw-api.iqiyi.com/album/album/baseinfo/{albumId}";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         var albumResult = await response.Content.ReadFromJsonAsync<IqiyiAlbumResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
@@ -224,10 +226,10 @@ public class IqiyiApi : AbstractApi
                 var year = begin.Year;
                 var month = begin.ToString("MM");
                 url = $"https://pub.m.iqiyi.com/h5/main/videoList/source/month/?sourceId={albumId}&year={year}&month={month}";
-                response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
+                using var monthResponse = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+                monthResponse.EnsureSuccessStatusCode();
 
-                var videoListResult = await response.Content.ReadFromJsonAsync<IqiyiVideoListResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
+                var videoListResult = await monthResponse.Content.ReadFromJsonAsync<IqiyiVideoListResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
                 if (videoListResult != null && videoListResult.Data != null && videoListResult.Data.Videos != null && videoListResult.Data.Videos.Count > 0)
                 {
                     list.AddRange(videoListResult.Data.Videos.Where(x => !x.ShortTitle.Contains("精编版") && !x.ShortTitle.Contains("会员版")));
@@ -271,6 +273,11 @@ public class IqiyiApi : AbstractApi
                 // 每段有300秒弹幕，为避免弹幕太大，从中间隔抽取最大60秒200条弹幕
                 danmuList.AddRange(comments.ExtractToNumber(1000));
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError("获取爱奇艺弹幕({0})出错：{1}", tvId, ex.Message);
+                break;
+            }
             catch (Exception ex)
             {
                 break;
@@ -298,7 +305,7 @@ public class IqiyiApi : AbstractApi
         var s2 = tvId.Substring(tvId.Length - 2);
         // 一次拿300秒的弹幕
         var url = $"http://cmts.iqiyi.com/bullet/{s1}/{s2}/{tvId}_300_{mat}.z";
-        var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+        using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
         using (var zipStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
@@ -317,19 +324,45 @@ public class IqiyiApi : AbstractApi
                 }
 
                 memoryStream.Position = 0;
-                using (var reader = new StreamReader(memoryStream))
+                using (var reader = new StreamReader(memoryStream, leaveOpen: true))
                 {
                     var serializer = new XmlSerializer(typeof(IqiyiCommentDocument));
 
-                    var result = serializer.Deserialize(reader) as IqiyiCommentDocument;
-                    if (result != null && result.Data != null)
+                    try
                     {
-                        var comments = new List<IqiyiComment>();
-                        foreach (var entry in result.Data)
+                        var result = serializer.Deserialize(reader) as IqiyiCommentDocument;
+                        if (result != null && result.Data != null)
                         {
-                            comments.AddRange(entry.List);
+                            var comments = new List<IqiyiComment>();
+                            foreach (var entry in result.Data)
+                            {
+                                comments.AddRange(entry.List);
+                            }
+                            return comments;
                         }
-                        return comments;
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        // 重置 MemoryStream 位置并创建新的 StreamReader
+                        memoryStream.Position = 0;
+                        using (var cleanReader = new StreamReader(memoryStream, leaveOpen: true))
+                        {
+                            var xmlContent = cleanReader.ReadToEnd();
+                            var cleanXml = RemoveInvalidXmlChars(xmlContent);
+                            using (var stringReader = new StringReader(cleanXml))
+                            {
+                                var result = serializer.Deserialize(stringReader) as IqiyiCommentDocument;
+                                if (result != null && result.Data != null)
+                                {
+                                    var comments = new List<IqiyiComment>();
+                                    foreach (var entry in result.Data)
+                                    {
+                                        comments.AddRange(entry.List);
+                                    }
+                                    return comments;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -339,10 +372,30 @@ public class IqiyiApi : AbstractApi
         return new List<IqiyiComment>();
     }
 
+    /// <summary>
+    /// 移除 XML 字符串中的无效字符（控制字符和零宽字符）.
+    /// </summary>
+    /// <param name="xml">需要清理的 XML 字符串.</param>
+    /// <returns>清理后的 XML 字符串.</returns>
+    public static string RemoveInvalidXmlChars(string xml)
+    {
+        if (string.IsNullOrEmpty(xml))
+        {
+            return xml;
+        }
+
+        // 移除 XML 非法字符：
+        // \u0000-\u0008: NULL 及其他控制字符
+        // \u000B-\u000C: 垂直制表符和换页符
+        // \u000E-\u001F: 其他控制字符
+        // \u200B-\u200D: 零宽字符（零宽空格、零宽不连字符、零宽连字符）
+        // \uFEFF: 零宽非断空格（BOM）
+        string pattern = @"[\u0000-\u0008\u000B\u000C\u000E-\u001F\u200B-\u200D\uFEFF]|&#0;";
+        return Regex.Replace(xml, pattern, string.Empty);
+    }
+
     protected async Task LimitRequestFrequently()
     {
         await this._timeConstraint;
     }
-
 }
-

@@ -96,11 +96,16 @@ namespace Jellyfin.Plugin.Danmu.Test
                 {
                     var vid = "132987200";
                     var result = await api.GetDanmuContentByMatAsync(vid, 1, CancellationToken.None);
-                    Console.WriteLine(result);
+                    Console.WriteLine($"获取到 {result.Count} 条弹幕");
+                    if (result.Count > 0)
+                    {
+                        Console.WriteLine($"第一条弹幕：{result[0].Content} (时间：{result[0].ShowTime}s)");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    Console.WriteLine($"错误：{ex.Message}");
+                    Console.WriteLine($"堆栈：{ex.StackTrace}");
                 }
             }).GetAwaiter().GetResult();
         }
@@ -114,17 +119,29 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var vid = "132987200";
+                    var vid = "2569036400194800";
                     var result = await api.GetDanmuContentAsync(vid, CancellationToken.None);
-                    Console.WriteLine(result);
+                    Console.WriteLine($"获取到 {result.Count} 条弹幕");
+                    if (result.Count > 0)
+                    {
+                        Console.WriteLine($"第一条弹幕：{result[0].Content} (时间：{result[0].ShowTime}s)");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.Message);
+                    Console.WriteLine($"错误：{ex.Message}");
+                    Console.WriteLine($"堆栈：{ex.StackTrace}");
                 }
             }).GetAwaiter().GetResult();
         }
 
+        [TestMethod]
+        public void TestRemoveInvalidXmlChars()
+        {
+            // 测试包含垂直制表符和换页符
+            var textWithVtFf = "<name>挽星&#0;‍&#128293;</name>";
+            Assert.AreEqual("<name>挽星&#128293;</name>", IqiyiApi.RemoveInvalidXmlChars(textWithVtFf));
+        }
 
     }
 }
