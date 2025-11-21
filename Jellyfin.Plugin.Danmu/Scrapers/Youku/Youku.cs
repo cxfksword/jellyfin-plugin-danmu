@@ -178,6 +178,48 @@ public class Youku : AbstractScraper
         return await this.GetDanmuContentInternal(commentId, false).ConfigureAwait(false);
     }
 
+    public override async Task<List<ScraperSearchInfo>> SearchForApi(string keyword)
+    {
+        var list = new List<ScraperSearchInfo>();
+        var videos = await this._api.SearchAsync(keyword, CancellationToken.None).ConfigureAwait(false);
+        foreach (var video in videos)
+        {
+            var videoId = video.ID;
+            var title = video.Title;
+            var pubYear = video.Year;
+
+            list.Add(new ScraperSearchInfo()
+            {
+                Id = $"{videoId}",
+                Name = title,
+                Category = video.Type == "movie" ? "电影" : "电视剧",
+                Year = pubYear,
+                EpisodeSize = video.Total,
+            });
+        }
+        return list;
+    }
+
+    public override async Task<List<ScraperEpisode>> GetEpisodesForApi(string id)
+    {
+        var list = new List<ScraperEpisode>();
+        var video = await this._api.GetVideoAsync(id, CancellationToken.None).ConfigureAwait(false);
+        if (video == null)
+        {
+            return list;
+        }
+
+        if (video.Videos != null && video.Videos.Count > 0)
+        {
+            foreach (var ep in video.Videos)
+            {
+                list.Add(new ScraperEpisode() { Id = $"{ep.ID}", CommentId = $"{ep.ID}", Title = ep.Title });
+            }
+        }
+
+        return list;
+    }
+
     public override async Task<ScraperDanmaku?> DownloadDanmuForApi(string commentId)
     {
         return await this.GetDanmuContentInternal(commentId, true).ConfigureAwait(false);
