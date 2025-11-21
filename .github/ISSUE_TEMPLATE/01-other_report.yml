@@ -13,7 +13,7 @@ body:
     attributes:
       label: 日志（必填）
       description: |
-        请复制粘贴相关日志，(可隐藏隐私字段) 日志访问路径：`打开菜单 -> 控制台 -> 日志`
+        请复制粘贴相关日志或上传日志文件，(可隐藏隐私字段) 日志访问路径：`打开菜单 -> 控制台 -> 日志`
     validations:
       required: true
   - type: textarea
