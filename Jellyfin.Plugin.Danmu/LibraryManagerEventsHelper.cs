@@ -476,24 +476,38 @@ public class LibraryManagerEventsHelper : IDisposable
                 {
                     try
                     {
-                        // 读取最新数据，要不然取不到年份信息（不能对GetItemById的对象直接修改属性，要不然会直接改到数据！！！！）
+                        // 读取最新数据，要不然取不到年份信息
+                        // WARNING：不能对GetItemById的对象直接修改属性，要不然会直接改到数据！！！!
+                        // 创建一个临时副本用于搜索，避免直接修改原对象
+                        var searchSeason = new Season
+                        {
+                            Id = season.Id,
+                            Name = season.Name,
+                            ProductionYear = season.ProductionYear,
+                            IndexNumber = season.IndexNumber,
+                            ParentIndexNumber = season.ParentIndexNumber,
+                            Path = season.Path,
+                        };
+                        
                         var currentItem = _libraryManager.GetItemById(season.Id);
                         if (currentItem != null)
                         {
-                            season.ProductionYear = currentItem.ProductionYear;
+                            searchSeason.ProductionYear = currentItem.ProductionYear;
                         }
+                        
                         // 季的名称不准确，改使用series的名称
                         if (series != null)
                         {
-                            season.Name = series.Name;
+                            searchSeason.Name = series.Name;
                         }
-                        var mediaId = await scraper.SearchMediaId(season);
+                        
+                        var mediaId = await scraper.SearchMediaId(searchSeason);
                         if (string.IsNullOrEmpty(mediaId))
                         {
                             _logger.LogInformation("[{0}]匹配失败：{1} ({2})", scraper.Name, season.Name, season.ProductionYear);
                             continue;
                         }
-                        var media = await scraper.GetMedia(season, mediaId);
+                        var media = await scraper.GetMedia(searchSeason, mediaId);
                         if (media == null)
                         {
                             _logger.LogInformation("[{0}]匹配成功，但获取不到视频信息. id: {1}", scraper.Name, mediaId);
