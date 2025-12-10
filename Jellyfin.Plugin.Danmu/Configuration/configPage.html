@@ -88,6 +88,35 @@
                         </div>
                     </fieldset>
 
+                    <fieldset id="danmuApiSection" class="verticalSection verticalSection-extrabottompadding">
+                        <legend>
+                            <h3>弹幕API配置</h3>
+                        </legend>
+
+                        <div class="fieldDescription" style="color: #ff9800; margin-bottom: 1em;">
+                            ⚠️ 弹幕下载速度受API服务器限流配置影响
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="DanmuApiServerUrl">API服务器地址</label>
+                            <input id="DanmuApiServerUrl" name="DanmuApiServerUrl" type="text" is="emby-input" placeholder="http://example.com/{token}" />
+                            <div class="fieldDescription">填写API服务器的完整地址（包含 http:// 或 https://），部署推荐: <a href="https://github.com/huangxd-/danmu_api" target="_blank">danmu_api</a></div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="DanmuApiAllowedSources">允许的采集源</label>
+                            <input id="DanmuApiAllowedSources" name="DanmuApiAllowedSources" type="text" is="emby-input" placeholder="如：renren,hanjutv,bahamut" />
+                            <div class="fieldDescription">限制只从指定采集源获取弹幕，多个采集源用逗号分隔，留空则不限制采集源。<a href="https://github.com/huangxd-/danmu_api/?tab=readme-ov-file#%E9%87%87%E9%9B%86%E6%BA%90%E5%8F%8A%E5%AF%B9%E5%BA%94%E5%B9%B3%E5%8F%B0%E5%88%97%E8%A1%A8" target="_blank">采集源列表</a></a></div>
+                        </div>
+
+                        <div class="inputContainer" style="display: none;">
+                            <label class="inputLabel inputLabelUnfocused" for="DanmuApiAllowedPlatforms">允许的平台</label>
+                            <input id="DanmuApiAllowedPlatforms" name="DanmuApiAllowedPlatforms" type="text" is="emby-input" placeholder="如：qq,bilibili1,bahamut" />
+                            <div class="fieldDescription">限制只从指定平台获取弹幕，多个平台用逗号分隔，留空则不限制平台</div>
+                        </div>
+
+                    </fieldset>
+
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
                         <legend>
                             <h3>生成ASS配置</h3>
@@ -160,6 +189,10 @@
                         document.querySelector('#ChConvert').value = config.Dandan.ChConvert;
                         document.querySelector('#MatchByFileHash').checked = config.Dandan.MatchByFileHash;
 
+                        document.querySelector('#DanmuApiServerUrl').value = config.DanmuApi.ServerUrl || '';
+                        document.querySelector('#DanmuApiAllowedPlatforms').value = config.DanmuApi.AllowedPlatforms || '';
+                        document.querySelector('#DanmuApiAllowedSources').value = config.DanmuApi.AllowedSources || '';
+
 
                         var html = '';
                         config.Scrapers.forEach(function (e) {
@@ -213,6 +246,12 @@
                         dandan.ChConvert = document.querySelector('#ChConvert').value;
                         dandan.MatchByFileHash = document.querySelector('#MatchByFileHash').checked;
                         config.Dandan = dandan;
+
+                        var danmuApi = new Object();
+                        danmuApi.ServerUrl = document.querySelector('#DanmuApiServerUrl').value;
+                        danmuApi.AllowedPlatforms = document.querySelector('#DanmuApiAllowedPlatforms').value;
+                        danmuApi.AllowedSources = document.querySelector('#DanmuApiAllowedSources').value;
+                        config.DanmuApi = danmuApi;
 
                         ApiClient.updatePluginConfiguration(TemplateConfig.pluginUniqueId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);

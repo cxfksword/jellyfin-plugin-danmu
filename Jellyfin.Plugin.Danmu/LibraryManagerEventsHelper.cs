@@ -27,7 +27,7 @@ public class LibraryManagerEventsHelper : IDisposable
     private readonly List<LibraryEvent> _queuedEvents;
     private readonly IMemoryCache _memoryCache;
     private readonly MemoryCacheEntryOptions _pendingAddExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-    private readonly MemoryCacheEntryOptions _danmuUpdatedExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(24*60) };
+    private readonly MemoryCacheEntryOptions _danmuUpdatedExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5) };
     private readonly IItemRepository _itemRepository;
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<LibraryManagerEventsHelper> _logger;
@@ -77,6 +77,15 @@ public class LibraryManagerEventsHelper : IDisposable
                 throw new ArgumentNullException(nameof(item));
             }
 
+            var libraryEvent = new LibraryEvent { Item = item, EventType = eventType };
+            
+            // 检查队列中是否已存在相同的事件
+            if (_queuedEvents.Contains(libraryEvent))
+            {
+                _logger.LogDebug("事件已在队列中,忽略重复添加: {ItemName} ({EventType})", item.Name, eventType);
+                return;
+            }
+
             if (_queueTimer == null)
             {
                 _queueTimer = new Timer(
@@ -90,7 +99,7 @@ public class LibraryManagerEventsHelper : IDisposable
                 _queueTimer.Change(TimeSpan.FromMilliseconds(10000), Timeout.InfiniteTimeSpan);
             }
 
-            _queuedEvents.Add(new LibraryEvent { Item = item, EventType = eventType });
+            _queuedEvents.Add(libraryEvent);
         }
     }
 
@@ -504,13 +513,13 @@ public class LibraryManagerEventsHelper : IDisposable
                         var mediaId = await scraper.SearchMediaId(searchSeason);
                         if (string.IsNullOrEmpty(mediaId))
                         {
-                            _logger.LogInformation("[{0}]匹配失败：{1} ({2})", scraper.Name, season.Name, season.ProductionYear);
+                            _logger.LogInformation("[{0}]匹配失败：{1}-{2} ({3})", scraper.Name, series.Name, season.Name, season.ProductionYear);
                             continue;
                         }
                         var media = await scraper.GetMedia(searchSeason, mediaId);
                         if (media == null)
                         {
-                            _logger.LogInformation("[{0}]匹配成功，但获取不到视频信息. id: {1}", scraper.Name, mediaId);
+                            _logger.LogInformation("[{0}]匹配成功，但获取不到视频信息. {1}-{2} id: {3}", scraper.Name, series.Name, season.Name, mediaId);
                             continue;
                         }
 
@@ -519,7 +528,7 @@ public class LibraryManagerEventsHelper : IDisposable
                         season.SetProviderId(scraper.ProviderId, mediaId);
                         queueUpdateMeta.Add(season);
 
-                        _logger.LogInformation("[{0}]匹配成功：name={1} season_number={2} ProviderId: {3}", scraper.Name, season.Name, season.IndexNumber, mediaId);
+                        _logger.LogInformation("[{0}]匹配成功：{1}-{2} season_number:{3} ProviderId: {4}", scraper.Name, series.Name, season.Name, season.IndexNumber, mediaId);
                         break;
                     }
                     catch (FrequentlyRequestException ex)
@@ -796,9 +805,15 @@ public class LibraryManagerEventsHelper : IDisposable
 
                         // 没对应剧集号的，忽略处理
                         var indexNumber = episode.IndexNumber ?? 0;
-                        if (indexNumber < 1 || indexNumber > media.Episodes.Count)
+                        if (indexNumber < 1)
                         {
-                            _logger.LogInformation("[{0}]缺少集号或集号超过弹幕数，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
+                            _logger.LogInformation("[{0}]缺少集号，忽略处理. [{1}]{2}", scraper.Name, season.Name, fileName);
+                            continue;
+                        }
+
+                        if (indexNumber > media.Episodes.Count)
+                        {
+                            _logger.LogInformation("[{0}]集号超过弹幕数，忽略处理. [{1}]{2} 集号: {3} 弹幕数：{4}", scraper.Name, season.Name, fileName, indexNumber, media.Episodes.Count);
                             continue;
                         }
 
@@ -877,10 +892,10 @@ public class LibraryManagerEventsHelper : IDisposable
         var checkDownloadedKey = $"{item.Id}_{commentId}";
         try
         {
-            // 弹幕24小时内更新过，忽略处理（有时Update事件会重复执行）
+            // 弹幕5分钟内更新过，忽略处理（有时Update事件会重复执行）
             if (!ignoreCheck && _memoryCache.TryGetValue(checkDownloadedKey, out var latestDownloaded))
             {
-                _logger.LogInformation("[{0}]最近24小时已更新过弹幕xml，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                _logger.LogInformation("[{0}]最近5分钟已更新过弹幕xml，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                 return;
             }
 
@@ -888,10 +903,17 @@ public class LibraryManagerEventsHelper : IDisposable
             var danmaku = await scraper.GetDanmuContent(item, commentId);
             if (danmaku != null)
             {
-                var bytes = danmaku.ToXml();
-                if (bytes.Length < 1024)
+                if (danmaku.Items.Count <= 0)
                 {
-                    _logger.LogInformation("[{0}]弹幕内容少于1KB，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                    _logger.LogInformation("[{0}]弹幕内容为空，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                    return;
+                }
+
+                // 为了避免bilibili下架视频后，返回的失效弹幕内容把旧弹幕覆盖掉，这里做个内容判断
+                var bytes = danmaku.ToXml();
+                if (bytes.Length < 1024 && scraper.ProviderName == Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Bilibili.ScraperProviderName)
+                {
+                    _logger.LogInformation("[{0}]弹幕内容少于1KB，可能是已失效弹幕，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                     return;
                 }
                 await this.SaveDanmu(item, bytes);

@@ -60,6 +60,8 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public DandanOption Dandan { get; set; } = new DandanOption();
 
+    public DanmuApiOption DanmuApi { get; set; } = new DanmuApiOption();
+
 
     /// <summary>
     /// 弹幕源.
@@ -167,4 +169,25 @@ public class DandanOption
     /// 使用文件哈希值进行匹配.
     /// </summary>
     public bool MatchByFileHash { get; set; } = false;
+}
+
+/// <summary>
+/// 弹幕 API 配置
+/// </summary>
+public class DanmuApiOption
+{
+    /// <summary>
+    /// 弹幕 API 服务器地址（带 http/https 的 BaseURL）
+    /// </summary>
+    public string ServerUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 允许的平台列表（多个平台用逗号分隔，如：bilibili,tencent,youku）。为空则不限制
+    /// </summary>
+    public string AllowedPlatforms { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 允许的采集源列表（多个采集源用逗号分隔，如：dandan,mikan,dmhy）。为空则不限制
+    /// </summary>
+    public string AllowedSources { get; set; } = string.Empty;
 }

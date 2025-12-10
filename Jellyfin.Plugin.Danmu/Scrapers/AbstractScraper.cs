@@ -130,9 +130,9 @@ public abstract class AbstractScraper
     }
 
 
-    protected string NormalizeSearchName(string name)
+    protected virtual string NormalizeSearchName(string name)
     {
         // 去掉可能存在的季名称
-        return Regex.Replace(name, @"\s*第.季", "");
+        return Regex.Replace(name, @"\s*第.季", "").Trim();
     }
 }
