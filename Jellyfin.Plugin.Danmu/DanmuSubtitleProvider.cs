@@ -103,6 +103,9 @@ public class DanmuSubtitleProvider : ISubtitleProvider
             item.Name = request.SeriesName;
         }
 
+        // 规范化名称，删除一些多余信息
+        item.Name = Utils.NormalizeSearchName(item.Name);
+
         // 并行执行所有scraper的搜索
         var searchTasks = _scraperManager.All().Select(async scraper =>
         {
@@ -157,14 +160,4 @@ public class DanmuSubtitleProvider : ISubtitleProvider
         return list;
     }
 
-    private void UpdateDanmuMetadata(BaseItem item, string providerId, string providerVal)
-    {
-        // 先清空旧弹幕的所有元数据
-        foreach (var s in _scraperManager.All())
-        {
-            item.ProviderIds.Remove(s.ProviderId);
-        }
-        // 保存指定弹幕元数据
-        item.ProviderIds[providerId] = providerVal;
-    }
 }

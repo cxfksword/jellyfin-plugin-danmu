@@ -248,7 +248,7 @@ public class LibraryManagerEventsHelper : IDisposable
         var libraryOptions = _libraryManager.GetLibraryOptions(item);
         if (libraryOptions != null && libraryOptions.DisabledSubtitleFetchers.Contains(Plugin.Instance?.Name))
         {
-            this._logger.LogInformation($"媒体库已关闭danmu插件, 忽略处理[{item.Name}].");
+            this._logger.LogDebug($"媒体库已关闭danmu插件, 忽略处理[{item.Name}].");
             return true;
         }
 
@@ -880,7 +880,7 @@ public class LibraryManagerEventsHelper : IDisposable
                     item.ProviderIds[pair.Key] = pair.Value;
                 }
 
-                _itemRepository.SaveItems(new[] { item }, CancellationToken.None);
+                await this.UpdateItemsAsync(item, CancellationToken.None).ConfigureAwait(false);
             }
         }
         _logger.LogInformation("更新epid到元数据完成。item数：{0}", queue.Count);
@@ -1001,7 +1001,28 @@ public class LibraryManagerEventsHelper : IDisposable
         // 保存指定弹幕元数据
         item.ProviderIds[providerId] = providerVal;
 
-        _itemRepository.SaveItems(new[] { item }, CancellationToken.None);
+        await this.UpdateItemsAsync(item, CancellationToken.None).ConfigureAwait(false);
+    }
+    
+    private async Task UpdateItemsAsync(BaseItem item, CancellationToken cancellationToken)
+    {
+        this.UpdateItemsAsync([item], cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task UpdateItemsAsync(IReadOnlyList<BaseItem> items, CancellationToken cancellationToken)
+    {
+        // 不直接使用 item.UpdateToRepositoryAsync 保存，是因为该方法内部会触发 LibraryMonitor 事件，导致重复处理
+        // https://github.com/jellyfin/jellyfin/blob/59d574edb7aca3a7a6ffdd139cc56111d7804ffc/Emby.Server.Implementations/Library/LibraryManager.cs#L2152
+        foreach (var item in items)
+        {
+            item.DateLastSaved = DateTime.UtcNow;
+            // 触发nfo等元数据保存
+            await this._libraryManager.RunMetadataSavers(item, ItemUpdateType.MetadataEdit).ConfigureAwait(false);
+
+            // Modify again, so saved value is after write time of externally saved metadata
+            item.DateLastSaved = DateTime.UtcNow;
+        }
+        this._itemRepository.SaveItems(items, cancellationToken);
     }
 
 

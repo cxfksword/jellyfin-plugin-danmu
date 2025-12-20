@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using System.Text.RegularExpressions;
+using Jellyfin.Plugin.Danmu.Core;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.DanmuApi;
 
@@ -363,11 +364,7 @@ public class DanmuApi : AbstractScraper
 
     protected override string NormalizeSearchName(string name)
     {
-        // 去掉可能存在的季名称
-        name =  Regex.Replace(name, @"\s*第.季", "");
-        // 去掉年份后的所有部分，如"阿丽塔：战斗天使(2019)【外语电影】from youku"
-        name = Regex.Replace(name, @"\(\d{4}\)|【.*】|from .*", "");
-        return name.Trim();
+        return Utils.NormalizeSearchName(name);
     }
 
     protected string NormalizeAnimeTitle(string name)
