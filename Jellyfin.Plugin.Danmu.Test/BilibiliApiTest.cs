@@ -145,6 +145,26 @@ namespace Jellyfin.Plugin.Danmu.Test
         }
 
         [TestMethod]
+        public void TestGetDanmuContentByCidAsync()
+        {
+            var _bilibiliApi = new BilibiliApi(loggerFactory);
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var cid = 9708007;
+                    var result = await _bilibiliApi.GetDanmuContentByCidAsync(cid, CancellationToken.None);
+                    Console.WriteLine(result);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }).GetAwaiter().GetResult();
+        }
+
+        [TestMethod]
         public void TestGetDanmuContentByProtoAsync()
         {
             var _bilibiliApi = new BilibiliApi(loggerFactory);

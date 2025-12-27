@@ -15,6 +15,8 @@ using Jellyfin.Plugin.Danmu.Configuration;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using MediaBrowser.Controller.Entities;
 using System.IO;
+using RateLimiter;
+using ComposableAsync;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Dandan;
 
@@ -22,6 +24,8 @@ public class DandanApi : AbstractApi
 {
     const string API_ID = "";
     const string API_SECRET = "";
+    private TimeLimiter _limitRequestConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
+    private TimeLimiter _downloadLimitConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromSeconds(10));
     private static readonly object _lock = new object();
     private DateTime lastRequestTime = DateTime.Now.AddDays(-1);
 
@@ -220,7 +224,7 @@ public class DandanApi : AbstractApi
             throw new ArgumentNullException(nameof(epId));
         }
 
-        this.LimitRequestFrequently();
+        await this._downloadLimitConstraint;
 
         var withRelated = this.Config.WithRelatedDanmu ? "true" : "false";
         var chConvert = this.Config.ChConvert;
@@ -235,21 +239,9 @@ public class DandanApi : AbstractApi
         throw new Exception($"Request fail. epId={epId}");
     }
 
-    protected void LimitRequestFrequently(double intervalMilliseconds = 1000)
+    protected async Task LimitRequestFrequently(double intervalMilliseconds = 1000)
     {
-        var diff = 0;
-        lock (_lock)
-        {
-            var ts = DateTime.Now - lastRequestTime;
-            diff = (int)(intervalMilliseconds - ts.TotalMilliseconds);
-            lastRequestTime = DateTime.Now;
-        }
-
-        if (diff > 0)
-        {
-            this._logger.LogDebug("请求太频繁，等待{0}毫秒后继续执行...", diff);
-            Thread.Sleep(diff);
-        }
+        await this._limitRequestConstraint;
     }
 
     protected async Task<HttpResponseMessage> Request(string url, CancellationToken cancellationToken)

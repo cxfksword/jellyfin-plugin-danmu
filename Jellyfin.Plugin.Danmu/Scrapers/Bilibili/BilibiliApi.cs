@@ -151,6 +151,8 @@ public class BilibiliApi : AbstractApi
             throw new ArgumentNullException(nameof(cid));
         }
 
+        await this.LimitRequestFrequently();
+
         var url = $"https://api.bilibili.com/x/v1/dm/list.so?oid={cid}";
         using var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
