@@ -21,7 +21,7 @@ public class BilibiliApi : AbstractApi
 {
     private static readonly object _lock = new object();
     private TimeLimiter _timeConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
-    private TimeLimiter _delayExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(100));
+    private TimeLimiter _limitDownloadRequestConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromSeconds(10));
     private TimeLimiter _delayShortExecuteConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(10));
 
     private static readonly Regex regBiliplusVideoInfo = new Regex(@"view\((.+?)\);", RegexOptions.Compiled);
@@ -151,7 +151,7 @@ public class BilibiliApi : AbstractApi
             throw new ArgumentNullException(nameof(cid));
         }
 
-        await this.LimitRequestFrequently();
+        await this._limitDownloadRequestConstraint;
 
         var url = $"https://api.bilibili.com/x/v1/dm/list.so?oid={cid}";
         using var response = await this.httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
@@ -321,6 +321,8 @@ public class BilibiliApi : AbstractApi
         danmaku.ChatId = cid;
         danmaku.ChatServer = "api.bilibili.com";
         danmaku.Items = new List<ScraperDanmakuText>();
+
+        await this._limitDownloadRequestConstraint;
 
         await this.EnsureSessionCookie(cancellationToken).ConfigureAwait(false);
 
