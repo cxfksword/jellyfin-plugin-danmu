@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -22,16 +23,16 @@ public class ExternalUrlProvider : IExternalUrlProvider
         switch (item)
         {
             case Season season:
-                if (item.TryGetProviderId(Tencent.ScraperProviderId, out var externalId))
+                if (DanmuProviderId.TryGet(item, Tencent.ScraperProviderId, out var externalId))
                 {
                     yield return $"https://v.qq.com/x/cover/{externalId}.html";
                 }
 
                 break;
             case Episode episode:
-                if (item.TryGetProviderId(Tencent.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Tencent.ScraperProviderId, out externalId))
                 {
-                    if (episode.Season?.TryGetProviderId(Tencent.ScraperProviderId, out var seasonExternalId) == true)
+                    if (episode.Season != null && DanmuProviderId.TryGet(episode.Season, Tencent.ScraperProviderId, out var seasonExternalId))
                     {
                         yield return $"https://v.qq.com/x/cover/{seasonExternalId}/{externalId}.html";
                     }
@@ -43,7 +44,7 @@ public class ExternalUrlProvider : IExternalUrlProvider
 
                 break;
             case Movie:
-                if (item.TryGetProviderId(Tencent.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Tencent.ScraperProviderId, out externalId))
                 {
                     yield return $"https://v.qq.com/x/cover/{externalId}.html";
                 }

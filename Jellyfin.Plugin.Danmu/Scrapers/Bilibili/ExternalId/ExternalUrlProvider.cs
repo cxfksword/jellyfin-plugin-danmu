@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -22,7 +23,7 @@ public class ExternalUrlProvider : IExternalUrlProvider
         switch (item)
         {
             case Season season:
-                if (item.TryGetProviderId(Bilibili.ScraperProviderId, out var externalId))
+                if (DanmuProviderId.TryGet(item, Bilibili.ScraperProviderId, out var externalId))
                 {
                     if (externalId.StartsWith("bv", StringComparison.OrdinalIgnoreCase) || externalId.StartsWith("av", StringComparison.OrdinalIgnoreCase))
                     {
@@ -36,14 +37,14 @@ public class ExternalUrlProvider : IExternalUrlProvider
 
                 break;
             case Episode episode:
-                if (item.TryGetProviderId(Bilibili.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Bilibili.ScraperProviderId, out externalId))
                 {
                     yield return $"https://www.bilibili.com/bangumi/play/ep{externalId}";
                 }
 
                 break;
             case Movie:
-                if (item.TryGetProviderId(Bilibili.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Bilibili.ScraperProviderId, out externalId))
                 {
                     yield return $"https://www.bilibili.com/bangumi/play/ep{externalId}";
                 }

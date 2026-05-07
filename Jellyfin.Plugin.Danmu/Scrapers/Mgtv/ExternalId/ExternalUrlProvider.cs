@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -22,16 +23,16 @@ public class ExternalUrlProvider : IExternalUrlProvider
         switch (item)
         {
             case Season season:
-                if (item.TryGetProviderId(Mgtv.ScraperProviderId, out var externalId))
+                if (DanmuProviderId.TryGet(item, Mgtv.ScraperProviderId, out var externalId))
                 {
                     yield return $"https://www.mgtv.com/h/{externalId}.html";
                 }
 
                 break;
             case Episode episode:
-                if (item.TryGetProviderId(Mgtv.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Mgtv.ScraperProviderId, out externalId))
                 {
-                    if (episode.Season?.TryGetProviderId(Mgtv.ScraperProviderId, out var seasonExternalId) == true)
+                    if (episode.Season != null && DanmuProviderId.TryGet(episode.Season, Mgtv.ScraperProviderId, out var seasonExternalId))
                     {
                         yield return $"https://www.mgtv.com/b/{seasonExternalId}/{externalId}.html";
                     }
@@ -43,7 +44,7 @@ public class ExternalUrlProvider : IExternalUrlProvider
 
                 break;
             case Movie:
-                if (item.TryGetProviderId(Mgtv.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Mgtv.ScraperProviderId, out externalId))
                 {
                     yield return $"https://www.mgtv.com/h/{externalId}.html";
                 }

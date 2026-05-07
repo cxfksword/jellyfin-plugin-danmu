@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -22,21 +23,21 @@ public class ExternalUrlProvider : IExternalUrlProvider
         switch (item)
         {
             case Season season:
-                if (item.TryGetProviderId(Iqiyi.ScraperProviderId, out var externalId))
+                if (DanmuProviderId.TryGet(item, Iqiyi.ScraperProviderId, out var externalId))
                 {
                     yield return $"https://www.iqiyi.com/v_{externalId}.html";
                 }
 
                 break;
             case Episode episode:
-                if (item.TryGetProviderId(Iqiyi.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Iqiyi.ScraperProviderId, out externalId))
                 {
                     yield return $"https://www.iqiyi.com/v_{externalId}.html";
                 }
 
                 break;
             case Movie:
-                if (item.TryGetProviderId(Iqiyi.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Iqiyi.ScraperProviderId, out externalId))
                 {
                     yield return $"https://www.iqiyi.com/v_{externalId}.html";
                 }
