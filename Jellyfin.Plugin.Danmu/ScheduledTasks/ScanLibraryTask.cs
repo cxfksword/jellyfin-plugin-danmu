@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
+using Jellyfin.Plugin.Danmu.Core;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using Jellyfin.Plugin.Danmu.Model;
 using Jellyfin.Plugin.Danmu.Scrapers;
@@ -128,24 +129,19 @@ namespace Jellyfin.Plugin.Danmu.ScheduledTasks
 
         private bool HasAnyScraperProviderId(ReadOnlyCollection<AbstractScraper> scrapers, BaseItem item)
         {
-            foreach (var scraper in scrapers)
-            {
-                var providerVal = item.GetProviderId(scraper.ProviderId);
-                if (!string.IsNullOrEmpty(providerVal))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return DanmuProviderId.HasAny(item, scrapers);
         }
 
         private Dictionary<string, string> GetScraperFilter(ReadOnlyCollection<AbstractScraper> scrapers)
         {
-            var filter = new Dictionary<string, string>();
+            var filter = new Dictionary<string, string>
+            {
+                { DanmuProviderId.UnifiedProviderId, string.Empty }
+            };
+
             foreach (var scraper in scrapers)
             {
-                filter.Add(scraper.ProviderId, string.Empty);
+                filter[scraper.ProviderId] = string.Empty;
             }
 
             return filter;

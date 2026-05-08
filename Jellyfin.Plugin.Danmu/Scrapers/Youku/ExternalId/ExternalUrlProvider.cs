@@ -1,6 +1,7 @@
 using System;
 using System.Web;
 using System.Collections.Generic;
+using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -23,14 +24,14 @@ public class ExternalUrlProvider : IExternalUrlProvider
         switch (item)
         {
             case Season season:
-                if (item.TryGetProviderId(Youku.ScraperProviderId, out var externalId))
+                if (DanmuProviderId.TryGet(item, Youku.ScraperProviderId, out var externalId))
                 {
                     yield return $"https://v.youku.com/v_nextstage/id_{externalId}.html";
                 }
 
                 break;
             case Episode episode:
-                if (item.TryGetProviderId(Youku.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Youku.ScraperProviderId, out externalId))
                 {
                     var decodeExternalId = HttpUtility.UrlDecode(externalId).Replace("||", "==");
                     yield return $"https://v.youku.com/v_show/id_{decodeExternalId}.html";
@@ -38,7 +39,7 @@ public class ExternalUrlProvider : IExternalUrlProvider
 
                 break;
             case Movie:
-                if (item.TryGetProviderId(Youku.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, Youku.ScraperProviderId, out externalId))
                 {
                     yield return $"https://v.youku.com/v_nextstage/id_{externalId}.html";
                 }

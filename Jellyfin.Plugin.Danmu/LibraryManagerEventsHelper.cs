@@ -305,7 +305,7 @@ public class LibraryManagerEventsHelper : IDisposable
                             _logger.LogInformation("[{0}]匹配成功：name={1} ProviderId: {2}", scraper.Name, item.Name, providerVal);
 
                             // 更新epid元数据
-                            item.SetProviderId(scraper.ProviderId, providerVal);
+                            DanmuProviderId.Set(item, _scraperManager.All(), scraper.ProviderId, providerVal);
                             queueUpdateMeta.Add(item);
 
                             // 下载弹幕
@@ -331,15 +331,21 @@ public class LibraryManagerEventsHelper : IDisposable
         // 更新
         if (eventType == EventType.Update)
         {
+            var queueUpdateMeta = new List<BaseItem>();
             foreach (var item in movies)
             {
                 foreach (var scraper in _scraperManager.All())
                 {
                     try
                     {
-                        var providerVal = item.GetProviderId(scraper.ProviderId);
+                        var providerVal = DanmuProviderId.Get(item, scraper.ProviderId);
                         if (!string.IsNullOrEmpty(providerVal))
                         {
+                            if (DanmuProviderId.TryMigrateToUnified(item, _scraperManager.All(), scraper.ProviderId, providerVal))
+                            {
+                                queueUpdateMeta.Add(item);
+                            }
+
                             var episode = await scraper.GetMediaEpisode(item, providerVal);
                             if (episode != null)
                             {
@@ -361,6 +367,8 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                 }
             }
+
+            await ProcessQueuedUpdateMeta(queueUpdateMeta).ConfigureAwait(false);
         }
 
         // 强制刷新指定来源弹幕
@@ -369,15 +377,7 @@ public class LibraryManagerEventsHelper : IDisposable
             foreach (var queueItem in movies)
             {
                 // 找到选择的scraper
-                var scraper = _scraperManager.All().FirstOrDefault(x => queueItem.ProviderIds.ContainsKey(x.ProviderId));
-                if (scraper == null)
-                {
-                    continue;
-                }
-
-                // 获取选择的弹幕Id
-                var mediaId = queueItem.GetProviderId(scraper.ProviderId);
-                if (string.IsNullOrEmpty(mediaId))
+                if (!DanmuProviderId.TryGetFirst(queueItem, _scraperManager.All(), out var scraper, out var mediaId) || scraper == null)
                 {
                     continue;
                 }
@@ -525,7 +525,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
 
                         // 更新seasonId元数据
-                        season.SetProviderId(scraper.ProviderId, mediaId);
+                        DanmuProviderId.Set(season, _scraperManager.All(), scraper.ProviderId, mediaId);
                         queueUpdateMeta.Add(season);
 
                         _logger.LogInformation("[{0}]匹配成功：{1}-{2} season_number:{3} ProviderId: {4}", scraper.Name, series.Name, season.Name, season.IndexNumber, mediaId);
@@ -569,10 +569,15 @@ public class LibraryManagerEventsHelper : IDisposable
                 {
                     try
                     {
-                        var providerVal = season.GetProviderId(scraper.ProviderId);
+                        var providerVal = DanmuProviderId.Get(season, scraper.ProviderId);
                         if (string.IsNullOrEmpty(providerVal))
                         {
                             continue;
+                        }
+
+                        if (DanmuProviderId.TryMigrateToUnified(season, _scraperManager.All(), scraper.ProviderId, providerVal))
+                        {
+                            queueUpdateMeta.Add(season);
                         }
 
                         var media = await scraper.GetMedia(season, providerVal);
@@ -609,10 +614,10 @@ public class LibraryManagerEventsHelper : IDisposable
                             _logger.LogInformation("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, indexNumber, episode.Name, epId, commentId);
 
                             // 更新eposide元数据
-                            var episodeProviderVal = episode.GetProviderId(scraper.ProviderId);
+                            var episodeProviderVal = DanmuProviderId.Get(episode, scraper.ProviderId);
                             if (!string.IsNullOrEmpty(epId) && episodeProviderVal != epId)
                             {
-                                episode.SetProviderId(scraper.ProviderId, epId);
+                                DanmuProviderId.Set(episode, _scraperManager.All(), scraper.ProviderId, epId);
                                 queueUpdateMeta.Add(episode);
                             }
 
@@ -670,18 +675,22 @@ public class LibraryManagerEventsHelper : IDisposable
                 // 如果 Episode 没有弹幕元数据，表示该集是刮削完成后再新增的，需要重新匹配获取
                 var scrapers = this._scraperManager.All();
                 var season = item.Season;
-                var allDanmuProviderIds = scrapers.Select(x => x.ProviderId).ToList();
-                var episodeFirstProviderId = allDanmuProviderIds.FirstOrDefault(x => !string.IsNullOrEmpty(item.GetProviderId(x)));
-                var seasonFirstProviderId = allDanmuProviderIds.FirstOrDefault(x => !string.IsNullOrEmpty(season.GetProviderId(x)));
-                if (string.IsNullOrEmpty(episodeFirstProviderId) && !string.IsNullOrEmpty(seasonFirstProviderId) && item.IndexNumber.HasValue)
+                var hasEpisodeProvider = DanmuProviderId.TryGetFirst(item, scrapers, out _, out _);
+                var hasSeasonProvider = DanmuProviderId.TryGetFirst(season, scrapers, out var seasonScraper, out var seasonProviderVal);
+                if (!hasEpisodeProvider && hasSeasonProvider && seasonScraper != null && item.IndexNumber.HasValue)
                 {
-                    var scraper = scrapers.First(x => x.ProviderId == seasonFirstProviderId);
-                    var providerVal = season.GetProviderId(seasonFirstProviderId);
+                    var scraper = seasonScraper;
+                    var providerVal = seasonProviderVal;
 
                     if (scraper == null)
                     {
-                        _logger.LogInformation("找不到对应的弹幕来源. ProviderId: {0}", seasonFirstProviderId);
+                        _logger.LogInformation("找不到对应的弹幕来源. ProviderId: {0}", string.Empty);
                         continue;
+                    }
+
+                    if (DanmuProviderId.TryMigrateToUnified(season, _scraperManager.All(), scraper.ProviderId, providerVal))
+                    {
+                        queueUpdateMeta.Add(season);
                     }
 
                     var media = await scraper.GetMedia(season, providerVal);
@@ -714,10 +723,10 @@ public class LibraryManagerEventsHelper : IDisposable
                         this._logger.LogInformation("[{0}]成功匹配. {1}.{2} -> epId: {3} cid: {4}", scraper.Name, item.IndexNumber, item.Name, epId, commentId);
 
                         // 更新 eposide 元数据
-                        var episodeProviderVal = item.GetProviderId(scraper.ProviderId);
+                        var episodeProviderVal = DanmuProviderId.Get(item, scraper.ProviderId);
                         if (!string.IsNullOrEmpty(epId) && episodeProviderVal != epId)
                         {
-                            item.SetProviderId(scraper.ProviderId, epId);
+                            DanmuProviderId.Set(item, _scraperManager.All(), scraper.ProviderId, epId);
                             queueUpdateMeta.Add(item);
                         }
 
@@ -733,10 +742,15 @@ public class LibraryManagerEventsHelper : IDisposable
                 {
                     try
                     {
-                        var providerVal = item.GetProviderId(scraper.ProviderId);
+                        var providerVal = DanmuProviderId.Get(item, scraper.ProviderId);
                         if (string.IsNullOrEmpty(providerVal))
                         {
                             continue;
+                        }
+
+                        if (DanmuProviderId.TryMigrateToUnified(item, _scraperManager.All(), scraper.ProviderId, providerVal))
+                        {
+                            queueUpdateMeta.Add(item);
                         }
 
                         var episode = await scraper.GetMediaEpisode(item, providerVal);
@@ -769,15 +783,7 @@ public class LibraryManagerEventsHelper : IDisposable
             foreach (var queueItem in items)
             {
                 // 找到选择的scraper
-                var scraper = _scraperManager.All().FirstOrDefault(x => queueItem.ProviderIds.ContainsKey(x.ProviderId));
-                if (scraper == null)
-                {
-                    continue;
-                }
-
-                // 获取选择的弹幕Id
-                var mediaId = queueItem.GetProviderId(scraper.ProviderId);
-                if (string.IsNullOrEmpty(mediaId))
+                if (!DanmuProviderId.TryGetFirst(queueItem, _scraperManager.All(), out var scraper, out var mediaId) || scraper == null)
                 {
                     continue;
                 }
@@ -869,14 +875,18 @@ public class LibraryManagerEventsHelper : IDisposable
             var item = _libraryManager.GetItemById(queueItem.Id);
             if (item != null)
             {
-                // 合并新添加的provider id
-                foreach (var pair in queueItem.ProviderIds)
-                {
-                    if (string.IsNullOrEmpty(pair.Value))
-                    {
-                        continue;
-                    }
+                var providerIdSnapshot = queueItem.ProviderIds
+                    .Where(pair => !string.IsNullOrEmpty(pair.Value))
+                    .ToDictionary(pair => pair.Key, pair => pair.Value);
 
+                if (providerIdSnapshot.ContainsKey(DanmuProviderId.UnifiedProviderId))
+                {
+                    DanmuProviderId.Clear(item, _scraperManager.All());
+                }
+
+                // 合并新添加的provider id
+                foreach (var pair in providerIdSnapshot)
+                {
                     item.ProviderIds[pair.Key] = pair.Value;
                 }
 
@@ -993,13 +1003,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
     private async Task ForceSaveProviderId(BaseItem item, string providerId, string providerVal)
     {
-        // 先清空旧弹幕的所有元数据
-        foreach (var s in _scraperManager.All())
-        {
-            item.ProviderIds.Remove(s.ProviderId);
-        }
-        // 保存指定弹幕元数据
-        item.ProviderIds[providerId] = providerVal;
+        DanmuProviderId.Set(item, _scraperManager.All(), providerId, providerVal);
 
         await this.UpdateItemsAsync(item, CancellationToken.None).ConfigureAwait(false);
     }

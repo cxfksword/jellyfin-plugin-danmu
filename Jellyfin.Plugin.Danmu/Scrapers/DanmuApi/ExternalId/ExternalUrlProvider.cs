@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Jellyfin.Plugin.Danmu.Core;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -22,7 +23,7 @@ public class ExternalUrlProvider : IExternalUrlProvider
         switch (item)
         {
             case Season season:
-                if (item.TryGetProviderId(DanmuApi.ScraperProviderId, out var externalId))
+                if (DanmuProviderId.TryGet(item, DanmuApi.ScraperProviderId, out var externalId))
                 {
                     var serverUrl = GetServerUrl();
                     if (!string.IsNullOrEmpty(serverUrl))
@@ -37,7 +38,7 @@ public class ExternalUrlProvider : IExternalUrlProvider
 
                 break;
             case Episode episode:
-                if (item.TryGetProviderId(DanmuApi.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, DanmuApi.ScraperProviderId, out externalId))
                 {
                     var serverUrl = GetServerUrl();
                     if (!string.IsNullOrEmpty(serverUrl))
@@ -52,7 +53,7 @@ public class ExternalUrlProvider : IExternalUrlProvider
 
                 break;
             case Movie:
-                if (item.TryGetProviderId(DanmuApi.ScraperProviderId, out externalId))
+                if (DanmuProviderId.TryGet(item, DanmuApi.ScraperProviderId, out externalId))
                 {
                     var serverUrl = GetServerUrl();
                     if (!string.IsNullOrEmpty(serverUrl))
