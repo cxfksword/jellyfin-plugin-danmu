@@ -36,7 +36,8 @@ public class TencentApi : AbstractApi
     public TencentApi(ILoggerFactory loggerFactory)
         : base(loggerFactory.CreateLogger<TencentApi>())
     {
-        httpClient.DefaultRequestHeaders.Add("referer", "https://v.qq.com/");
+        httpClient.DefaultRequestHeaders.Add("Referer", "https://v.qq.com/");
+        httpClient.DefaultRequestHeaders.Add("Origin", "https://v.qq.com/");
         this.AddCookies("pgv_pvid=40b67e3b06027f3d; video_platform=2; vversion_name=8.2.95; video_bucketid=4; video_omgid=0a1ff6bc9407c0b1cff86ee5d359614d", new Uri("https://v.qq.com"));
     }
 
@@ -58,7 +59,7 @@ public class TencentApi : AbstractApi
         await this.LimitRequestFrequently();
 
         var postData = new TencentSearchRequest() { Query = keyword };
-        var url = $"https://pbaccess.video.qq.com/trpc.videosearch.mobile_search.HttpMobileRecall/MbSearchHttp";
+        var url = $"https://pbaccess.video.qq.com/trpc.videosearch.mobile_search.MultiTerminalSearch/MbSearch?vplatform=2";
         using var response = await httpClient.PostAsJsonAsync<TencentSearchRequest>(url, postData, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
@@ -68,6 +69,10 @@ public class TencentApi : AbstractApi
         {
             foreach (var item in searchResult.Data.NormalList.ItemList)
             {
+                if (item.VideoInfo == null)
+                {
+                    continue;
+                }
                 if (item.VideoInfo.Year == null || item.VideoInfo.Year == 0)
                 {
                     continue;

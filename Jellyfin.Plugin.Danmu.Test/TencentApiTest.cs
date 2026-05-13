@@ -23,6 +23,7 @@ namespace Jellyfin.Plugin.Danmu.Test
                     var keyword = "流浪地球";
                     var api = new TencentApi(loggerFactory);
                     var result = await api.SearchAsync(keyword, CancellationToken.None);
+                    Assert.IsTrue(result.Count > 0);
                     Console.WriteLine(result);
                 }
                 catch (Exception ex)
@@ -43,6 +44,7 @@ namespace Jellyfin.Plugin.Danmu.Test
                     var vid = "mzc00200y41tzil";
                     var api = new TencentApi(loggerFactory);
                     var result = await api.GetVideoAsync(vid, CancellationToken.None);
+                    Assert.IsTrue(result.EpisodeList.Count > 0);
                     Console.WriteLine(result);
                 }
                 catch (Exception ex)
@@ -64,6 +66,7 @@ namespace Jellyfin.Plugin.Danmu.Test
                     var vid = "a00149qxvfz";
                     var api = new TencentApi(loggerFactory);
                     var result = await api.GetDanmuContentAsync(vid, CancellationToken.None);
+                    Assert.IsTrue(result.Count > 0);
                     Console.WriteLine(result.Count);
                 }
                 catch (Exception ex)
