@@ -110,7 +110,7 @@ public class Bilibili : AbstractScraper
                 // 合集
                 foreach (var (page, idx) in video.UgcSeason.Sections[0].Episodes.WithIndex())
                 {
-                    media.Episodes.Add(new ScraperEpisode() { Id = "", CommentId = $"{page.CId}" });
+                    media.Episodes.Add(new ScraperEpisode() { Id = $"{video.AId},{page.CId}", CommentId = $"{page.CId}" });
                 }
             }
             else
@@ -118,7 +118,7 @@ public class Bilibili : AbstractScraper
                 // 分P
                 foreach (var (page, idx) in video.Pages.WithIndex())
                 {
-                    media.Episodes.Add(new ScraperEpisode() { Id = "", CommentId = $"{page.Cid}" });
+                    media.Episodes.Add(new ScraperEpisode() { Id = $"{video.AId},{page.Cid}", CommentId = $"{page.Cid}" });
                 }
             }
 
@@ -149,7 +149,7 @@ public class Bilibili : AbstractScraper
             // 分P
             foreach (var (page, idx) in biliplusVideo.List.WithIndex())
             {
-                media.Episodes.Add(new ScraperEpisode() { Id = "", CommentId = $"{aid},{page.Cid}" });
+                media.Episodes.Add(new ScraperEpisode() { Id = $"{aid},{page.Cid}", CommentId = $"{aid},{page.Cid}" });
             }
 
 
@@ -199,42 +199,9 @@ public class Bilibili : AbstractScraper
 
     public override async Task<ScraperEpisode?> GetMediaEpisode(BaseItem item, string id)
     {
-        var episode = new ScraperEpisode();
-        if (id.StartsWith("BV", StringComparison.CurrentCultureIgnoreCase))
+        if (id.Contains(","))
         {
-            var video = await _api.GetVideoByBvidAsync(id, CancellationToken.None).ConfigureAwait(false);
-            if (video == null)
-            {
-                log.LogInformation("获取不到b站视频信息：bvid={0}", id);
-                return null;
-            }
-
-
-            if (video.Pages.Length > 0)
-            {
-                return new ScraperEpisode() { Id = "", CommentId = $"{video.Pages[0].Cid}" };
-            }
-
-            return null;
-        }
-
-        if (id.StartsWith("av", StringComparison.CurrentCultureIgnoreCase))
-        {
-            var biliplusVideo = await _api.GetVideoByAvidAsync(id, CancellationToken.None).ConfigureAwait(false);
-            if (biliplusVideo == null)
-            {
-                log.LogInformation("获取不到b站视频信息：avid={0}", id);
-                return null;
-            }
-
-
-            if (biliplusVideo.List.Length > 0)
-            {
-                var aid = id.Substring(2);
-                return new ScraperEpisode() { Id = "", CommentId = $"{aid},{biliplusVideo.List[0].Cid}" };
-            }
-
-            return null;
+            return new ScraperEpisode() { Id = id, CommentId = id };
         }
 
         var epId = id.ToLong();

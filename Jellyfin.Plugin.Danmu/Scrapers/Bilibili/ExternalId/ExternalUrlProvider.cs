@@ -14,6 +14,11 @@ namespace Jellyfin.Plugin.Danmu.Scrapers.Bilibili.ExternalId;
 /// </summary>
 public class ExternalUrlProvider : IExternalUrlProvider
 {
+    private const ulong XorCode = 23442827791579;
+    private const ulong MaxAid = 1UL << 51;
+    private const ulong Base = 58;
+    private static readonly char[] BvidAlphabet = "FcwAPNKTMug3GV5Lj7EJnHpWsx4tb8haYeviqBz6rkCy12mUSDQX9RdoZf".ToCharArray();
+
     /// <inheritdoc/>
     public string Name => Bilibili.ScraperProviderName;
 
@@ -39,6 +44,12 @@ public class ExternalUrlProvider : IExternalUrlProvider
             case Episode episode:
                 if (DanmuProviderId.TryGet(item, Bilibili.ScraperProviderId, out externalId))
                 {
+                    if (TryBuildVideoUrl(externalId, out var videoUrl))
+                    {
+                        yield return videoUrl;
+                        yield break;
+                    }
+
                     yield return $"https://www.bilibili.com/bangumi/play/ep{externalId}";
                 }
 
@@ -51,5 +62,43 @@ public class ExternalUrlProvider : IExternalUrlProvider
 
                 break;
         }
+    }
+
+    private static bool TryBuildVideoUrl(string externalId, out string url)
+    {
+        url = string.Empty;
+
+        var segments = externalId.Split(',', 2, StringSplitOptions.TrimEntries);
+        if (segments.Length != 2)
+        {
+            return false;
+        }
+
+        var aidText = segments[0];
+        if (!ulong.TryParse(aidText, out var aid) || aid == 0)
+        {
+            return false;
+        }
+
+        url = $"https://www.bilibili.com/video/{ConvertAidToBvid(aid)}";
+        return true;
+    }
+
+    private static string ConvertAidToBvid(ulong aid)
+    {
+        var bytes = "BV1000000000".ToCharArray();
+        var index = bytes.Length - 1;
+        var value = (MaxAid | aid) ^ XorCode;
+
+        while (value != 0)
+        {
+            bytes[index] = BvidAlphabet[(int)(value % Base)];
+            value /= Base;
+            index--;
+        }
+
+        (bytes[3], bytes[9]) = (bytes[9], bytes[3]);
+        (bytes[4], bytes[7]) = (bytes[7], bytes[4]);
+        return new string(bytes);
     }
 }
