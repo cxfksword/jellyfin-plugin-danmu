@@ -83,7 +83,7 @@ public class TencentApi : AbstractApi
                     {
                         continue;
                     }
-                    if (item.VideoInfo.Title.Distance(keyword) <= 0)
+                    if (item.VideoInfo.Title.Distance(keyword) < 0)
                     {
                         continue;
                     }
@@ -113,7 +113,7 @@ public class TencentApi : AbstractApi
                             {
                                 continue;
                             }
-                            if (item.VideoInfo.Title.Distance(keyword) <= 0)
+                            if (item.VideoInfo.Title.Distance(keyword) < 0)
                             {
                                 continue;
                             }
