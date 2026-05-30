@@ -13,6 +13,8 @@ public class TencentSearchData
 {
     [JsonPropertyName("normalList")]
     public TencentSearchBox NormalList { get; set; }
+    [JsonPropertyName("areaBoxList")]
+    public List<TencentSearchBox> AreaBoxList { get; set; }
 }
 
 public class TencentSearchBox

@@ -31,6 +31,8 @@ public class TencentVideo
     public int? Year { get; set; }
     [JsonPropertyName("subjectDoc")]
     public TencentSubjectDoc SubjectDoc { get; set; }
+    [JsonPropertyName("videoDoc")]
+    public TencentVideoDoc VideoDoc { get; set; }
     [JsonIgnore]
     public List<TencentEpisode> EpisodeList { get; set; }
 }
@@ -39,4 +41,10 @@ public class TencentSubjectDoc
 {
     [JsonPropertyName("videoNum")]
     public int VideoNum { get; set; }
+}
+
+public class TencentVideoDoc
+{
+    [JsonPropertyName("uploader")]
+    public string Uploader { get; set; }
 }

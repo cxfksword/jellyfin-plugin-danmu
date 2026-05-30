@@ -65,28 +65,68 @@ public class TencentApi : AbstractApi
 
         var result = new List<TencentVideo>();
         var searchResult = await response.Content.ReadFromJsonAsync<TencentSearchResult>(_jsonOptions, cancellationToken).ConfigureAwait(false);
-        if (searchResult != null && searchResult.Data != null && searchResult.Data.NormalList != null && searchResult.Data.NormalList.ItemList != null)
+        if (searchResult != null && searchResult.Data != null )
         {
-            foreach (var item in searchResult.Data.NormalList.ItemList)
+            if (searchResult.Data.NormalList != null && searchResult.Data.NormalList.ItemList != null)
             {
-                if (item.VideoInfo == null)
+                foreach (var item in searchResult.Data.NormalList.ItemList)
                 {
-                    continue;
-                }
-                if (item.VideoInfo.Year == null || item.VideoInfo.Year == 0)
-                {
-                    continue;
-                }
-                if (item.VideoInfo.Title.Distance(keyword) <= 0)
-                {
-                    continue;
-                }
+                    if (item.VideoInfo == null || item.VideoInfo.VideoDoc == null)
+                    {
+                        continue;
+                    }
+                    if (item.VideoInfo.VideoDoc != null)
+                    {
+                        continue;
+                    }
+                    if (item.VideoInfo.Year == null || item.VideoInfo.Year == 0)
+                    {
+                        continue;
+                    }
+                    if (item.VideoInfo.Title.Distance(keyword) <= 0)
+                    {
+                        continue;
+                    }
 
-                var video = item.VideoInfo;
-                video.Id = item.Doc.Id;
-                result.Add(video);
+                    var video = item.VideoInfo;
+                    video.Id = item.Doc.Id;
+                    result.Add(video);
+                }
+            }
+            if (searchResult.Data.AreaBoxList != null)
+            {
+                foreach (var areaBox in searchResult.Data.AreaBoxList)
+                {
+                    if (areaBox.ItemList != null)
+                    {
+                        foreach (var item in areaBox.ItemList)
+                        {
+                            if (item.VideoInfo == null)
+                            {
+                                continue;
+                            }
+                            if (item.VideoInfo.VideoDoc != null)
+                            {
+                                continue;
+                            }
+                            if (item.VideoInfo.Year == null || item.VideoInfo.Year == 0)
+                            {
+                                continue;
+                            }
+                            if (item.VideoInfo.Title.Distance(keyword) <= 0)
+                            {
+                                continue;
+                            }
+
+                            var video = item.VideoInfo;
+                            video.Id = item.Doc.Id;
+                            result.Add(video);
+                        }
+                    }
+                }
             }
         }
+        
 
         _memoryCache.Set<List<TencentVideo>>(cacheKey, result, expiredOption);
         return result;
