@@ -25,9 +25,14 @@ public class DandanApi : AbstractApi
     const string API_ID = "";
     const string API_SECRET = "";
     private TimeLimiter _limitRequestConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromMilliseconds(1000));
-    private TimeLimiter _downloadLimitConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromSeconds(10));
+    private TimeLimiter _downloadLimitConstraint = TimeLimiter.GetFromMaxCountByInterval(1, TimeSpan.FromSeconds(30));
     private static readonly object _lock = new object();
     private DateTime lastRequestTime = DateTime.Now.AddDays(-1);
+
+    /// <summary>
+    /// 429封禁到期时间，此时间之前所有请求直接返回失败。
+    /// </summary>
+    private static DateTime _blockedUntil = DateTime.MinValue;
 
     public DandanOption Config
     {
@@ -251,6 +256,9 @@ public class DandanApi : AbstractApi
 
     protected async Task<HttpResponseMessage> Request(string url, HttpMethod method, object? content = null, CancellationToken cancellationToken = default)
     {
+        // 检查是否在429封禁期
+        CheckBlocked();
+
         var timestamp = DateTimeOffset.Now.ToUnixTimeSeconds();
         var signature = GenerateSignature(url, timestamp);
 
@@ -264,10 +272,39 @@ public class DandanApi : AbstractApi
                 request.Content = JsonContent.Create(content, null, _jsonOptions);
             }
             response = await this.httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+            // 检测429 Too Many Requests，封禁1小时
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                SetBlocked();
+            }
+
             response.EnsureSuccessStatusCode();
         }
 
         return response;
+    }
+
+    /// <summary>
+    /// 检查是否在429封禁期，如果是则抛出异常。
+    /// </summary>
+    private void CheckBlocked()
+    {
+        var remaining = _blockedUntil - DateTime.Now;
+        if (remaining > TimeSpan.Zero)
+        {
+            var minutes = (int)remaining.TotalMinutes;
+            throw new FrequentlyRequestException(
+                new Exception($"弹弹play API触发429频率限制，已被封禁约{minutes}分钟，请稍候再试。"));
+        }
+    }
+
+    /// <summary>
+    /// 设置封禁到期时间为当前时间+1小时。
+    /// </summary>
+    private static void SetBlocked()
+    {
+        _blockedUntil = DateTime.Now.AddHours(1);
     }
 
     protected string GenerateSignature(string url, long timestamp)
