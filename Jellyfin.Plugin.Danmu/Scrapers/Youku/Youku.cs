@@ -8,6 +8,7 @@ using Jellyfin.Plugin.Danmu.Scrapers.Entity;
 using System.Collections.Generic;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Jellyfin.Plugin.Danmu.Scrapers.Youku.Entity;
 
 namespace Jellyfin.Plugin.Danmu.Scrapers.Youku;
@@ -241,17 +242,17 @@ public class Youku : AbstractScraper
 
         foreach (var comment in comments)
         {
+            var danmakuText = new ScraperDanmakuText
+            {
+                Progress = (int)comment.Playat,
+                Mode = 1,
+                MidHash = $"[youku]{comment.Uid}",
+                Id = comment.ID,
+                Content = comment.Content
+            };
+
             try
             {
-                var danmakuText = new ScraperDanmakuText
-                {
-                    Progress = (int)comment.Playat,
-                    Mode = 1,
-                    MidHash = $"[youku]{comment.Uid}",
-                    Id = comment.ID,
-                    Content = comment.Content
-                };
-
                 var property = JsonSerializer.Deserialize<YoukuCommentProperty>(comment.Propertis);
                 if (property != null)
                 {
@@ -262,7 +263,8 @@ public class Youku : AbstractScraper
             }
             catch (Exception ex)
             {
-                log.LogWarning(ex, "Failed to parse comment: {CommentId}", comment.ID);
+                log.LogDebug(ex, "Failed to parse comment: {CommentId}", comment.ID);
+                danmaku.Items.Add(danmakuText);
             }
         }
 
