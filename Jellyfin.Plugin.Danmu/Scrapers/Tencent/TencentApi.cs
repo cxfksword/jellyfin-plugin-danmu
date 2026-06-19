@@ -71,7 +71,11 @@ public class TencentApi : AbstractApi
             {
                 foreach (var item in searchResult.Data.NormalList.ItemList)
                 {
-                    if (item.VideoInfo == null || item.VideoInfo.VideoDoc == null)
+                    if (item.VideoInfo == null)
+                    {
+                        continue;
+                    }
+                    if (item.VideoInfo.PlaySites != null && item.VideoInfo.PlaySites.Count > 0 && !item.VideoInfo.PlaySites.Any(x => x.EnName == "qq"))
                     {
                         continue;
                     }
@@ -83,7 +87,7 @@ public class TencentApi : AbstractApi
                     {
                         continue;
                     }
-                    if (item.VideoInfo.Title.Distance(keyword) < 0)
+                    if (item.VideoInfo.Title.Distance(keyword) <= 0)
                     {
                         continue;
                     }
@@ -105,6 +109,10 @@ public class TencentApi : AbstractApi
                             {
                                 continue;
                             }
+                            if (item.VideoInfo.PlaySites != null && item.VideoInfo.PlaySites.Count > 0 && !item.VideoInfo.PlaySites.Any(x => x.EnName == "qq"))
+                            {
+                                continue;
+                            }
                             if (item.VideoInfo.VideoDoc != null)
                             {
                                 continue;
@@ -113,7 +121,7 @@ public class TencentApi : AbstractApi
                             {
                                 continue;
                             }
-                            if (item.VideoInfo.Title.Distance(keyword) < 0)
+                            if (item.VideoInfo.Title.Distance(keyword) <= 0)
                             {
                                 continue;
                             }

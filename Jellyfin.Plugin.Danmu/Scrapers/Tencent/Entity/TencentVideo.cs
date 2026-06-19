@@ -33,6 +33,8 @@ public class TencentVideo
     public TencentSubjectDoc SubjectDoc { get; set; }
     [JsonPropertyName("videoDoc")]
     public TencentVideoDoc VideoDoc { get; set; }
+    [JsonPropertyName("playSites")]
+    public List<TencentPlaySite> PlaySites { get; set; }
     [JsonIgnore]
     public List<TencentEpisode> EpisodeList { get; set; }
 }
@@ -47,4 +49,10 @@ public class TencentVideoDoc
 {
     [JsonPropertyName("uploader")]
     public string Uploader { get; set; }
+}
+
+public class TencentPlaySite
+{
+    [JsonPropertyName("enName")]
+    public string EnName { get; set; }
 }
