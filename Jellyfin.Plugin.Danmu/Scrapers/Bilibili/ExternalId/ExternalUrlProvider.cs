@@ -57,7 +57,14 @@ public class ExternalUrlProvider : IExternalUrlProvider
             case Movie:
                 if (DanmuProviderId.TryGet(item, Bilibili.ScraperProviderId, out externalId))
                 {
-                    yield return $"https://www.bilibili.com/bangumi/play/ep{externalId}";
+                    if (externalId.StartsWith("bv", StringComparison.OrdinalIgnoreCase) || externalId.StartsWith("av", StringComparison.OrdinalIgnoreCase))
+                    {
+                        yield return $"https://www.bilibili.com/{externalId}";
+                    }
+                    else
+                    {
+                        yield return $"https://www.bilibili.com/bangumi/play/ep{externalId}";
+                    }
                 }
 
                 break;
