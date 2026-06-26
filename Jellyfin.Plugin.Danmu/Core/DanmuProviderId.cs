@@ -9,6 +9,7 @@ using Jellyfin.Plugin.Danmu.Scrapers.Iqiyi;
 using Jellyfin.Plugin.Danmu.Scrapers.Mgtv;
 using Jellyfin.Plugin.Danmu.Scrapers.Tencent;
 using Jellyfin.Plugin.Danmu.Scrapers.Youku;
+using Jellyfin.Plugin.Danmu.Scrapers.Renren;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Model.Entities;
 
@@ -30,6 +31,7 @@ public static class DanmuProviderId
         [Mgtv.ScraperProviderId] = "mgtv",
         [Tencent.ScraperProviderId] = "tencent",
         [Youku.ScraperProviderId] = "youku",
+        [Renren.ScraperProviderId] = "renren",
     };
 
     private static readonly IReadOnlyDictionary<string, string> PrefixToScraperProviderIdMap = ScraperProviderIdToPrefixMap
