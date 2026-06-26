@@ -204,6 +204,41 @@ public class Bilibili : AbstractScraper
             return new ScraperEpisode() { Id = id, CommentId = id };
         }
 
+        var isMovieItemType = item is MediaBrowser.Controller.Entities.Movies.Movie;
+
+        if (id.StartsWith("BV", StringComparison.CurrentCultureIgnoreCase) && isMovieItemType)
+        {
+            var video = await _api.GetVideoByBvidAsync(id, CancellationToken.None).ConfigureAwait(false);
+            if (video == null)
+            {
+                log.LogInformation("获取不到b站视频信息：bvid={0}", id);
+                return null;
+            }
+
+            if (video.UgcSeason != null && video.UgcSeason.Sections != null && video.UgcSeason.Sections.Count > 0)
+            {
+                var page = video.UgcSeason.Sections[0].Episodes[0];
+                return new ScraperEpisode() { Id = id, CommentId = $"{page.CId}" };
+            }
+
+            var firstPage = video.Pages[0];
+            return new ScraperEpisode() { Id = id, CommentId = $"{firstPage.Cid}" };
+        }
+
+        if (id.StartsWith("av", StringComparison.CurrentCultureIgnoreCase) && isMovieItemType)
+        {
+            var biliplusVideo = await _api.GetVideoByAvidAsync(id, CancellationToken.None).ConfigureAwait(false);
+            if (biliplusVideo == null)
+            {
+                log.LogInformation("获取不到b站视频信息：avid={0}", id);
+                return null;
+            }
+
+            var aid = id.Substring(2);
+            var firstPage = biliplusVideo.List[0];
+            return new ScraperEpisode() { Id = id, CommentId = $"{aid},{firstPage.Cid}" };
+        }
+
         var epId = id.ToLong();
         if (epId <= 0)
         {
@@ -231,12 +266,20 @@ public class Bilibili : AbstractScraper
                 var cmid = arr[1].ToLong();
                 if (aid > 0 && cmid > 0)
                 {
+                    // GetDanmuContentByCidAsync 获取的弹幕比较多，优先使用
+                    var bytes = await _api.GetDanmuContentByCidAsync(cmid, CancellationToken.None).ConfigureAwait(false);
+                    var danmaku = ParseXml(System.Text.Encoding.UTF8.GetString(bytes));
+                    if (danmaku != null && danmaku.Items.Count > 0)
+                    {
+                        danmaku.ChatId = cmid;
+                        return danmaku;
+                    }
+                    
                     return await _api.GetDanmuContentByProtoAsync(aid, cmid, CancellationToken.None).ConfigureAwait(false);
                 }
             }
             return null;
         }
-
 
         var cid = commentId.ToLong();
         if (cid > 0)

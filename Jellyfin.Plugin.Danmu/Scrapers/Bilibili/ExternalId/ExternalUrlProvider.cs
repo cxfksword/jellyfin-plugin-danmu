@@ -32,7 +32,7 @@ public class ExternalUrlProvider : IExternalUrlProvider
                 {
                     if (externalId.StartsWith("bv", StringComparison.OrdinalIgnoreCase) || externalId.StartsWith("av", StringComparison.OrdinalIgnoreCase))
                     {
-                        yield return $"https://www.bilibili.com/{externalId}";
+                        yield return $"https://www.bilibili.com/video/{externalId}";
                     }
                     else
                     {
@@ -59,7 +59,7 @@ public class ExternalUrlProvider : IExternalUrlProvider
                 {
                     if (externalId.StartsWith("bv", StringComparison.OrdinalIgnoreCase) || externalId.StartsWith("av", StringComparison.OrdinalIgnoreCase))
                     {
-                        yield return $"https://www.bilibili.com/{externalId}";
+                        yield return $"https://www.bilibili.com/video/{externalId}";
                     }
                     else
                     {

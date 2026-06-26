@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
 using Jellyfin.Plugin.Danmu.Model;
 using Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
 using Jellyfin.Plugin.Danmu.Scrapers.Bilibili.Entity;
@@ -153,9 +154,12 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var cid = 37578346061;
-                    var result = await _bilibiliApi.GetDanmuContentByCidAsync(cid, CancellationToken.None);
-                    Console.WriteLine(result);
+                    var cid = 541370210;
+                    var bytes = await _bilibiliApi.GetDanmuContentByCidAsync(cid, CancellationToken.None);
+                    var doc = new XmlDocument();
+                    doc.LoadXml(System.Text.Encoding.UTF8.GetString(bytes));
+                    var nodes = doc.GetElementsByTagName("d");
+                    Console.WriteLine(nodes.Count);
                 }
                 catch (Exception ex)
                 {
@@ -173,8 +177,8 @@ namespace Jellyfin.Plugin.Danmu.Test
             {
                 try
                 {
-                    var aid = 5048623;
-                    var cid = 9708007;
+                    var aid = 381941309;
+                    var cid = 541370210;
                     var result = await _bilibiliApi.GetDanmuContentByProtoAsync(aid, cid, CancellationToken.None);
                     Console.WriteLine(result);
                 }

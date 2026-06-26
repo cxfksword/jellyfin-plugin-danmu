@@ -7,3 +7,4 @@ artifacts
 **/.DS_Store
 *.json
 **/.env
+build.sh
