@@ -27,7 +27,14 @@ public class ExternalUrlProvider : IExternalUrlProvider
             case Episode episode:
                 if (DanmuProviderId.TryGet(item, Renren.ScraperProviderId, out externalId))
                 {
-                    yield return $"#";
+                    if (episode.Season != null && DanmuProviderId.TryGet(episode.Season, Renren.ScraperProviderId, out var seasonExternalId))
+                    {
+                        yield return $"https://mh.yichengwlkj.com/pc/drama/{seasonExternalId}?episodeNo={episode.IndexNumber}";
+                    }
+                    else
+                    {
+                        yield return "#";
+                    }
                 }
 
                 break;
