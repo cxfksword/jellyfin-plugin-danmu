@@ -13,6 +13,8 @@ public class LibraryEvent : IEquatable<LibraryEvent>
 
     public EventType EventType { get; set; }
 
+    public DateTime EnqueueTimeUtc { get; set; }
+
     public bool Equals(LibraryEvent? other)
     {
         if (other is null) return false;

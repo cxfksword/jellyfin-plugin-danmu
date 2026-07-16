@@ -77,7 +77,7 @@ public class LibraryManagerEventsHelper : IDisposable
                 throw new ArgumentNullException(nameof(item));
             }
 
-            var libraryEvent = new LibraryEvent { Item = item, EventType = eventType };
+            var libraryEvent = new LibraryEvent { Item = item, EventType = eventType, EnqueueTimeUtc = DateTime.UtcNow };
             
             // 检查队列中是否已存在相同的事件
             if (_queuedEvents.Contains(libraryEvent))
@@ -227,6 +227,12 @@ public class LibraryManagerEventsHelper : IDisposable
         }
 
         // 对于剧集，处理顺序也很重要（Add事件后，会刷新元数据，导致会同时推送Update事件）
+
+        // add事件需要等待元数据刮削完成后再处理（通过ProviderIds判断）
+        // 并发等待，避免顺序阻塞造成堆积
+        var addEvents = queuedMovieAdds.Concat(queuedSeasonAdds).ToList();
+        await Task.WhenAll(addEvents.Select(ev => WaitMetadataReady(ev))).ConfigureAwait(false);
+
         await ProcessQueuedMovieEvents(queuedMovieAdds, EventType.Add).ConfigureAwait(false);
         await ProcessQueuedMovieEvents(queuedMovieUpdates, EventType.Update).ConfigureAwait(false);
 
@@ -255,6 +261,38 @@ public class LibraryManagerEventsHelper : IDisposable
         return false;
     }
 
+
+    /// <summary>
+    /// Wait for metadata scraping to complete by checking ProviderIds.
+    /// Timeout is calculated from the event's enqueue time (max 120 seconds total).
+    /// </summary>
+    /// <param name="ev">The <see cref="LibraryEvent"/>.</param>
+    /// <param name="maxTotalTimeoutSeconds">Max total timeout in seconds from enqueue (default 120).</param>
+    /// <returns>True if metadata is ready, false if timed out.</returns>
+    private async Task<bool> WaitMetadataReady(LibraryEvent ev, int maxTotalTimeoutSeconds = 120)
+    {
+        var elapsed = (DateTime.UtcNow - ev.EnqueueTimeUtc).TotalSeconds;
+        var remainingTimeout = maxTotalTimeoutSeconds - elapsed;
+        if (remainingTimeout <= 0)
+        {
+            _logger.LogDebug("事件入队已超过{MaxTotalTimeoutSeconds}s, 跳过等待直接处理: {ItemName}", maxTotalTimeoutSeconds, ev.Item.Name);
+            return false;
+        }
+
+        var deadline = ev.EnqueueTimeUtc.AddSeconds(maxTotalTimeoutSeconds);
+        while (DateTime.UtcNow < deadline)
+        {
+            var currentItem = _libraryManager.GetItemById(ev.Item.Id);
+            if (currentItem?.ProviderIds != null && currentItem.ProviderIds.Count > 0 && currentItem.HasImage(ImageType.Primary))
+            {
+                _logger.LogDebug("元数据已就绪: {ItemName}", ev.Item.Name);
+                return true;
+            }
+            await Task.Delay(1000).ConfigureAwait(false);
+        }
+        _logger.LogInformation("等待元数据刮削完成超时({MaxTotalTimeoutSeconds}s from enqueue), 继续处理: {ItemName}", maxTotalTimeoutSeconds, ev.Item.Name);
+        return false;
+    }
 
     /// <summary>
     /// Processes queued movie events.
