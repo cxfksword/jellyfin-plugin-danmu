@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.Danmu.Core;
 using Jellyfin.Plugin.Danmu.Model;
 using Jellyfin.Plugin.Danmu.Scrapers;
 using Jellyfin.Plugin.Danmu.Scrapers.Bilibili;
@@ -41,7 +42,8 @@ namespace Jellyfin.Plugin.Danmu.Test
 
             var item = new Movie
             {
-                Name = "扬名立万"
+                Name = "冰雪奇缘",
+                ProductionYear = 2013,
             };
 
             Task.Run(async () =>
@@ -72,10 +74,16 @@ namespace Jellyfin.Plugin.Danmu.Test
             var libraryManagerStub = new Mock<ILibraryManager>();
             var libraryManagerEventsHelper = new LibraryManagerEventsHelper(itemRepositoryStub.Object, libraryManagerStub.Object, loggerFactory, fileSystemStub.Object, scraperManager);
 
-            var item = new Season
+            // var item = new Season
+            // {
+            //     Name = "孤独的美食家",
+            //     IndexNumber = 2,
+            // };
+
+            var item = new Movie
             {
-                Name = "孤独的美食家",
-                IndexNumber = 2,
+                Name = "冰雪奇缘[国粤英多音轨+简繁英双语特效字幕].Frozen.2013.UHD.BluRay.2160p.TrueHD7.1.4Audio.Atmos.x265.10bit-DreamHD",
+                ProductionYear = 2013,
             };
 
             Task.Run(async () =>
@@ -144,8 +152,8 @@ namespace Jellyfin.Plugin.Danmu.Test
 
             var item = new Movie
             {
-                Name = "异邦人：无皇刃谭",
-                ProviderIds = new Dictionary<string, string>() { { Bilibili.ScraperProviderId, "2185" } },
+                Name = "四渡赤水",
+                ProviderIds = new Dictionary<string, string>() { { DanmuProviderId.UnifiedProviderId, "bilibili:BV1huGizKEZd" } },
             };
 
             var list = new List<LibraryEvent>();

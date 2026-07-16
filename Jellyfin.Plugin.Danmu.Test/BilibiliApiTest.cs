@@ -88,7 +88,7 @@ namespace Jellyfin.Plugin.Danmu.Test
         [TestMethod]
         public void TestGetVideoByBvidAsync()
         {
-            var bvid = "BV1vs411U78W";
+            var bvid = "BV1huGizKEZd";
             var _bilibiliApi = new BilibiliApi(loggerFactory);
 
             Task.Run(async () =>

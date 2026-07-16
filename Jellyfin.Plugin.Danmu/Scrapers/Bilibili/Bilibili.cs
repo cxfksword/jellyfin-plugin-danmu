@@ -215,10 +215,14 @@ public class Bilibili : AbstractScraper
                 return null;
             }
 
-            if (video.UgcSeason != null && video.UgcSeason.Sections != null && video.UgcSeason.Sections.Count > 0)
+            if (video.CId > 0)
             {
-                var page = video.UgcSeason.Sections[0].Episodes[0];
-                return new ScraperEpisode() { Id = id, CommentId = $"{page.CId}" };
+                return new ScraperEpisode() { Id = id, CommentId = $"{video.CId}" };
+            }
+
+            if (video.Pages == null || video.Pages.Length == 0)
+            {
+                return null;
             }
 
             var firstPage = video.Pages[0];
@@ -228,7 +232,7 @@ public class Bilibili : AbstractScraper
         if (id.StartsWith("av", StringComparison.CurrentCultureIgnoreCase) && isMovieItemType)
         {
             var biliplusVideo = await _api.GetVideoByAvidAsync(id, CancellationToken.None).ConfigureAwait(false);
-            if (biliplusVideo == null)
+            if (biliplusVideo == null || biliplusVideo.List == null || biliplusVideo.List.Length == 0)
             {
                 log.LogInformation("获取不到b站视频信息：avid={0}", id);
                 return null;
