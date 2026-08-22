@@ -2,9 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web;
 using ComposableAsync;
 using Jellyfin.Plugin.Danmu.Core.Extensions;
 using Jellyfin.Plugin.Danmu.Scrapers.Mgtv.Entity;
@@ -47,8 +48,7 @@ public class MgtvApi : AbstractApi
 
         await this.LimitRequestFrequently();
 
-        keyword = HttpUtility.UrlEncode(keyword);
-        var url = $"https://mobileso.bz.mgtv.com/msite/search/v2?q={keyword}&pc=30&pn=1&sort=-99&ty=0&du=0&pt=0&corr=1&abroad=0&_support=10000000000000000";
+        var url = BuildSearchUrl(keyword);
         using var response = await httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 
@@ -58,18 +58,36 @@ public class MgtvApi : AbstractApi
         {
             foreach (var content in searchResult.Data.Contents)
             {
-                if (content.Type != "media")
+                switch (content.Type)
                 {
-                    continue;
-                }
-                foreach (var item in content.Data)
-                {
-                    if (string.IsNullOrEmpty(item.Id))
-                    {
-                        continue;
-                    }
+                    case "serial":
+                    case "movie":
+                        if (content.Data != null && !string.IsNullOrEmpty(content.Data.Id))
+                        {
+                            result.Add(content.Data);
+                        }
 
-                    result.Add(item);
+                        break;
+                    case "program":
+                        // 综艺类节目按分季（yearList）返回，例如：大侦探 第十一季
+                        if (content.Data != null && content.Data.YearList != null)
+                        {
+                            foreach (var yearItem in content.Data.YearList)
+                            {
+                                // 分季只有hitTitle字段，与title字段统一处理
+                                if (string.IsNullOrEmpty(yearItem.Title) && !string.IsNullOrEmpty(yearItem.HitTitle))
+                                {
+                                    yearItem.Title = yearItem.HitTitle;
+                                }
+
+                                if (!string.IsNullOrEmpty(yearItem.Id))
+                                {
+                                    result.Add(yearItem);
+                                }
+                            }
+                        }
+
+                        break;
                 }
             }
         }
@@ -232,5 +250,76 @@ public class MgtvApi : AbstractApi
         await this._timeConstraint;
     }
 
+    // 与so.mgtv.com站点保持一致的签名密钥（位于前端js bundle中）
+    private const string SearchSignSecret = "xHAa3YZflWLogZUOzl";
+
+    /// <summary>
+    /// 构建pc/search/v2搜索接口的签名URL。
+    /// 签名算法：md5(secret + 排序去空的query + secret)，与站点前端保持一致。
+    /// </summary>
+    private static string BuildSearchUrl(string keyword)
+    {
+        var parameters = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["allowedRC"] = "1",
+            ["src"] = "mgtv",
+            ["did"] = Guid.NewGuid().ToString(),
+            ["timestamp"] = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+            ["signVersion"] = "1",
+            ["signNonce"] = Guid.NewGuid().ToString("N"),
+            ["q"] = keyword,
+            ["pn"] = "1",
+            ["pc"] = "30",
+            ["uid"] = string.Empty,
+            ["corr"] = "0",
+            ["_support"] = "10000000",
+        };
+
+        // 参与签名的字符串：按key排序（Ordinal与JS的localeCompare在ASCII下一致），去掉空值，值用encodeURI编码
+        var signQuery = string.Join("&", parameters
+            .Where(x => !string.IsNullOrEmpty(x.Value))
+            .Select(x => $"{EncodeUri(x.Key)}={EncodeUri(x.Value)}"));
+        var signature = Md5Hex(SearchSignSecret + signQuery + SearchSignSecret);
+
+        var query = string.Join("&", parameters.Select(x => $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value)}"));
+        return $"https://mobileso.bz.mgtv.com/pc/search/v2?{query}&signature={signature}";
+    }
+
+    private static string Md5Hex(string input)
+    {
+        var hash = MD5.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// 模拟JS的encodeURI编码，保留 ; , / ? : @ & = + $ # - _ . ! ~ * ' ( )
+    /// </summary>
+    private static string EncodeUri(string value)
+    {
+        var sb = new StringBuilder();
+        foreach (var ch in value)
+        {
+            if (IsEncodeUriSafe(ch))
+            {
+                sb.Append(ch);
+            }
+            else
+            {
+                sb.Append(Uri.EscapeDataString(ch.ToString()));
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private static bool IsEncodeUriSafe(char ch)
+    {
+        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9'))
+        {
+            return true;
+        }
+
+        return ";,/?:@&=+$#-_.!~*'()".IndexOf(ch) >= 0;
+    }
 }
 
