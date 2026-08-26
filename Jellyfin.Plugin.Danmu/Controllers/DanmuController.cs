@@ -322,10 +322,13 @@ namespace Jellyfin.Plugin.Danmu.Controllers
         /// <summary>
         /// 重新获取对应的弹幕id.
         /// </summary>
-        /// <returns>请求结果</returns>
-        [Route("")]
+        /// <returns>json结果</returns>
+        [Route("/api/danmu/refresh")]
+        [Route("/plugin/danmu/refresh")]
+        [Route("/api/danmu/{id}/refresh")]
+        [Route("/plugin/danmu/{id}/refresh")]
         [HttpGet]
-        public async Task<String> Refresh(string id)
+        public async Task<IActionResult> Refresh(string id)
         {
             if (string.IsNullOrEmpty(id))
             {
@@ -338,13 +341,13 @@ namespace Jellyfin.Plugin.Danmu.Controllers
                 throw new ResourceNotFoundException();
             }
 
+            var message = "已加入弹幕刷新队列";
             if (item is Movie || item is Season)
             {
                 _libraryManagerEventsHelper.QueueItem(item, Model.EventType.Add);
                 _libraryManagerEventsHelper.QueueItem(item, Model.EventType.Update);
             }
-
-            if (item is Series)
+            else if (item is Series)
             {
                 var seasons = ((Series)item).GetSeasons(null, new DtoOptions(false));
                 foreach (var season in seasons)
@@ -353,8 +356,19 @@ namespace Jellyfin.Plugin.Danmu.Controllers
                     _libraryManagerEventsHelper.QueueItem(season, Model.EventType.Update);
                 }
             }
+            else if (item is Episode)
+            {
+                // 单集刷新：仅刷新该集弹幕（本集已匹配过弹幕来源时才生效，否则忽略）
+                _libraryManagerEventsHelper.QueueItem(item, Model.EventType.Update);
+                message = "已加入单集弹幕刷新队列";
+            }
 
-            return "ok";
+            return Ok(new
+            {
+                id = id,
+                success = true,
+                message = message,
+            });
         }
     }
 }
