@@ -144,6 +144,7 @@ public class LibraryManagerEventsHelper : IDisposable
         var queuedEpisodeAdds = new List<LibraryEvent>();
         var queuedEpisodeUpdates = new List<LibraryEvent>();
         var queuedEpisodeForces = new List<LibraryEvent>();
+        var queuedEpisodeForceSingles = new List<LibraryEvent>();
         var queuedShowAdds = new List<LibraryEvent>();
         var queuedShowUpdates = new List<LibraryEvent>();
         var queuedSeasonAdds = new List<LibraryEvent>();
@@ -222,6 +223,10 @@ public class LibraryManagerEventsHelper : IDisposable
                     _logger.LogInformation("Episode force: {0}.{1}", ev.Item.IndexNumber, ev.Item.Name);
                     queuedEpisodeForces.Add(ev);
                     break;
+                case Episode when ev.EventType is EventType.ForceSingle:
+                    _logger.LogInformation("Episode force single: {0}.{1}", ev.Item.IndexNumber, ev.Item.Name);
+                    queuedEpisodeForceSingles.Add(ev);
+                    break;
             }
 
         }
@@ -246,6 +251,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
         await ProcessQueuedMovieEvents(queuedMovieForces, EventType.Force).ConfigureAwait(false);
         await ProcessQueuedEpisodeEvents(queuedEpisodeForces, EventType.Force).ConfigureAwait(false);
+        await ProcessQueuedEpisodeForceSingleEvents(queuedEpisodeForceSingles).ConfigureAwait(false);
     }
 
     public bool IsIgnoreItem(BaseItem item)
@@ -879,6 +885,95 @@ public class LibraryManagerEventsHelper : IDisposable
                     }
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// 处理单集强刷事件：只刷新入队的本集，不卡集数一致性，不绕过30分钟缓存。
+    /// 本集已有弹幕来源 → 直接强刷本集；本集无来源但所属季已匹配 → 按集号补下本集；季也未匹配 → 忽略。
+    /// </summary>
+    /// <param name="events">The <see cref="LibraryEvent"/> enumerable.</param>
+    /// <returns>Task.</returns>
+    public async Task ProcessQueuedEpisodeForceSingleEvents(IReadOnlyCollection<LibraryEvent> events)
+    {
+        if (events.Count == 0)
+        {
+            return;
+        }
+
+        _logger.LogDebug("Processing {Count} episodes with force single event type", events.Count);
+
+        var items = events.Select(lev => (Episode)lev.Item)
+            .Where(lev => !string.IsNullOrEmpty(lev.Name))
+            .ToHashSet();
+
+        // 单集强刷：只处理入队的本集，不绕过30分钟缓存
+        foreach (var queueItem in items)
+        {
+            // 获取最新的item数据
+            var item = _libraryManager.GetItemById(queueItem.Id) as Episode;
+            if (item?.Season == null)
+            {
+                continue;
+            }
+
+            var season = item.Season;
+            var scrapers = _scraperManager.All();
+
+            // 路径A：本集已带 epId → 只刷这一集
+            if (DanmuProviderId.TryGetFirst(item, scrapers, out var epScraper, out var epVal) && epScraper != null)
+            {
+                var episode = await epScraper.GetMediaEpisode(item, epVal).ConfigureAwait(false);
+                if (episode != null)
+                {
+                    await this.DownloadDanmu(epScraper, item, episode.CommentId).ConfigureAwait(false);
+                }
+
+                continue;
+            }
+
+            // 路径B：本集无 epId，但所属季已匹配 → 按集号只下这一集（不卡集数一致性）
+            if (!DanmuProviderId.TryGetFirst(season, scrapers, out var scraper, out var seasonMediaId) || scraper == null)
+            {
+                _logger.LogInformation("找不到对应的弹幕来源，忽略单集强刷. [{0}]", item.Name);
+                continue;
+            }
+
+            var media = await scraper.GetMedia(season, seasonMediaId).ConfigureAwait(false);
+            if (media == null)
+            {
+                _logger.LogInformation("[{0}]获取不到视频信息，忽略单集强刷. ProviderId: {1}", scraper.Name, seasonMediaId);
+                continue;
+            }
+
+            var indexNumber = item.IndexNumber ?? 0;
+            if (indexNumber < 1)
+            {
+                _logger.LogInformation("[{0}]缺少集号，忽略处理. [{1}]{2}", scraper.Name, season.Name, item.Name);
+                continue;
+            }
+
+            if (indexNumber > media.Episodes.Count)
+            {
+                _logger.LogInformation("[{0}]集号超过弹幕数，忽略处理. [{1}]{2} 集号: {3} 弹幕数：{4}", scraper.Name, season.Name, item.Name, indexNumber, media.Episodes.Count);
+                continue;
+            }
+
+            // 特典或extras影片不处理（动画经常会放在季文件夹下）
+            if (item.ParentIndexNumber is null or 0)
+            {
+                _logger.LogInformation("[{0}]缺少季号，可能是特典或extras影片，忽略处理. [{1}]{2}", scraper.Name, season.Name, item.Name);
+                continue;
+            }
+
+            var epId = media.Episodes[indexNumber - 1].Id;
+            var commentId = media.Episodes[indexNumber - 1].CommentId;
+
+            // 下载弹幕xml文件（不绕过30分钟缓存）
+            await this.DownloadDanmu(scraper, item, commentId).ConfigureAwait(false);
+
+            // 更新本集元数据（保存epId，后续可直接强刷本集）
+            await ForceSaveProviderId(item, scraper.ProviderId, epId).ConfigureAwait(false);
         }
     }
 

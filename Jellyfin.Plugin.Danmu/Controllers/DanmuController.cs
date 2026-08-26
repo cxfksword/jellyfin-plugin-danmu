@@ -358,14 +358,15 @@ namespace Jellyfin.Plugin.Danmu.Controllers
             }
             else if (item is Episode)
             {
-                // 单集刷新：仅刷新该集弹幕（本集已匹配过弹幕来源时才生效，否则忽略）
-                _libraryManagerEventsHelper.QueueItem(item, Model.EventType.Update);
+                // 单集刷新：仅处理该集（本集已有弹幕来源→强刷本集；本集无来源但所属季已匹配→按集号补下；季也未匹配→忽略）
+                _libraryManagerEventsHelper.QueueItem(item, Model.EventType.ForceSingle);
                 message = "已加入单集弹幕刷新队列";
             }
 
             return Ok(new
             {
                 id = id,
+                type = item.GetType().Name,
                 success = true,
                 message = message,
             });

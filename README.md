@@ -45,7 +45,7 @@ jellyfin弹幕自动下载插件，已支持的弹幕来源：b站，~~弹弹pla
 
 * `/api/danmu/{id}`:  获取jellyfin电影或剧集的xml弹幕链接，不存在时，url为空
 * `/api/danmu/{id}/raw`:  获取jellyfin电影或剧集的xml弹幕文件内容
-* `/api/danmu/refresh?id={itemId}` 或 `/api/danmu/{itemId}/refresh`:  重新获取对应电影/剧集/季的弹幕。传入**剧集（Episode）**的 id 时，仅刷新该单集弹幕（需该集已匹配过弹幕来源，未匹配则忽略）。接口返回 json 结果 `{"id":...,"type":...,"success":true,"message":...}`，可用于脚本批量补全缺失弹幕
+* `/api/danmu/{id}/refresh`:  重新获取对应电影/剧集的弹幕
 * `/api/v2/search/anime?keyword=xxx`: 根据关键字搜索影视
 * `/api/v2/search/episodes?anime=xxx`: 根据关键字搜索影视的剧集信息
 * `/api/v2/bangumi/{bangumiId}`: 获取影视详细信息
