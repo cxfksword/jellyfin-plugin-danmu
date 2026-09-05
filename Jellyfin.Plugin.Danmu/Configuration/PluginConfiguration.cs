@@ -49,6 +49,11 @@ public class PluginConfiguration : BasePluginConfiguration
 
 
     /// <summary>
+    /// 磁盘上弹幕文件的冷却时长（小时）。文件在该时间内更新过则跳过重新下载，防止与实时监控互相触发死循环。0 表示不启用.
+    /// </summary>
+    public int DanmuDiskCooldownHours { get; set; } = 72;
+
+    /// <summary>
     /// 检测弹幕数和视频剧集数需要一致才自动下载弹幕.
     /// </summary>
     public DanmuDownloadOption DownloadOption { get; set; } = new DanmuDownloadOption();

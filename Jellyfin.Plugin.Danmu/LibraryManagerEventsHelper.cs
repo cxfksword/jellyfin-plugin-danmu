@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -34,6 +35,7 @@ public class LibraryManagerEventsHelper : IDisposable
     private readonly Jellyfin.Plugin.Danmu.Core.IFileSystem _fileSystem;
     private Timer _queueTimer;
     private readonly ScraperManager _scraperManager;
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _itemLocks = new();
 
     public PluginConfiguration Config
     {
@@ -75,6 +77,13 @@ public class LibraryManagerEventsHelper : IDisposable
             if (item == null)
             {
                 throw new ArgumentNullException(nameof(item));
+            }
+
+            // 插件生成的弹幕文件变更会被实时监控捕获并回流成事件，导致互相触发死循环，直接忽略
+            if (IsPluginGeneratedFile(item))
+            {
+                _logger.LogDebug("忽略插件生成的弹幕文件事件: {Path} ({EventType})", item.Path, eventType);
+                return;
             }
 
             var libraryEvent = new LibraryEvent { Item = item, EventType = eventType, EnqueueTimeUtc = DateTime.UtcNow };
@@ -263,6 +272,22 @@ public class LibraryManagerEventsHelper : IDisposable
             this._logger.LogDebug($"媒体库已关闭danmu插件, 忽略处理[{item.Name}].");
             return true;
         }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 判断事件item是否为插件生成的弹幕文件（xml、danmu.ass及其冲突副本），这些文件不应再回流处理.
+    /// </summary>
+    private bool IsPluginGeneratedFile(BaseItem item)
+    {
+        var path = item.Path;
+        if (string.IsNullOrEmpty(path)) return false;
+
+        var fileName = Path.GetFileName(path);
+        // .danmu.ass 以及字幕管理器冲突时生成的 .danmu.1.ass 之类的副本
+        if (fileName.Contains(".danmu.", StringComparison.OrdinalIgnoreCase)) return true;
+        if (fileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) return true;
 
         return false;
     }
@@ -1002,6 +1027,7 @@ public class LibraryManagerEventsHelper : IDisposable
             return;
         }
 
+        var savedCount = 0;
         foreach (var queueItem in queue)
         {
             // 获取最新的item数据
@@ -1011,6 +1037,9 @@ public class LibraryManagerEventsHelper : IDisposable
                 var providerIdSnapshot = queueItem.ProviderIds
                     .Where(pair => !string.IsNullOrEmpty(pair.Value))
                     .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+                // 记录合并前的状态，用于判断是否真的有变化
+                var originalIds = new Dictionary<string, string>(item.ProviderIds, StringComparer.Ordinal);
 
                 if (providerIdSnapshot.ContainsKey(DanmuProviderId.UnifiedProviderId))
                 {
@@ -1023,22 +1052,58 @@ public class LibraryManagerEventsHelper : IDisposable
                     item.ProviderIds[pair.Key] = pair.Value;
                 }
 
+                // 元数据无变化时跳过保存，避免重写NFO触发实时监控事件造成循环处理
+                var changed = originalIds.Count != item.ProviderIds.Count
+                    || item.ProviderIds.Any(pair =>
+                        !originalIds.TryGetValue(pair.Key, out var originalValue)
+                        || !string.Equals(originalValue, pair.Value, StringComparison.Ordinal));
+                if (!changed)
+                {
+                    continue;
+                }
+
+                savedCount++;
                 await this.UpdateItemsAsync(item, CancellationToken.None).ConfigureAwait(false);
             }
         }
-        _logger.LogInformation("更新epid到元数据完成。item数：{0}", queue.Count);
+        _logger.LogInformation("更新epid到元数据完成。item数：{0}", savedCount);
     }
 
     public async Task DownloadDanmu(AbstractScraper scraper, BaseItem item, string commentId, bool ignoreCheck = false)
     {
         // 下载弹幕xml文件
         var checkDownloadedKey = $"{item.Id}_{commentId}";
+
+        // 同一条目的并发处理串行化，避免多个事件同时通过冷却检查而重复下载
+        var itemLock = _itemLocks.GetOrAdd(item.Id.ToString("N"), _ => new SemaphoreSlim(1, 1));
+        await itemLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await DownloadDanmuCore(scraper, item, commentId, ignoreCheck, checkDownloadedKey).ConfigureAwait(false);
+        }
+        finally
+        {
+            itemLock.Release();
+        }
+    }
+
+    private async Task DownloadDanmuCore(AbstractScraper scraper, BaseItem item, string commentId, bool ignoreCheck, string checkDownloadedKey)
+    {
+        // 下载弹幕xml文件
         try
         {
             // 弹幕30分钟内更新过，忽略处理（有时Update事件会重复执行）
             if (!ignoreCheck && _memoryCache.TryGetValue(checkDownloadedKey, out var latestDownloaded))
             {
                 _logger.LogInformation("[{0}]最近30分钟已更新过弹幕xml，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
+                return;
+            }
+
+            // 磁盘上的弹幕文件在冷却期内则跳过下载（状态持久化，重启后仍生效，防止与实时监控互相触发死循环）
+            if (!ignoreCheck && IsDanmuFileFresh(item))
+            {
+                _memoryCache.Set(checkDownloadedKey, true, _danmuUpdatedExpiredOption);
+                _logger.LogInformation("[{0}]磁盘弹幕xml仍在冷却期内，忽略处理：{1}.{2}", scraper.Name, item.IndexNumber, item.Name);
                 return;
             }
 
@@ -1074,12 +1139,17 @@ public class LibraryManagerEventsHelper : IDisposable
         }
     }
 
-    private bool IsRepeatAction(BaseItem item, string checkDownloadedKey)
+    /// <summary>
+    /// 磁盘上的弹幕xml文件在冷却期内（配置项DanmuDiskCooldownHours，0为不启用）则视为新鲜，无需重新下载.
+    /// </summary>
+    private bool IsDanmuFileFresh(BaseItem item)
     {
+        var cooldownHours = this.Config.DanmuDiskCooldownHours;
+        if (cooldownHours <= 0) return false;
+
         // 单元测试时为null
         if (item.FileNameWithoutExtension == null) return false;
 
-        // 通过xml文件属性判断（多线程时判断有误）
         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
         if (!this._fileSystem.Exists(danmuPath))
         {
@@ -1087,8 +1157,11 @@ public class LibraryManagerEventsHelper : IDisposable
         }
 
         var lastWriteTime = this._fileSystem.GetLastWriteTime(danmuPath);
-        var diff = DateTime.Now - lastWriteTime;
-        return diff.TotalSeconds < 300;
+        var diff = DateTime.UtcNow - lastWriteTime.ToUniversalTime();
+        // 时钟偏差导致时间为未来时，视为不新鲜，允许重新下载校准
+        if (diff < TimeSpan.Zero) return false;
+
+        return diff.TotalHours < cooldownHours;
     }
 
     private async Task SaveDanmu(BaseItem item, byte[] bytes)
@@ -1098,7 +1171,7 @@ public class LibraryManagerEventsHelper : IDisposable
 
         // 下载弹幕xml文件
         var danmuPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".xml");
-        await this._fileSystem.WriteAllBytesAsync(danmuPath, bytes, CancellationToken.None).ConfigureAwait(false);
+        await this.WriteFileIfChangedAsync(danmuPath, bytes).ConfigureAwait(false);
 
         if (this.Config.ToAss && bytes.Length > 0)
         {
@@ -1132,6 +1205,32 @@ public class LibraryManagerEventsHelper : IDisposable
             var assPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".danmu.ass");
             Danmaku2Ass.Bilibili.GetInstance().Create(bytes, assConfig, assPath);
         }
+    }
+
+    /// <summary>
+    /// 内容无变化时跳过写盘，有变化时先写临时文件再原子替换，避免实时监控捕获到半写状态的文件.
+    /// </summary>
+    private async Task WriteFileIfChangedAsync(string path, byte[] bytes)
+    {
+        try
+        {
+            if (this._fileSystem.Exists(path))
+            {
+                var existing = await File.ReadAllBytesAsync(path).ConfigureAwait(false);
+                if (existing.SequenceEqual(bytes))
+                {
+                    return;
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // 读取失败（如文件被占用）时按需要写入处理
+        }
+
+        var tmpPath = path + ".tmp";
+        await this._fileSystem.WriteAllBytesAsync(tmpPath, bytes, CancellationToken.None).ConfigureAwait(false);
+        File.Move(tmpPath, path, true);
     }
 
     private async Task ForceSaveProviderId(BaseItem item, string providerId, string providerVal)

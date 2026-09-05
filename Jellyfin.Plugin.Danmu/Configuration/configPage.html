@@ -45,6 +45,12 @@
                             </label>
                             <div class="fieldDescription">勾选后，假如匹配了错误的电视剧，可以避免自动下载错误的弹幕。</div>
                         </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="DanmuDiskCooldownHours">弹幕文件冷却时长（小时）</label>
+                            <input id="DanmuDiskCooldownHours" name="DanmuDiskCooldownHours" type="number" is="emby-input" min="0" />
+                            <div class="fieldDescription">磁盘上的弹幕xml文件在该时长内更新过则跳过重新下载。默认72，设为0表示不启用。</div>
+                        </div>
                     </fieldset>
 
                     <fieldset class="verticalSection verticalSection-extrabottompadding">
@@ -184,6 +190,7 @@
 
                         document.querySelector('#EnableAutoDownload').checked = config.DownloadOption.EnableAutoDownload;
                         document.querySelector('#EnableEpisodeCountSame').checked = config.DownloadOption.EnableEpisodeCountSame;
+                        document.querySelector('#DanmuDiskCooldownHours').value = config.DanmuDiskCooldownHours;
 
                         document.querySelector('#WithRelatedDanmu').checked = config.Dandan.WithRelatedDanmu;
                         document.querySelector('#ChConvert').value = config.Dandan.ChConvert;
@@ -240,6 +247,9 @@
                         download.EnableEpisodeCountSame = document.querySelector('#EnableEpisodeCountSame').checked;
                         download.EnableAutoDownload = document.querySelector('#EnableAutoDownload').checked;
                         config.DownloadOption = download;
+
+                        var cooldownHours = parseInt(document.querySelector('#DanmuDiskCooldownHours').value, 10);
+                        config.DanmuDiskCooldownHours = isNaN(cooldownHours) || cooldownHours < 0 ? 72 : cooldownHours;
 
                         var dandan = new Object();
                         dandan.WithRelatedDanmu = document.querySelector('#WithRelatedDanmu').checked;
