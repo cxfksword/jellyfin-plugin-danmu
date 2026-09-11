@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Danmu.Core;
@@ -1230,12 +1231,15 @@ public class LibraryManagerEventsHelper : IDisposable
             }
 
             var assPath = Path.Combine(item.ContainingFolderPath, item.FileNameWithoutExtension + ".danmu.ass");
-            Danmaku2Ass.Bilibili.GetInstance().Create(bytes, assConfig, assPath);
+            var assText = Danmaku2Ass.Bilibili.GetInstance().ToASS(bytes, assConfig);
+            var assBytes = new UTF8Encoding(true).GetBytes(assText);
+            await this.WriteFileIfChangedAsync(assPath, assBytes).ConfigureAwait(false);
         }
     }
 
     /// <summary>
     /// 内容无变化时跳过写盘，有变化时先写临时文件再原子替换，避免实时监控捕获到半写状态的文件.
+    /// 临时文件放在系统临时目录，避免媒体库实时监控扫到影片目录下的 *.tmp 文件.
     /// </summary>
     private async Task WriteFileIfChangedAsync(string path, byte[] bytes)
     {
@@ -1255,9 +1259,43 @@ public class LibraryManagerEventsHelper : IDisposable
             // 读取失败（如文件被占用）时按需要写入处理
         }
 
-        var tmpPath = path + ".tmp";
-        await this._fileSystem.WriteAllBytesAsync(tmpPath, bytes, CancellationToken.None).ConfigureAwait(false);
-        File.Move(tmpPath, path, true);
+        var tmpPath = Path.Combine(Path.GetTempPath(), "jellyfin-danmu-" + Guid.NewGuid().ToString("N") + ".tmp");
+        try
+        {
+            await this._fileSystem.WriteAllBytesAsync(tmpPath, bytes, CancellationToken.None).ConfigureAwait(false);
+            MoveFileAtomic(tmpPath, path);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tmpPath))
+                {
+                    File.Delete(tmpPath);
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+    }
+
+    private static void MoveFileAtomic(string sourcePath, string destPath)
+    {
+        try
+        {
+            File.Move(sourcePath, destPath, true);
+            return;
+        }
+        catch (IOException)
+        {
+            // 跨卷移动时 rename 失败（EXDEV），回退为拷贝+删除
+        }
+
+        File.Copy(sourcePath, destPath, true);
     }
 
     private async Task ForceSaveProviderId(BaseItem item, string providerId, string providerVal)
