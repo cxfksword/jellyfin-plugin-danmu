@@ -29,7 +29,8 @@ namespace Jellyfin.Plugin.Danmu
             });
             serviceCollection.AddSingleton((ctx) =>
             {
-                return new LibraryManagerEventsHelper(ctx.GetRequiredService<IItemRepository>(), ctx.GetRequiredService<ILibraryManager>(), ctx.GetRequiredService<ILoggerFactory>(), ctx.GetRequiredService<IFileSystem>(), ctx.GetRequiredService<ScraperManager>());
+                // JF12+ 需要 IServiceProvider 来解析 IItemPersistenceService，老版本回退到 IItemRepository
+                return new LibraryManagerEventsHelper(ctx, ctx.GetRequiredService<IItemRepository>(), ctx.GetRequiredService<ILibraryManager>(), ctx.GetRequiredService<ILoggerFactory>(), ctx.GetRequiredService<IFileSystem>(), ctx.GetRequiredService<ScraperManager>());
             });
             serviceCollection.AddSingleton<FileCache<AnimeCacheItem>>((ctx) =>
             {

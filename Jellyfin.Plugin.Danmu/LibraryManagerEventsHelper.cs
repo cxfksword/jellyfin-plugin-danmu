@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Danmu.Core;
@@ -29,13 +31,23 @@ public class LibraryManagerEventsHelper : IDisposable
     private readonly IMemoryCache _memoryCache;
     private readonly MemoryCacheEntryOptions _pendingAddExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
     private readonly MemoryCacheEntryOptions _danmuUpdatedExpiredOption = new MemoryCacheEntryOptions() { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
-    private readonly IItemRepository _itemRepository;
+    private readonly IItemRepository? _itemRepository;
+    private readonly IServiceProvider? _serviceProvider;
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<LibraryManagerEventsHelper> _logger;
     private readonly Jellyfin.Plugin.Danmu.Core.IFileSystem _fileSystem;
     private Timer _queueTimer;
     private readonly ScraperManager _scraperManager;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _itemLocks = new();
+
+    // Jellyfin 12 把 IItemRepository.SaveItems 搬到了 IItemPersistenceService.SaveItems，
+    // 编译期仍引用 10.11 SDK，直接调用会在 12 上抛 MissingMethodException，且 JIT 整个方法时就会失败，
+    // 所以新老两条路径都必须走反射，不能出现直接方法调用。
+    private static readonly object _saveItemsLookupLock = new();
+    private static bool _saveItemsLookupDone;
+    private static Type? _persistenceServiceType;
+    private static MethodInfo? _persistenceSaveItemsMethod;
+    private static MethodInfo? _legacySaveItemsMethod;
 
     public PluginConfiguration Config
     {
@@ -54,11 +66,26 @@ public class LibraryManagerEventsHelper : IDisposable
     /// <param name="api">The <see cref="BilibiliApi"/>.</param>
     /// <param name="fileSystem">Instance of the <see cref="IFileSystem"/> interface.</param>
     public LibraryManagerEventsHelper(IItemRepository itemRepository, ILibraryManager libraryManager, ILoggerFactory loggerFactory, Jellyfin.Plugin.Danmu.Core.IFileSystem fileSystem, ScraperManager scraperManager)
+        : this(null, itemRepository, libraryManager, loggerFactory, fileSystem, scraperManager)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LibraryManagerEventsHelper"/> class.
+    /// </summary>
+    /// <param name="serviceProvider">The <see cref="IServiceProvider"/> for resolving JF12+ persistence service.</param>
+    /// <param name="itemRepository">The <see cref="IItemRepository"/> for JF10/11 fallback.</param>
+    /// <param name="libraryManager">The <see cref="ILibraryManager"/>.</param>
+    /// <param name="loggerFactory">The <see cref="ILoggerFactory"/>.</param>
+    /// <param name="fileSystem">Instance of the <see cref="IFileSystem"/> interface.</param>
+    /// <param name="scraperManager">The <see cref="ScraperManager"/>.</param>
+    public LibraryManagerEventsHelper(IServiceProvider? serviceProvider, IItemRepository? itemRepository, ILibraryManager libraryManager, ILoggerFactory loggerFactory, Jellyfin.Plugin.Danmu.Core.IFileSystem fileSystem, ScraperManager scraperManager)
     {
         _queuedEvents = new List<LibraryEvent>();
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
-        _itemRepository = itemRepository;
+        _serviceProvider = serviceProvider;
+        _itemRepository = itemRepository ?? ResolveItemRepository(serviceProvider);
         _libraryManager = libraryManager;
         _logger = loggerFactory.CreateLogger<LibraryManagerEventsHelper>();
         _fileSystem = fileSystem;
@@ -1242,7 +1269,7 @@ public class LibraryManagerEventsHelper : IDisposable
     
     private async Task UpdateItemsAsync(BaseItem item, CancellationToken cancellationToken)
     {
-        this.UpdateItemsAsync([item], cancellationToken).ConfigureAwait(false);
+        await this.UpdateItemsAsync([item], cancellationToken).ConfigureAwait(false);
     }
 
     private async Task UpdateItemsAsync(IReadOnlyList<BaseItem> items, CancellationToken cancellationToken)
@@ -1258,7 +1285,217 @@ public class LibraryManagerEventsHelper : IDisposable
             // Modify again, so saved value is after write time of externally saved metadata
             item.DateLastSaved = DateTime.UtcNow;
         }
-        this._itemRepository.SaveItems(items, cancellationToken);
+
+        this.SaveItemsCompat(items, cancellationToken);
+    }
+
+    /// <summary>
+    /// 兼容 JF10/11 (IItemRepository.SaveItems) 与 JF12+ (IItemPersistenceService.SaveItems) 的保存入口。
+    /// 两条路径都走反射：直接调用老方法会在 JF12 上 JIT 失败抛 MissingMethodException。
+    /// </summary>
+    private void SaveItemsCompat(IReadOnlyList<BaseItem> items, CancellationToken cancellationToken)
+    {
+        // 优先 JF12+ 新接口
+        if (this.TrySaveViaPersistenceService(items, cancellationToken))
+        {
+            return;
+        }
+
+        // 回退 JF10/11 老接口（反射调用，避免 JIT 时解析缺失方法）
+        var legacyMethod = GetLegacySaveItemsMethod();
+        var repository = this._itemRepository ?? ResolveItemRepository(this._serviceProvider);
+        if (legacyMethod != null && repository != null)
+        {
+            try
+            {
+                legacyMethod.Invoke(repository, new object[] { items, cancellationToken });
+                return;
+            }
+            catch (TargetInvocationException ex) when (ex.InnerException != null)
+            {
+                ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+            }
+        }
+
+        throw new InvalidOperationException("Unable to save items: neither IItemPersistenceService (JF12+) nor IItemRepository.SaveItems (JF10/11) is available.");
+    }
+
+    private bool TrySaveViaPersistenceService(IReadOnlyList<BaseItem> items, CancellationToken cancellationToken)
+    {
+        if (this._serviceProvider == null)
+        {
+            return false;
+        }
+
+        EnsureSaveItemsLookup();
+
+        var serviceType = _persistenceServiceType;
+        var saveMethod = _persistenceSaveItemsMethod;
+        if (serviceType == null || saveMethod == null)
+        {
+            return false;
+        }
+
+        object? service;
+        try
+        {
+            service = this._serviceProvider.GetService(serviceType);
+        }
+        catch
+        {
+            return false;
+        }
+
+        if (service == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            saveMethod.Invoke(service, new object[] { items, cancellationToken });
+            return true;
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException != null)
+        {
+            ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+            return false;
+        }
+    }
+
+    private static void EnsureSaveItemsLookup()
+    {
+        if (_saveItemsLookupDone)
+        {
+            return;
+        }
+
+        lock (_saveItemsLookupLock)
+        {
+            if (_saveItemsLookupDone)
+            {
+                return;
+            }
+
+            try
+            {
+                _persistenceServiceType = FindPersistenceServiceType();
+                if (_persistenceServiceType != null)
+                {
+                    _persistenceSaveItemsMethod = _persistenceServiceType.GetMethod(
+                        "SaveItems",
+                        BindingFlags.Instance | BindingFlags.Public,
+                        null,
+                        new[] { typeof(IReadOnlyList<BaseItem>), typeof(CancellationToken) },
+                        null);
+                }
+
+                // JF10/11: IItemRepository.SaveItems 在 JF12 已移除，GetMethod 为 null 时说明是新版本
+                _legacySaveItemsMethod = typeof(IItemRepository).GetMethod(
+                    "SaveItems",
+                    BindingFlags.Instance | BindingFlags.Public,
+                    null,
+                    new[] { typeof(IReadOnlyList<BaseItem>), typeof(CancellationToken) },
+                    null);
+            }
+            catch
+            {
+                _persistenceServiceType = null;
+                _persistenceSaveItemsMethod = null;
+                _legacySaveItemsMethod = null;
+            }
+            finally
+            {
+                _saveItemsLookupDone = true;
+            }
+        }
+    }
+
+    private static Type? FindPersistenceServiceType()
+    {
+        const string fullName = "MediaBrowser.Controller.Persistence.IItemPersistenceService";
+
+        // JF12+ 真实环境：按程序集限定名查找
+        var type = Type.GetType(fullName + ", MediaBrowser.Controller", false);
+        if (type != null)
+        {
+            return type;
+        }
+
+        // 单测环境：允许测试程序集提供同 FullName 的假接口，以验证 JF12 分支
+        try
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                Type[] types;
+                try
+                {
+                    types = assembly.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    types = ex.Types.Where(t => t != null).ToArray()!;
+                }
+                catch
+                {
+                    continue;
+                }
+
+                foreach (var candidate in types)
+                {
+                    if (candidate?.FullName == fullName
+                        && candidate.GetMethod(
+                            "SaveItems",
+                            BindingFlags.Instance | BindingFlags.Public,
+                            null,
+                            new[] { typeof(IReadOnlyList<BaseItem>), typeof(CancellationToken) },
+                            null) != null)
+                    {
+                        return candidate;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignore scan errors
+        }
+
+        return null;
+    }
+
+    public static void ResetSaveItemsLookupForTest()
+    {
+        lock (_saveItemsLookupLock)
+        {
+            _saveItemsLookupDone = false;
+            _persistenceServiceType = null;
+            _persistenceSaveItemsMethod = null;
+            _legacySaveItemsMethod = null;
+        }
+    }
+
+    private static MethodInfo? GetLegacySaveItemsMethod()
+    {
+        EnsureSaveItemsLookup();
+        return _legacySaveItemsMethod;
+    }
+
+    private static IItemRepository? ResolveItemRepository(IServiceProvider? serviceProvider)
+    {
+        if (serviceProvider == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return serviceProvider.GetService(typeof(IItemRepository)) as IItemRepository;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
 
